@@ -4,7 +4,7 @@ from gymnasium import spaces
 from mujoco import MjModel, MjData
 from mujoco import mj_step, mj_resetData
 from importlib.resources import files
-
+from mujoco import renderer
 
 class TactileGymEnv(gym.Env):
     """
@@ -26,7 +26,7 @@ class TactileGymEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
-
+        self.renderer = renderer.Renderer(self.model,height=128, width=128)
         self.step_count = 0
         self.max_steps = 200
     def reset(self, seed=None, options=None):
