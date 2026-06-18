@@ -7,7 +7,7 @@ import mujoco.viewer
 
 def main():
 
-    env = gym.make("RobotArm-v0")
+    env = gym.make("RandomTac-v0")
 
     obs, info = env.reset()
 
