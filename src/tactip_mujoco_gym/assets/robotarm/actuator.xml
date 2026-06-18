@@ -1,0 +1,10 @@
+  <actuator>
+    <general class="z1" name="motor1" joint="joint1" ctrlrange="-2.61799 2.61799"/>
+    <general class="z1" name="motor2" joint="joint2" ctrlrange="0 2.96706" forcerange="-60 60" gainprm="1500"
+      biasprm="0 -1500 -150"/>
+    <general class="z1" name="motor3" joint="joint3" ctrlrange="-2.87979 0"/>
+    <general class="z1" name="motor4" joint="joint4" ctrlrange="-1.51844 1.51844"/>
+    <general class="z1" name="motor5" joint="joint5" ctrlrange="-1.3439 1.3439"/>
+    <general class="z1" name="motor6" joint="joint6" ctrlrange="-2.79253 2.79253"/>
+    <general class="z1" name="motorGripper" joint="jointGripper" ctrlrange="-1.51844 0"/>
+  </actuator>

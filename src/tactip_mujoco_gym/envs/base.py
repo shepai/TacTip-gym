@@ -49,7 +49,14 @@ class TactileGymEnv(gym.Env):
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
-        raise NotImplementedError
+        self.renderer.update_scene(self.data, camera="sensor_cam")
+        img = self.renderer.render()
+        img = img.astype("float32") / 255.0
+        obs = {
+        "state": None,
+        "image": img
+    }
+        return obs
 
     def _reward(self):
         raise NotImplementedError

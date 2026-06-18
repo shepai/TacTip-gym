@@ -1,0 +1,23 @@
+
+  <asset>
+    <mesh file="z1_Link00.stl"/>
+    <mesh file="z1_Link01.stl"/>
+    <mesh file="z1_Link02.stl"/>
+    <mesh file="z1_Link03.stl"/>
+    <mesh file="z1_Link04.stl"/>
+    <mesh file="z1_Link05.stl"/>
+    <mesh file="z1_Link06.stl"/>
+    <mesh file="z1_GripperStator.stl"/>
+    <mesh file="z1_GripperStator_col_1.stl"/>
+    <mesh file="z1_GripperStator_col_2.stl"/>
+    <mesh file="z1_GripperStator_col_3.stl"/>
+    <mesh file="z1_GripperStator_col_4.stl"/>
+    <mesh file="z1_GripperStator_col_5.stl"/>
+    <mesh file="z1_GripperStator_col_6.stl"/>
+    <mesh file="z1_GripperMover.stl"/>
+    <mesh file="z1_GripperMover_col_1.stl"/>
+    <mesh file="z1_GripperMover_col_2.stl"/>
+    <mesh file="z1_GripperMover_col_3.stl"/>
+    <mesh file="z1_GripperMover_col_4.stl"/>
+    <mesh file="z1_GripperMover_col_5.stl"/>
+  </asset>
