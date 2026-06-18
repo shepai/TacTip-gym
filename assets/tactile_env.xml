@@ -1,0 +1,40 @@
+<mujoco model="ball_on_sensor">
+  <compiler angle="degree" coordinate="local"/>
+  <option timestep="0.008" gravity="0 0 -9.81" integrator="implicitfast" solver="Newton" tolerance="1e-8"/>
+  <asset>
+   <include file="sensor/asset.xml"/>
+  </asset>
+   
+  <default>
+    <geom type="box" size="0.02 0.02 0.005"
+          rgba="0.2 0.6 0.8 1"
+          condim="3"
+          friction="1 0.005 0.0001"/>
+  </default>
+
+  <worldbody>
+   <light pos="0 0 4" dir="0 0 -1"/>
+    <!-- Ground -->
+    <geom name="ground" type="plane" size="1 1 0.1" rgba="0.9 0.9 0.9 1"/>
+
+    <!-- Include sensor pad array -->
+    <include file="sensor/worldbody.xml"/>
+
+    <body name="dropping_box" pos="0 0 0.4">
+            <freejoint name="box_free"/>
+
+            <geom type="box" size="0.04 0.04 0.04" rgba="0.8 0.5 0.1 1" mass="0.2" friction="1 0.005 0.005" condim="3" contype="1" conaffinity="1"/>
+        </body>
+        <body name="dropping_box2" pos="0.02 0.04 0.4">
+            <freejoint name="box_free2"/>
+
+            <geom type="box" size="0.04 0.04 0.04" rgba="0.8 0.5 0.1 1" mass="0.2" friction="1 0.005 0.005" condim="3" contype="1" conaffinity="1"/>
+        </body>
+  </worldbody>
+  <deformable>
+  <include file="sensor/deformable.xml"/>
+  </deformable>
+  <tendon>
+  <include file="sensor/tendon.xml"/>
+  </tendon>
+</mujoco>

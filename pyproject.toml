@@ -15,7 +15,8 @@ dependencies = [
     "numpy>=2.0",
     "torch>=2.7",
     "opencv-python>=4.10",
-    "mujoco"
+    "mujoco",
+    "gymnasium"
 
 ]
 
