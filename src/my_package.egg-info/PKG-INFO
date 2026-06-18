@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: my-package
+Version: 0.1.0
+Summary: My awesome package
+Author: Dexter Shepherd
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=2.0
+Requires-Dist: torch>=2.7
+Requires-Dist: opencv-python>=4.10
+Requires-Dist: mujoco
+Requires-Dist: gymnasium
+Dynamic: license-file
+
+# TacTip-gym
+Mujoco simulation of a TacTip (based on the robot foot repo) with various robotic tasks
+
+
+## Installation 
+Navigate to the folder path of download and sue the command
+```[bash]
+pip install -e .
+```
