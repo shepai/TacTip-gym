@@ -27,7 +27,7 @@ def main():
 
             # Step simulation via your Gym env
             obs, reward, terminated, truncated, info = env.step(action)
-
+                
             # Sync viewer with updated physics
             viewer.sync()
 

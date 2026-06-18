@@ -1,364 +1,348 @@
 <tendon>
     
-                <spatial width="0.002" name="t_h_0_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c0" />
                     <site site="s_c1" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c1" />
                     <site site="s_c2" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c2" />
                     <site site="s_c3" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c3" />
                     <site site="s_c4" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c4" />
                     <site site="s_c5" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c5" />
                     <site site="s_c6" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c6" />
                     <site site="s_c7" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c7" />
                     <site site="s_c8" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c8" />
                     <site site="s_c9" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c9" />
                     <site site="s_c10" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c10" />
                     <site site="s_c11" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c11" />
                     <site site="s_c12" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_12" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_12" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c12" />
                     <site site="s_c13" />
                 </spatial>
-                <spatial width="0.002" name="t_h_0_13" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_0_13" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c13" />
-                    <site site="s_c14" />
-                </spatial>
-                <spatial width="0.002" name="t_h_0_14" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                    <site site="s_c14" />
                     <site site="s_c0" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                    <site site="s_c14" />
+                    <site site="s_c15" />
+                </spatial>
+                <spatial width="0.001" name="t_h_1_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c15" />
                     <site site="s_c16" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c16" />
                     <site site="s_c17" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c17" />
                     <site site="s_c18" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c18" />
                     <site site="s_c19" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c19" />
                     <site site="s_c20" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c20" />
                     <site site="s_c21" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c21" />
                     <site site="s_c22" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c22" />
                     <site site="s_c23" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c23" />
                     <site site="s_c24" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c24" />
                     <site site="s_c25" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_1_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c25" />
-                    <site site="s_c26" />
+                    <site site="s_c14" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c26" />
                     <site site="s_c27" />
                 </spatial>
-                <spatial width="0.002" name="t_h_1_12" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c27" />
-                    <site site="s_c15" />
+                    <site site="s_c28" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c28" />
                     <site site="s_c29" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c29" />
                     <site site="s_c30" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c30" />
                     <site site="s_c31" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c31" />
                     <site site="s_c32" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c32" />
                     <site site="s_c33" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c33" />
                     <site site="s_c34" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c34" />
                     <site site="s_c35" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_2_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c35" />
-                    <site site="s_c36" />
+                    <site site="s_c26" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c36" />
                     <site site="s_c37" />
                 </spatial>
-                <spatial width="0.002" name="t_h_2_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c37" />
-                    <site site="s_c28" />
+                    <site site="s_c38" />
                 </spatial>
-                <spatial width="0.002" name="t_h_3_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c38" />
                     <site site="s_c39" />
                 </spatial>
-                <spatial width="0.002" name="t_h_3_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c39" />
                     <site site="s_c40" />
                 </spatial>
-                <spatial width="0.002" name="t_h_3_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c40" />
                     <site site="s_c41" />
                 </spatial>
-                <spatial width="0.002" name="t_h_3_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c41" />
                     <site site="s_c42" />
                 </spatial>
-                <spatial width="0.002" name="t_h_3_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <spatial width="0.001" name="t_h_3_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                     <site site="s_c42" />
-                    <site site="s_c43" />
-                </spatial>
-                <spatial width="0.002" name="t_h_3_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                    <site site="s_c43" />
-                    <site site="s_c44" />
-                </spatial>
-                <spatial width="0.002" name="t_h_3_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                    <site site="s_c44" />
-                    <site site="s_c38" />
+                    <site site="s_c36" />
                 </spatial>
             <spatial width="0.002" name="t_v_0_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c0" />
-                <site site="s_c15" />
+                <site site="s_c14" />
             </spatial>
             <spatial width="0.002" name="t_v_0_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c1" />
-                <site site="s_c15" />
+                <site site="s_c14" />
             </spatial>
             <spatial width="0.002" name="t_v_0_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c2" />
-                <site site="s_c16" />
+                <site site="s_c15" />
             </spatial>
             <spatial width="0.002" name="t_v_0_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c3" />
-                <site site="s_c17" />
+                <site site="s_c16" />
             </spatial>
             <spatial width="0.002" name="t_v_0_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c4" />
-                <site site="s_c18" />
+                <site site="s_c17" />
             </spatial>
             <spatial width="0.002" name="t_v_0_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c5" />
-                <site site="s_c19" />
+                <site site="s_c18" />
             </spatial>
             <spatial width="0.002" name="t_v_0_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c6" />
-                <site site="s_c20" />
+                <site site="s_c19" />
             </spatial>
             <spatial width="0.002" name="t_v_0_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c7" />
-                <site site="s_c21" />
+                <site site="s_c20" />
             </spatial>
             <spatial width="0.002" name="t_v_0_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c8" />
-                <site site="s_c21" />
+                <site site="s_c20" />
             </spatial>
             <spatial width="0.002" name="t_v_0_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c9" />
-                <site site="s_c22" />
+                <site site="s_c21" />
             </spatial>
             <spatial width="0.002" name="t_v_0_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c10" />
-                <site site="s_c23" />
+                <site site="s_c22" />
             </spatial>
             <spatial width="0.002" name="t_v_0_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c11" />
-                <site site="s_c24" />
+                <site site="s_c23" />
             </spatial>
             <spatial width="0.002" name="t_v_0_12" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c12" />
-                <site site="s_c25" />
+                <site site="s_c24" />
             </spatial>
             <spatial width="0.002" name="t_v_0_13" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c13" />
-                <site site="s_c26" />
-            </spatial>
-            <spatial width="0.002" name="t_v_0_14" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c14" />
-                <site site="s_c27" />
+                <site site="s_c25" />
             </spatial>
             <spatial width="0.002" name="t_v_1_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c15" />
-                <site site="s_c28" />
+                <site site="s_c14" />
+                <site site="s_c26" />
             </spatial>
             <spatial width="0.002" name="t_v_1_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c16" />
-                <site site="s_c28" />
+                <site site="s_c15" />
+                <site site="s_c26" />
             </spatial>
             <spatial width="0.002" name="t_v_1_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c17" />
-                <site site="s_c29" />
+                <site site="s_c16" />
+                <site site="s_c27" />
             </spatial>
             <spatial width="0.002" name="t_v_1_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c18" />
-                <site site="s_c30" />
+                <site site="s_c17" />
+                <site site="s_c28" />
             </spatial>
             <spatial width="0.002" name="t_v_1_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c19" />
-                <site site="s_c31" />
+                <site site="s_c18" />
+                <site site="s_c29" />
             </spatial>
             <spatial width="0.002" name="t_v_1_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <site site="s_c19" />
+                <site site="s_c30" />
+            </spatial>
+            <spatial width="0.002" name="t_v_1_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c20" />
                 <site site="s_c31" />
             </spatial>
-            <spatial width="0.002" name="t_v_1_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c21" />
-                <site site="s_c32" />
-            </spatial>
             <spatial width="0.002" name="t_v_1_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c22" />
-                <site site="s_c33" />
+                <site site="s_c21" />
+                <site site="s_c31" />
             </spatial>
             <spatial width="0.002" name="t_v_1_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c23" />
-                <site site="s_c34" />
+                <site site="s_c22" />
+                <site site="s_c32" />
             </spatial>
             <spatial width="0.002" name="t_v_1_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <site site="s_c23" />
+                <site site="s_c33" />
+            </spatial>
+            <spatial width="0.002" name="t_v_1_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c24" />
                 <site site="s_c34" />
             </spatial>
-            <spatial width="0.002" name="t_v_1_10" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_1_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c25" />
                 <site site="s_c35" />
             </spatial>
-            <spatial width="0.002" name="t_v_1_11" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c26" />
                 <site site="s_c36" />
             </spatial>
-            <spatial width="0.002" name="t_v_1_12" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c27" />
+                <site site="s_c36" />
+            </spatial>
+            <spatial width="0.002" name="t_v_2_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <site site="s_c28" />
                 <site site="s_c37" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c28" />
-                <site site="s_c38" />
-            </spatial>
-            <spatial width="0.002" name="t_v_2_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c29" />
                 <site site="s_c38" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c30" />
+                <site site="s_c38" />
+            </spatial>
+            <spatial width="0.002" name="t_v_2_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <site site="s_c31" />
                 <site site="s_c39" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c31" />
-                <site site="s_c40" />
-            </spatial>
-            <spatial width="0.002" name="t_v_2_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c32" />
                 <site site="s_c40" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c33" />
+                <site site="s_c40" />
+            </spatial>
+            <spatial width="0.002" name="t_v_2_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <site site="s_c34" />
                 <site site="s_c41" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c34" />
-                <site site="s_c42" />
-            </spatial>
-            <spatial width="0.002" name="t_v_2_7" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_2_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c35" />
                 <site site="s_c42" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_8" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+            <spatial width="0.002" name="t_v_3_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
                 <site site="s_c36" />
                 <site site="s_c43" />
             </spatial>
-            <spatial width="0.002" name="t_v_2_9" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c37" />
-                <site site="s_c44" />
-            </spatial>
-            <spatial width="0.002" name="t_v_3_0" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c38" />
-                <site site="s_c45" />
-            </spatial>
             <spatial width="0.002" name="t_v_3_1" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c39" />
-                <site site="s_c45" />
+                <site site="s_c37" />
+                <site site="s_c43" />
             </spatial>
             <spatial width="0.002" name="t_v_3_2" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c40" />
-                <site site="s_c45" />
+                <site site="s_c38" />
+                <site site="s_c43" />
             </spatial>
             <spatial width="0.002" name="t_v_3_3" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c41" />
-                <site site="s_c45" />
+                <site site="s_c39" />
+                <site site="s_c43" />
             </spatial>
             <spatial width="0.002" name="t_v_3_4" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c42" />
-                <site site="s_c45" />
+                <site site="s_c40" />
+                <site site="s_c43" />
             </spatial>
             <spatial width="0.002" name="t_v_3_5" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
+                <site site="s_c41" />
                 <site site="s_c43" />
-                <site site="s_c45" />
             </spatial>
             <spatial width="0.002" name="t_v_3_6" solreflimit="0.008 1" solimplimit="0.95 0.99 0.001">
-                <site site="s_c44" />
-                <site site="s_c45" />
+                <site site="s_c42" />
+                <site site="s_c43" />
             </spatial>
     </tendon>
     

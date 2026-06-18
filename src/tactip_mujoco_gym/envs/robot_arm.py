@@ -8,7 +8,7 @@ class RobotArmEnv(TactileGymEnv):
         super().__init__(
             xml_subpath=["assets", "tactip_arm.xml"],
             obs_dim=9,
-            action_dim=7
+            action_dim=6
         )
     def _reward(self):
         return np.random.randint(0,1)

@@ -1,429 +1,408 @@
 <worldbody>
-        <geom name="floor" type="plane" size="2 2 .1" rgba=".8 .8 .8 1" />
-
-        <body name="flexible_structure" pos="0 0 0.8" quat="0 1 0 0">
-
+        <body name="flexible_structure" pos="0 0 0" quat="0.7071 0.7071 0 0">
             <inertial pos="0 0 0" mass="0.1" diaginertia="0.0005 0.0005 0.0005" />
-            <body name="cylinder_mount" pos="0 0 -0.05">
-                <geom type="cylinder" size="0.05 0.05" mass="0.05" rgba="1 1 1 1" />
+            <body name="cylinder_mount" pos="0 0 -0.015">
+                <geom type="cylinder" size="0.04 0.02" mass="0.05" rgba="1 1 1 1" />
             
             </body>
-            <camera name="sensor_cam" pos="0 0 -0.001" fovy="120" zaxis="0 0 -1" />
+            <camera name="sensor_cam" pos="0 0 -0.002" fovy="120" zaxis="0 0 -1" />
 
             <light name="sensor_light" pos="0 0 -0.1" dir="0 0 -1" diffuse="0.8 0.8 0.8" specular="0.2 0.2 0.2" directional="true" />
     
-        <body name="node_0" pos="0.05 0.0 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c0_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c0_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c0_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.005000000000000001 -0.0 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_0" pos="0.03 0.0 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c0_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c0_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c0_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.006 -0.0 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c0" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_1" pos="0.04567727288213004 0.020336832153790008 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c1_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c1_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c1_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.004567727288213004 -0.0020336832153790008 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_1" pos="0.027029066037072575 0.013016512173526743 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c1_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c1_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c1_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.005405813207414515 -0.0026033024347053486 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c1" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_2" pos="0.03345653031794291 0.037157241273869705 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c2_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c2_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c2_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0033456530317942917 -0.003715724127386971 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_2" pos="0.018704694055762007 0.023454944474040892 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c2_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c2_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c2_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0037409388111524014 -0.004690988894808179 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c2" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_3" pos="0.015450849718747373 0.04755282581475768 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c3_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c3_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c3_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0015450849718747373 -0.004755282581475768 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_3" pos="0.006675628018689433 0.02924783736545471 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c3_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c3_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c3_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0013351256037378867 -0.005849567473090942 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c3" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_4" pos="-0.005226423163382667 0.04972609476841367 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c4_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c4_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c4_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0005226423163382667 -0.004972609476841368 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_4" pos="-0.00667562801868943 0.02924783736545471 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c4_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c4_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c4_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.001335125603737886 -0.005849567473090942 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c4" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_5" pos="-0.024999999999999988 0.04330127018922193 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c5_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c5_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c5_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0024999999999999988 -0.004330127018922193 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_5" pos="-0.018704694055762004 0.023454944474040895 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c5_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c5_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c5_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.003740938811152401 -0.004690988894808179 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c5" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_6" pos="-0.040450849718747364 0.029389262614623664 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c6_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c6_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c6_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.004045084971874737 -0.0029389262614623666 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_6" pos="-0.027029066037072568 0.013016512173526746 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c6_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c6_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c6_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.005405813207414514 -0.0026033024347053495 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c6" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_7" pos="-0.048907380036690276 0.010395584540887987 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c7_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c7_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c7_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.004890738003669028 -0.0010395584540887988 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_7" pos="-0.03 3.673940397442059e-18 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c7_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c7_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c7_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.006 -7.347880794884118e-19 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c7" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_8" pos="-0.04890738003669028 -0.010395584540887954 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c8_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c8_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c8_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.004890738003669029 0.0010395584540887953 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_8" pos="-0.027029066037072575 -0.013016512173526739 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c8_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c8_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c8_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.005405813207414515 0.002603302434705348 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c8" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_9" pos="-0.04045084971874738 -0.02938926261462365 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c9_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c9_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c9_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.004045084971874738 0.0029389262614623653 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_9" pos="-0.01870469405576201 -0.02345494447404089 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c9_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c9_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c9_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0037409388111524023 0.004690988894808178 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c9" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_10" pos="-0.025000000000000022 -0.04330127018922192 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c10_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c10_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c10_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0025000000000000022 0.004330127018922192 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_10" pos="-0.0066756280186894374 -0.02924783736545471 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c10_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c10_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c10_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0013351256037378875 0.005849567473090942 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c10" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_11" pos="-0.005226423163382712 -0.049726094768413664 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c11_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c11_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c11_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0005226423163382713 0.004972609476841367 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_11" pos="0.006675628018689426 -0.02924783736545471 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c11_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c11_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c11_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0013351256037378854 0.005849567473090942 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c11" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_12" pos="0.015450849718747361 -0.047552825814757685 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c12_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c12_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c12_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0015450849718747362 0.004755282581475769 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_12" pos="0.018704694055762 -0.023454944474040895 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c12_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c12_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c12_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0037409388111524 0.004690988894808179 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c12" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_13" pos="0.03345653031794289 -0.037157241273869726 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c13_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c13_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c13_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0033456530317942895 0.0037157241273869726 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_13" pos="0.027029066037072568 -0.013016512173526751 0.0">
+            <joint type="slide" axis="1 0 0" name="j_c13_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c13_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c13_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.005405813207414514 0.0026033024347053503 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c13" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_14" pos="0.04567727288213003 -0.020336832153790046 0.0">
-            <joint type="slide" axis="1 0 0" name="j_c14_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c14_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c14_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.004567727288213003 0.0020336832153790047 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_14" pos="0.023570848751613065 0.0 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c14_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c14_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c14_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.004714169750322614 -0.0 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c14" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_15" pos="0.039284747919355115 0.0 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c15_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c15_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c15_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0039284747919355115 -0.0 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_15" pos="0.02041295380765764 0.011785424375806531 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c15_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c15_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c15_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0040825907615315285 -0.0023570848751613064 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c15" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_16" pos="0.03478491676146038 0.01825653266602254 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c16_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c16_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c16_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0034784916761460383 -0.0018256532666022542 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_16" pos="0.011785424375806536 0.020412953807657636 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c16_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c16_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c16_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0023570848751613073 -0.004082590761531528 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c16" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_17" pos="0.022316280377205767 0.03233071371332864 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c17_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c17_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c17_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.002231628037720577 -0.0032330713713328643 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_17" pos="1.4432982238424663e-18 0.023570848751613065 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c17_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c17_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c17_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-2.886596447684933e-19 -0.004714169750322614 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c17" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_18" pos="0.0047352530988662815 0.038998317876248884 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c18_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c18_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c18_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.00047352530988662816 -0.0038998317876248884 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_18" pos="-0.011785424375806527 0.02041295380765764 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c18_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c18_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c18_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0023570848751613056 -0.0040825907615315285 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c18" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_19" pos="-0.013930563598437399 0.036731877394399086 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c19_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c19_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c19_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.00139305635984374 -0.0036731877394399087 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_19" pos="-0.020412953807657633 0.011785424375806541 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c19_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c19_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c19_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.004082590761531527 -0.0023570848751613086 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c19" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_20" pos="-0.029405056056829592 0.02605060646860232 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c20_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c20_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c20_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0029405056056829595 -0.0026050606468602322 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_20" pos="-0.023570848751613065 2.8865964476849325e-18 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c20_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c20_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c20_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.004714169750322614 -5.773192895369866e-19 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c20" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_21" pos="-0.03814320454194296 0.009401455544689734 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c21_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c21_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c21_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0038143204541942963 -0.0009401455544689734 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_21" pos="-0.02041295380765764 -0.011785424375806526 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c21_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c21_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c21_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0040825907615315285 0.002357084875161305 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c21" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_22" pos="-0.03814320454194297 -0.00940145554468971 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c22_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c22_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c22_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.003814320454194297 0.000940145554468971 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_22" pos="-0.011785424375806545 -0.02041295380765763 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c22_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c22_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c22_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.002357084875161309 0.004082590761531526 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c22" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_23" pos="-0.02940505605682961 -0.0260506064686023 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c23_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c23_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c23_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.002940505605682961 0.00260506064686023 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_23" pos="-4.329894671527399e-18 -0.023570848751613065 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c23_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c23_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c23_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="8.659789343054799e-19 0.004714169750322614 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c23" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_24" pos="-0.013930563598437418 -0.03673187739439908 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c24_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c24_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c24_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0013930563598437418 0.0036731877394399082 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_24" pos="0.011785424375806517 -0.020412953807657647 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c24_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c24_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c24_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0023570848751613034 0.004082590761531529 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c24" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_25" pos="0.004735253098866246 -0.038998317876248884 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c25_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c25_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c25_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.00047352530988662464 0.0038998317876248884 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_25" pos="0.02041295380765763 -0.011785424375806545 0.018558423670360067">
+            <joint type="slide" axis="1 0 0" name="j_c25_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c25_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c25_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.004082590761531526 0.002357084875161309 -0.0037116847340720135" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c25" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_26" pos="0.022316280377205754 -0.03233071371332865 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c26_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c26_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c26_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0022316280377205756 0.003233071371332865 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_26" pos="0.016235883004385915 0.0 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c26_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c26_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c26_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.003247176600877183 -0.0 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c26" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_27" pos="0.03478491676146037 -0.01825653266602257 0.030930706117266775">
-            <joint type="slide" axis="1 0 0" name="j_c27_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c27_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c27_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0034784916761460374 0.001825653266602257 -0.003093070611726678" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_27" pos="0.013135105269231584 0.009543212587924052 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c27_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c27_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c27_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.002627021053846317 -0.0019086425175848104 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c27" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_28" pos="0.02705980500730985 0.0 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c28_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c28_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c28_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.002705980500730985 -0.0 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_28" pos="0.005017163767038627 0.01544124232912696 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c28_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c28_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c28_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0010034327534077254 -0.003088248465825392 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c28" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_29" pos="0.021891842115385966 0.01590535431320675 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c29_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c29_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c29_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.002189184211538597 -0.001590535431320675 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_29" pos="-0.005017163767038625 0.015441242329126961 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c29_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c29_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c29_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0010034327534077252 -0.003088248465825392 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c29" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_30" pos="0.008361939611731043 0.025735403881878262 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c30_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c30_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c30_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0008361939611731044 -0.0025735403881878265 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_30" pos="-0.013135105269231584 0.009543212587924054 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c30_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c30_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c30_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.002627021053846317 -0.0019086425175848108 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c30" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_31" pos="-0.00836193961173104 0.025735403881878262 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c31_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c31_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c31_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.000836193961173104 -0.0025735403881878265 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_31" pos="-0.016235883004385915 1.9883222152652125e-18 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c31_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c31_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c31_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.003247176600877183 -3.976644430530425e-19 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c31" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_32" pos="-0.021891842115385966 0.015905354313206752 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c32_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c32_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c32_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.002189184211538597 -0.0015905354313206753 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_32" pos="-0.013135105269231586 -0.009543212587924049 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c32_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c32_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c32_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0026270210538463174 0.0019086425175848098 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c32" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_33" pos="-0.02705980500730985 3.313870358775353e-18 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c33_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c33_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c33_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.002705980500730985 -3.3138703587753535e-19 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_33" pos="-0.005017163767038629 -0.01544124232912696 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c33_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c33_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c33_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0010034327534077258 0.003088248465825392 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c33" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_34" pos="-0.02189184211538597 -0.015905354313206745 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c34_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c34_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c34_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0021891842115385972 0.0015905354313206746 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_34" pos="0.005017163767038623 -0.015441242329126961 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c34_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c34_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c34_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0010034327534077247 0.003088248465825392 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c34" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_35" pos="-0.008361939611731047 -0.025735403881878262 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c35_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c35_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c35_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0008361939611731047 0.0025735403881878265 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_35" pos="0.013135105269231584 -0.009543212587924055 0.025226892457611432">
+            <joint type="slide" axis="1 0 0" name="j_c35_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c35_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c35_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.002627021053846317 0.0019086425175848113 -0.005045378491522287" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c35" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_36" pos="0.008361939611731036 -0.025735403881878262 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c36_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c36_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c36_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0008361939611731036 0.0025735403881878265 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_36" pos="0.008276981378488289 0.0 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c36_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c36_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c36_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0016553962756976578 -0.0 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c36" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_37" pos="0.021891842115385966 -0.015905354313206756 0.042044820762685724">
-            <joint type="slide" axis="1 0 0" name="j_c37_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c37_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c37_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.002189184211538597 0.0015905354313206757 -0.004204482076268573" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_37" pos="0.005160613479662091 0.006471204621503776 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c37_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c37_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c37_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0010321226959324181 -0.0012942409243007552 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c37" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_38" pos="0.013794968964147161 0.0 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c38_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c38_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c38_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0013794968964147161 -0.0 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_38" pos="-0.0018418016266802365 0.00806946017449742 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c38_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c38_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c38_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0003683603253360473 -0.0016138920348994841 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c38" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_39" pos="0.008601022466103492 0.010785341035839637 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c39_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c39_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c39_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0008601022466103493 -0.0010785341035839638 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_39" pos="-0.0074573025422259975 0.0035912476291049002 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c39_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c39_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c39_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0014914605084451996 -0.0007182495258209801 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c39" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_40" pos="-0.0030696693778003966 0.013449100290829047 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c40_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c40_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c40_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0003069669377800397 -0.0013449100290829049 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_40" pos="-0.007457302542225999 -0.003591247629104898 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c40_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c40_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c40_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0014914605084452 0.0007182495258209797 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c40" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_41" pos="-0.012428837570376675 0.005985412715174839 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c41_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c41_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c41_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0012428837570376675 -0.000598541271517484 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_41" pos="-0.0018418016266802382 -0.00806946017449742 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c41_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c41_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c41_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="0.0003683603253360477 0.0016138920348994841 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c41" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_42" pos="-0.012428837570376676 -0.005985412715174837 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c42_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c42_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c42_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.0012428837570376678 0.0005985412715174837 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_42" pos="0.005160613479662089 -0.006471204621503778 0.02883559569802847">
+            <joint type="slide" axis="1 0 0" name="j_c42_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c42_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c42_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.001032122695932418 0.0012942409243007556 -0.005767119139605694" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c42" pos="0 0 0" size="0.002" />
         </body>
         
-        <body name="node_43" pos="-0.0030696693778004 -0.013449100290829047 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c43_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c43_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c43_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="0.00030696693778004 0.0013449100290829049 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+        <body name="node_43" pos="0.0 0.0 0.03">
+            <joint type="slide" axis="1 0 0" name="j_c43_x" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 1 0" name="j_c43_y" stiffness="200" damping="25" />
+            <joint type="slide" axis="0 0 1" name="j_c43_z" stiffness="200" damping="25" />
+            <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
+            <geom pos="-0.0 -0.0 -0.006" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c43" pos="0 0 0" size="0.002" />
-        </body>
-        
-        <body name="node_44" pos="0.00860102246610349 -0.010785341035839637 0.04805932616338078">
-            <joint type="slide" axis="1 0 0" name="j_c44_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c44_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c44_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0008601022466103491 0.0010785341035839638 -0.004805932616338078" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
-            <site name="s_c44" pos="0 0 0" size="0.002" />
-        </body>
-        
-        <body name="node_45" pos="0.0 0.0 0.05">
-            <joint type="slide" axis="1 0 0" name="j_c45_x" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 1 0" name="j_c45_y" stiffness="110" damping="3" />
-            <joint type="slide" axis="0 0 1" name="j_c45_z" stiffness="110" damping="3" />
-            <geom type="sphere" size="0.002" rgba="1 1 1 0" mass="0.01" condim="3" contype="1" conaffinity="1" />
-            <geom pos="-0.0 -0.0 -0.005000000000000001" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
-            <site name="s_c45" pos="0 0 0" size="0.002" />
         </body>
         
         </body>
