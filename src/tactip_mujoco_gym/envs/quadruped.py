@@ -1,7 +1,7 @@
 from .base import TactileGymEnv
+import numpy as np
 
-
-class RobotFootEnv(TactileGymEnv):
+class Quadruped(TactileGymEnv):
 
     def __init__(self):
         super().__init__(
