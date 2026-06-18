@@ -36,8 +36,8 @@
     </body>
 
     <!-- Move the sensor branch to the top level -->
-    <body name="gripperMover_" pos="0.1 0 0.15">
-     <freejoint/>
+    <body name="gripperMover_" pos="0.1 0 0.15"  quat="0.7071 0 0.7071 0">
+    <freejoint/>
         <include file="sensor/worldbody.xml"/>
     </body>
   </worldbody>
@@ -46,8 +46,8 @@
     <weld name="sensor_mount_weld" 
           body1="cylinder_mount" 
           body2="link06" 
-          solref="0.002 1" 
-          solimp="0.99 0.99 0.001"/>
+          
+        />
   </equality>
 
 <deformable>

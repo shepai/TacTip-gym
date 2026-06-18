@@ -1,5 +1,6 @@
 <worldbody>
         <body name="flexible_structure" pos="0 0 0" quat="0.7071 0.7071 0 0">
+        
             <inertial pos="0 0 0" mass="0.1" diaginertia="0.0005 0.0005 0.0005" />
             <body name="cylinder_mount" pos="0 0 -0.015">
                 <geom type="cylinder" size="0.04 0.02" mass="0.05" rgba="1 1 1 1" />
