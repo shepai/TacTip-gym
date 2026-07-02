@@ -35,22 +35,15 @@
         <include file="robotarm/worldbody.xml"/>
     </body>
 
-    <!-- Move the sensor branch to the top level -->
-    <body name="gripperMover_" pos="0.1 0 0.15"  quat="0.7071 0 0.7071 0">
-    <freejoint/>
-        <include file="sensor/worldbody.xml"/>
-    </body>
   </worldbody>
-    <equality>
-    <!-- This rigidly locks gripperMover_ to your robot's end effector -->
-    <weld name="sensor_mount_weld" 
-          body1="cylinder_mount" 
-          body2="link06" 
-          
-        />
-  </equality>
-
-<deformable>
+<contact>
+    <exclude body1="flexible_structure" body2="link06"/>
+    <exclude body1="cylinder_mount" body2="link06"/>
+</contact>
+   <equality>
+<include file="sensor/equality.xml"/>
+ </equality>
+  <deformable>
   <include file="sensor/deformable.xml"/>
   </deformable>
 

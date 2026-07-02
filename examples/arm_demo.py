@@ -16,14 +16,15 @@ def main():
     # IMPORTANT: use underlying MuJoCo model/data
     model = env.unwrapped.model
     data = env.unwrapped.data
-
+    i=0
+    reverse=False
     # Passive viewer = you control simulation loop
     with mujoco.viewer.launch_passive(model, data) as viewer:
 
         while viewer.is_running():
 
             # Sample random action
-            action = env.action_space.sample()
+            action = env.action_space.sample()+i
 
             # Step simulation via your Gym env
             obs, reward, terminated, truncated, info = env.step(action)
@@ -32,7 +33,7 @@ def main():
             viewer.sync()
 
             # reset if episode ends
-            if terminated or truncated:
+            if terminated:
                 obs, info = env.reset()
             img = obs["image"]
             cv2.imshow("sensor_cam", img)
@@ -40,6 +41,9 @@ def main():
             # small sleep so it doesn't max CPU
             time.sleep(env.unwrapped.model.opt.timestep)
 
-
+            if not reverse: i+=0.03
+            else: i-=0.03
+            if i<=0 or i>=10:
+                reverse= not reverse
 if __name__ == "__main__":
     main()

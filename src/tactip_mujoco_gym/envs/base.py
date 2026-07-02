@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from mujoco import MjModel, MjData
-from mujoco import mj_step, mj_resetData
+from mujoco import mj_step, mj_resetData, mj_forward
 from importlib.resources import files
 from mujoco import renderer
 
@@ -36,9 +36,9 @@ class TactileGymEnv(gym.Env):
         return self._get_obs(), {}
 
     def step(self, action):
-        self.data.ctrl[:] = action
+        mj_forward(self.model, self.data)
+        self.data.ctrl[:-1] = action[:-1]
         mj_step(self.model, self.data)
-
         self.step_count += 1
 
         obs = self._get_obs()

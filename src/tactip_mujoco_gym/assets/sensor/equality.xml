@@ -1,0 +1,55 @@
+<equality>
+  <joint joint1="j_c0_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c0_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c0_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c1_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c1_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c1_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c2_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c2_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c2_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c3_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c3_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c3_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c4_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c4_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c4_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c5_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c5_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c5_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c6_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c6_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c6_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c7_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c7_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c7_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c8_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c8_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c8_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c9_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c9_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c9_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c10_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c10_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c10_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c11_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c11_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c11_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c12_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c12_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c12_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c13_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c13_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c13_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c14_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c14_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c14_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c15_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c15_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c15_z" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c16_x" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c16_y" polycoef="0 1 0 0 0" />
+  <joint joint1="j_c16_z" polycoef="0 1 0 0 0" />
+</equality>
+
+    

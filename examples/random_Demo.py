@@ -32,7 +32,7 @@ def main():
             viewer.sync()
 
             # reset if episode ends
-            if terminated or truncated:
+            if terminated:
                 obs, info = env.reset()
             img = obs["image"]
             cv2.imshow("sensor_cam", img)
