@@ -1,6 +1,6 @@
 <mujoco model="ball_on_sensor">
   <compiler angle="degree" coordinate="local"/>
-  <option integrator="implicit" timestep="0.001"/>
+  <option integrator="implicit" timestep="0.01"/>
   <asset>
    <include file="sensor/asset.xml"/>
   </asset>
