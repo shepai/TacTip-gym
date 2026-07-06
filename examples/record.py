@@ -24,7 +24,7 @@ def main():
     # Video writer (side-by-side = double width)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     video = cv2.VideoWriter(
-        "arm.mp4",
+        "assets/arm.mp4",
         fourcc,
         30,
         (960, 480)  # 2 x 480 width
@@ -32,6 +32,7 @@ def main():
 
     try:
         for _ in range(500):
+            print(_)
             obs, reward, terminated, truncated, info = env.step(action)
 
             # -----------------------------
@@ -65,7 +66,7 @@ def main():
             # write frame
             video.write(combined)
 
-            if terminated or truncated:
+            if terminated:
                 obs, info = env.reset()
 
             if not reverse: action[1]=action_init[1]+i
