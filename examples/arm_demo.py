@@ -18,6 +18,7 @@ def main():
     i=0
     reverse=False
     action=[0.3,0.3,0.05]
+    action_init=action.copy()
     # Passive viewer = you control simulation loop
     with mujoco.viewer.launch_passive(model, data) as viewer:
 
@@ -40,11 +41,11 @@ def main():
             # small sleep so it doesn't max CPU
             time.sleep(env.unwrapped.model.opt.timestep)
             
-            if not reverse: action[1]+i
-            else: action[1]-i
-            if i>=4:
+            if not reverse: action[1]=action_init[1]+i
+            else: action[1]=action_init[1]-i
+            if i>=0.1:
                 i=0
                 reverse= not reverse
-            i+=0.0001
+            i+=0.001
 if __name__ == "__main__":
     main()

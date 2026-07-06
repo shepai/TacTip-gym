@@ -13,7 +13,16 @@ class RobotArmEnv(TactileGymEnv):
             obs_dim=8,
             action_dim=3
         )
-        
+        self.set_arm()
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        mj_resetData(self.model, self.data)
+        self.step_count = 0
+        self.set_arm()
+        return self._get_obs(), {}
+    def set_arm(self,default=[0.3,0.3,0.05]):
+        for i in range(250):
+            self.step(default)
     def _reward(self):
         return np.random.randint(0,1)
     def step(self,action):
