@@ -41,7 +41,7 @@
                   <joint name="joint6" axis="1 0 0" range="-2.79253 2.79253"/>
                   <geom class="visual" mesh="z1_Link06"/>
                   <geom size="0.0325 0.0255" pos="0.0255 0 0" quat="1 0 1 0" class="collision"/>
-                  <body name="sensor_root" pos="0.05 0 0" quat="0.7071 0 -0.7071 0">
+                  <body name="sensor_root" pos="0.08 0 0" quat="0.7071 0 -0.7071 0">
                     <include file="sensor/worldbody.xml"/>
                 </body>
                 </body>

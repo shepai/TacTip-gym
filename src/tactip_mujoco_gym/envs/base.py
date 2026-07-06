@@ -34,7 +34,11 @@ class TactileGymEnv(gym.Env):
         mj_resetData(self.model, self.data)
         self.step_count = 0
         return self._get_obs(), {}
-
+    def set_visibility(self, visible_ids):
+        for i in range(self.model.ngeom):
+            self.model.geom_rgba[i][3] = 0.0
+        for i in visible_ids:
+            self.model.geom_rgba[i][3] = 1.0
     def step(self, action):
         mj_forward(self.model, self.data)
         self.data.ctrl[:-1] = action[:-1]
@@ -49,6 +53,9 @@ class TactileGymEnv(gym.Env):
         return obs, reward, terminated, truncated, {}
 
     def _get_obs(self):
+        all_geom_ids = np.arange(self.model.ngeom)
+        self.model.tendon_rgba[:, 3] = 0.0
+        self.set_visibility([])
         self.renderer.update_scene(self.data, camera="sensor_cam")
         img = self.renderer.render()
         img = img.astype("float32") / 255.0
@@ -56,6 +63,8 @@ class TactileGymEnv(gym.Env):
         "state": None,
         "image": img
     }
+        self.set_visibility(all_geom_ids)
+        self.model.tendon_rgba[:, 3] = 1
         return obs
 
     def _reward(self):

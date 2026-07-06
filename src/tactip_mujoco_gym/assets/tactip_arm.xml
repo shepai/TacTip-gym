@@ -44,7 +44,7 @@
 <include file="sensor/equality.xml"/>
  </equality>
   <deformable>
-  <include file="sensor/deformable.xml"/>
+  <!-- <include file="sensor/deformable.xml"/> -->
   </deformable>
 
   <tendon>
