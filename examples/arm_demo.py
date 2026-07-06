@@ -1,7 +1,6 @@
 import time
 import gymnasium as gym
 import tactip_mujoco_gym  # triggers register()
-
 import mujoco.viewer
 import cv2
 
@@ -18,13 +17,13 @@ def main():
     data = env.unwrapped.data
     i=0
     reverse=False
+    action=[0.3,0.3,0.05]
     # Passive viewer = you control simulation loop
     with mujoco.viewer.launch_passive(model, data) as viewer:
 
         while viewer.is_running():
 
             # Sample random action
-            action = env.action_space.sample()
 
             # Step simulation via your Gym env
             obs, reward, terminated, truncated, info = env.step(action)
@@ -40,10 +39,12 @@ def main():
             cv2.waitKey(1)
             # small sleep so it doesn't max CPU
             time.sleep(env.unwrapped.model.opt.timestep)
-
-            if not reverse: i+=0.03
-            else: i-=0.03
-            if i<=0 or i>=10:
+            
+            if not reverse: action[1]+i
+            else: action[1]-i
+            if i>=4:
+                i=0
                 reverse= not reverse
+            i+=0.0001
 if __name__ == "__main__":
     main()

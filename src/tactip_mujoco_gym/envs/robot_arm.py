@@ -10,15 +10,16 @@ class RobotArmEnv(TactileGymEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "tactip_arm.xml"],
-            obs_dim=7,
+            obs_dim=8,
             action_dim=3
         )
+        
     def _reward(self):
         return np.random.randint(0,1)
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
-        dq=self.move_gripper_to(action)
-        self.data.ctrl[:] = dq[:6]
+        self.move_gripper_to(action)
+        self.data.ctrl[:6] = self.targets[:-1]
         mj_step(self.model, self.data)
 
         self.step_count += 1
@@ -35,8 +36,8 @@ class RobotArmEnv(TactileGymEnv):
         self.physics.forward()
         result = inverse_kinematics.qpos_from_site_pose(
             self.physics,
-            site_name="attachment_site",
-            joint_names=["joint"+str(i) for i in range(1,8)],
+            site_name="ee_site",
+            joint_names=["joint"+str(i) for i in range(1,7)],
             target_pos=fingertip_coords,
             max_steps=200
         )

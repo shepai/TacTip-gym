@@ -5,6 +5,7 @@ from mujoco import MjModel, MjData
 from mujoco import mj_step, mj_resetData, mj_forward
 from importlib.resources import files
 from mujoco import renderer
+from dm_control import mujoco
 
 class TactileGymEnv(gym.Env):
     """
@@ -15,7 +16,7 @@ class TactileGymEnv(gym.Env):
         super().__init__()
 
         self.xml_path = files("tactip_mujoco_gym").joinpath(*xml_subpath)
-
+        self.physics = mujoco.Physics.from_xml_path(str(self.xml_path))
         self.model = MjModel.from_xml_path(str(self.xml_path))
         self.data = MjData(self.model)
 
