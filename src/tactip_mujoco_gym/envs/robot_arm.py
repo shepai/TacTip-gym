@@ -2,6 +2,8 @@ from .base import TactileGymEnv
 import numpy as np
 from mujoco import mj_step, mj_resetData
 import mujoco 
+from dm_control import mujoco
+from dm_control.utils import inverse_kinematics
 
 class RobotArmEnv(TactileGymEnv):
 
@@ -15,7 +17,7 @@ class RobotArmEnv(TactileGymEnv):
         return np.random.randint(0,1)
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
-        dq=self.kinematic_control(action)
+        dq=self.move_gripper_to(action)
         self.data.ctrl[:] = dq[:6]
         mj_step(self.model, self.data)
 
@@ -27,31 +29,18 @@ class RobotArmEnv(TactileGymEnv):
         truncated = self.step_count >= self.max_steps
 
         return obs, reward, terminated, truncated, {}
-    def kinematic_control(self,target_pos, kp=2.0, damping=0.1):
-        """
-        Returns joint velocities (or position increments) using Jacobian IK.
-        Works inside MuJoCo step() loop.
-        """
-        ee_site_id = mujoco.mj_name2id(
-                self.model,
-                mujoco.mjtObj.mjOBJ_SITE,
-                "ee_site"
-            )
-        # current end-effector position
-        x = self.data.site_xpos[ee_site_id].copy()
+    def move_gripper_to(self, fingertip_coords):
+        self.physics.data.qpos[:] = self.data.qpos[:]
+        self.physics.data.qvel[:] = self.data.qvel[:]
+        self.physics.forward()
+        result = inverse_kinematics.qpos_from_site_pose(
+            self.physics,
+            site_name="attachment_site",
+            joint_names=["joint"+str(i) for i in range(1,8)],
+            target_pos=fingertip_coords,
+            max_steps=200
+        )
 
-        # position error
-        error = target_pos - x
-
-        # task-space velocity command (P controller)
-        xdot = kp * error
-
-        # Jacobian (3 x nv)
-        J = np.zeros((3, self.model.nv))
-        mujoco.mj_jacSite(self.model, self.data, J, None, ee_site_id)
-
-        # damped least squares IK
-        JJt = J @ J.T
-        dq = J.T @ np.linalg.solve(JJt + damping**2 * np.eye(3), xdot)
-
-        return dq
+        # ONLY update sim state once
+        self.targets = result.qpos[:7]
+        #mj.mj_forward(self.model, self.data)
