@@ -1,6 +1,6 @@
 <mujoco model="z1 scene">
   <compiler angle="radian" meshdir="robotarm/assets"/>
-<option integrator="implicit" timestep="0.01"/>
+<option integrator="implicit" timestep="0.001" tolerance="1e-6"/>
 
 <default>
     <default class="z1">

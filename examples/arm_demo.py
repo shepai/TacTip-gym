@@ -24,7 +24,7 @@ def main():
         while viewer.is_running():
 
             # Sample random action
-            action = env.action_space.sample()+i
+            action = env.action_space.sample()
 
             # Step simulation via your Gym env
             obs, reward, terminated, truncated, info = env.step(action)
