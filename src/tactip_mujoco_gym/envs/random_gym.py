@@ -10,15 +10,6 @@ class RandomEnv(TactileGymEnv):
             obs_dim=9,
             action_dim=3
         )
-    def _get_obs(self):
-        self.renderer.update_scene(self.data, camera="sensor_cam")
-        img = self.renderer.render()
-        img = img.astype("float32") / 255.0
-        obs = {
-        "state": None,
-        "image": img
-    }
-        return obs
     def step(self,action):
         mj_step(self.model, self.data)
 
