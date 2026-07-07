@@ -40,6 +40,7 @@ class RobotArmEnv(TactileGymEnv):
 
         return obs, reward, terminated, truncated, {}
     def move_gripper_to(self, fingertip_coords):
+        fixed_orientation = [1.0, 0.0, 0.0, 0.0] 
         self.physics.data.qpos[:] = self.data.qpos[:]
         self.physics.data.qvel[:] = self.data.qvel[:]
         self.physics.forward()
@@ -48,6 +49,7 @@ class RobotArmEnv(TactileGymEnv):
             site_name="ee_site",
             joint_names=["joint"+str(i) for i in range(1,7)],
             target_pos=fingertip_coords,
+            target_quat=fixed_orientation,
             max_steps=200
         )
 

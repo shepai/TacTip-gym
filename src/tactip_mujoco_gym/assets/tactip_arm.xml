@@ -1,7 +1,8 @@
 <mujoco model="z1 scene">
   <compiler angle="radian" meshdir="robotarm/assets"/>
-<option integrator="implicit" timestep="0.001" tolerance="1e-6"/>
-
+<option integrator="implicit" timestep="0.001" tolerance="1e-6">
+    <flag contact="enable" multiccd="enable"/>
+</option>
 <default>
     <default class="z1">
       <joint damping="1" frictionloss="1"/>
@@ -30,7 +31,7 @@
   </visual>
 
   <worldbody>
-   <geom name="floor" type="plane" size="0 0 1" pos="0 0 0" material="grid" condim="3" group="1"/>
+   <geom name="floor" type="plane" size="0 0 1" pos="0 0 0" material="grid" condim="3" group="1" contype="1" conaffinity="1"/>
     <body name="robot">
         <include file="robotarm/worldbody.xml"/>
     </body>
