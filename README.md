@@ -35,9 +35,10 @@ The robot arm:
 
 The observation space is a dictionary containing tactile sensor images.
 
-| Key | Shape | Type | Range | Description |
-|-----|-------|------|-------|-------------|
-| tactile_image | (H, W, C) | uint8 | [0, 255] | Image captured from the tactile sensor |
+| Space | Type | Shape | Description |
+|-------|------|-------|-------------|
+| Observation | Dict | `{"tactile_image": (H, W, C)}` | Tactile sensor image observation |
+| Action | Box | `(6,)` | Six continuous motor commands |
 
 ```[python]
 with mujoco.viewer.launch_passive(model, data) as viewer:
