@@ -22,7 +22,6 @@ import gymnasium as gym
 import tactip_mujoco_gym  # triggers register()
 
 import mujoco.viewer
-import cv2
 
 env = gym.make("RandomTac-v0")
 model = env.unwrapped.model
@@ -57,4 +56,14 @@ with mujoco.viewer.launch_passive(model, data) as viewer:
                 obs, info = env.reset()
 ```
 
+You can specifically view the observered image using the following code embedded in the loop:
+
+```[python]
+img = obs["image"]
+cv2.imshow("sensor_cam", img)
+cv2.waitKey(1)
+# small sleep so it doesn't max CPU
+time.sleep(env.unwrapped.model.opt.timestep)
+
+```
 
