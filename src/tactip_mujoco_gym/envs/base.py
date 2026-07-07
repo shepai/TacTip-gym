@@ -35,11 +35,6 @@ class TactileGymEnv(gym.Env):
         mj_resetData(self.model, self.data)
         self.step_count = 0
         return self._get_obs(), {}
-    def set_visibility(self, visible_ids):
-        for i in range(self.model.ngeom):
-            self.model.geom_rgba[i][3] = 0.0
-        for i in visible_ids:
-            self.model.geom_rgba[i][3] = 1.0
     def step(self, action):
         mj_forward(self.model, self.data)
         self.data.ctrl[:-1] = action[:-1]
@@ -52,11 +47,26 @@ class TactileGymEnv(gym.Env):
         truncated = self.step_count >= self.max_steps
 
         return obs, reward, terminated, truncated, {}
-
+    def set_visibility(self, visible_ids):
+        opt = self.renderer._scene_option
+        for i in range(mujoco.mjNGROUP):
+            if i in visible_ids:
+                opt.geomgroup[i] = 1  # 1 means visible
+                opt.sitegroup[i] = 1
+                opt.jointgroup[i] = 1
+                opt.tendongroup[i] = 1
+                opt.actuatorgroup[i] = 1
+            else:
+                opt.geomgroup[i] = 0  # 0 means hidden
+                opt.sitegroup[i] = 0
+                opt.jointgroup[i] = 0
+                opt.tendongroup[i] = 0
+                opt.actuatorgroup[i] = 0
+        self.renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SKYBOX] = 0
+        return opt
     def _get_obs(self):
-        all_geom_ids = np.arange(self.model.ngeom)
-        self.model.tendon_rgba[:, 3] = 0.0
-        self.set_visibility([])
+        mujoco.mj_forward(self.model, self.data)
+        self.set_visibility([2])
         self.renderer.update_scene(self.data, camera="sensor_cam")
         img = self.renderer.render()
         img = img.astype("float32") / 255.0
@@ -64,8 +74,8 @@ class TactileGymEnv(gym.Env):
         "state": None,
         "image": img
     }
-        self.set_visibility(all_geom_ids)
-        self.model.tendon_rgba[:, 3] = 1
+        opt_front=self.set_visibility([0, 1, 2])
+        self.renderer.scene.flags[mujoco.mjtRndFlag.mjRND_SKYBOX] = 1
         return obs
 
     def _reward(self):

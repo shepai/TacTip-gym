@@ -16,7 +16,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c0_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c0_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.006999999999999999 -0.0 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.006999999999999999 -0.0 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c0" pos="0 0 0" size="0.002" />
         </body>
         
@@ -25,7 +25,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c1_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c1_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0067404210114345945 -0.00188857739809917 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0067404210114345945 -0.00188857739809917 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c1" pos="0 0 0" size="0.002" />
         </body>
         
@@ -34,7 +34,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c2_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c2_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.00598093583182542 -0.003637087650248035 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.00598093583182542 -0.003637087650248035 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c2" pos="0 0 0" size="0.002" />
         </body>
         
@@ -43,7 +43,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c3_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c3_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.004777872002530579 -0.005115851749946869 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.004777872002530579 -0.005115851749946869 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c3" pos="0 0 0" size="0.002" />
         </body>
         
@@ -52,7 +52,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c4_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c4_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0032204552641180648 -0.006215196528816627 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0032204552641180648 -0.006215196528816627 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c4" pos="0 0 0" size="0.002" />
         </body>
         
@@ -61,7 +61,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c5_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c5_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.001424192091368438 -0.00685358861377626 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.001424192091368438 -0.00685358861377626 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c5" pos="0 0 0" size="0.002" />
         </body>
         
@@ -70,7 +70,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c6_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c6_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.00047769689355269614 -0.006983681384333775 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.00047769689355269614 -0.006983681384333775 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c6" pos="0 0 0" size="0.002" />
         </body>
         
@@ -79,7 +79,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c7_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c7_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0023441572851969033 -0.006595826454831744 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0023441572851969033 -0.006595826454831744 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c7" pos="0 0 0" size="0.002" />
         </body>
         
@@ -88,7 +88,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c8_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c8_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0040367622548040695 -0.005718789251073095 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0040367622548040695 -0.005718789251073095 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c8" pos="0 0 0" size="0.002" />
         </body>
         
@@ -97,7 +97,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c9_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c9_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.005429979034930938 -0.00441761561028237 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.005429979034930938 -0.00441761561028237 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c9" pos="0 0 0" size="0.002" />
         </body>
         
@@ -106,7 +106,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c10_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c10_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.00642047911053817 -0.0027888076289236926 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.00642047911053817 -0.0027888076289236926 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c10" pos="0 0 0" size="0.002" />
         </body>
         
@@ -115,7 +115,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c11_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c11_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.006934801622254315 -0.0009531665436737265 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.006934801622254315 -0.0009531665436737265 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c11" pos="0 0 0" size="0.002" />
         </body>
         
@@ -124,7 +124,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c12_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c12_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.006934801622254315 0.0009531665436737249 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.006934801622254315 0.0009531665436737249 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c12" pos="0 0 0" size="0.002" />
         </body>
         
@@ -133,7 +133,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c13_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c13_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.006420479110538172 0.0027888076289236882 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.006420479110538172 0.0027888076289236882 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c13" pos="0 0 0" size="0.002" />
         </body>
         
@@ -142,7 +142,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c14_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c14_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.005429979034930939 0.004417615610282369 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.005429979034930939 0.004417615610282369 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c14" pos="0 0 0" size="0.002" />
         </body>
         
@@ -151,7 +151,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c15_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c15_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.00403676225480407 0.005718789251073094 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.00403676225480407 0.005718789251073094 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c15" pos="0 0 0" size="0.002" />
         </body>
         
@@ -160,7 +160,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c16_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c16_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0023441572851969046 0.0065958264548317425 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0023441572851969046 0.0065958264548317425 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c16" pos="0 0 0" size="0.002" />
         </body>
         
@@ -169,7 +169,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c17_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c17_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0004776968935526994 0.006983681384333775 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0004776968935526994 0.006983681384333775 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c17" pos="0 0 0" size="0.002" />
         </body>
         
@@ -178,7 +178,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c18_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c18_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0014241920913684331 0.00685358861377626 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0014241920913684331 0.00685358861377626 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c18" pos="0 0 0" size="0.002" />
         </body>
         
@@ -187,7 +187,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c19_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c19_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0032204552641180613 0.006215196528816629 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0032204552641180613 0.006215196528816629 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c19" pos="0 0 0" size="0.002" />
         </body>
         
@@ -196,7 +196,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c20_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c20_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.004777872002530575 0.005115851749946872 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.004777872002530575 0.005115851749946872 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c20" pos="0 0 0" size="0.002" />
         </body>
         
@@ -205,7 +205,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c21_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c21_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.00598093583182542 0.003637087650248035 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.00598093583182542 0.003637087650248035 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c21" pos="0 0 0" size="0.002" />
         </body>
         
@@ -214,7 +214,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c22_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c22_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0067404210114345945 0.0018885773980991706 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0067404210114345945 0.0018885773980991706 -0.0" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c22" pos="0 0 0" size="0.002" />
         </body>
         
@@ -223,7 +223,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c23_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c23_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.005499864708709716 -0.0 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.005499864708709716 -0.0 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c23" pos="0 0 0" size="0.002" />
         </body>
         
@@ -232,7 +232,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c24_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c24_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.005230682169960122 -0.001699551661754322 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.005230682169960122 -0.001699551661754322 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c24" pos="0 0 0" size="0.002" />
         </body>
         
@@ -241,7 +241,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c25_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c25_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.00444948401610918 -0.0032327393653834094 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.00444948401610918 -0.0032327393653834094 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c25" pos="0 0 0" size="0.002" />
         </body>
         
@@ -250,7 +250,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c26_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c26_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0032327393653834094 -0.00444948401610918 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0032327393653834094 -0.00444948401610918 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c26" pos="0 0 0" size="0.002" />
         </body>
         
@@ -259,7 +259,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c27_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c27_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.001699551661754322 -0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.001699551661754322 -0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c27" pos="0 0 0" size="0.002" />
         </body>
         
@@ -268,7 +268,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c28_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c28_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-3.3676958556324214e-19 -0.005499864708709716 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-3.3676958556324214e-19 -0.005499864708709716 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c28" pos="0 0 0" size="0.002" />
         </body>
         
@@ -277,7 +277,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c29_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c29_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0016995516617543218 -0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0016995516617543218 -0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c29" pos="0 0 0" size="0.002" />
         </body>
         
@@ -286,7 +286,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c30_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c30_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.003232739365383409 -0.00444948401610918 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.003232739365383409 -0.00444948401610918 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c30" pos="0 0 0" size="0.002" />
         </body>
         
@@ -295,7 +295,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c31_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c31_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.004449484016109179 -0.0032327393653834094 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.004449484016109179 -0.0032327393653834094 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c31" pos="0 0 0" size="0.002" />
         </body>
         
@@ -304,7 +304,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c32_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c32_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.005230682169960122 -0.0016995516617543224 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.005230682169960122 -0.0016995516617543224 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c32" pos="0 0 0" size="0.002" />
         </body>
         
@@ -313,7 +313,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c33_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c33_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.005499864708709716 -6.735391711264843e-19 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.005499864708709716 -6.735391711264843e-19 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c33" pos="0 0 0" size="0.002" />
         </body>
         
@@ -322,7 +322,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c34_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c34_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.005230682169960122 0.0016995516617543211 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.005230682169960122 0.0016995516617543211 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c34" pos="0 0 0" size="0.002" />
         </body>
         
@@ -331,7 +331,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c35_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c35_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.00444948401610918 0.003232739365383409 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.00444948401610918 0.003232739365383409 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c35" pos="0 0 0" size="0.002" />
         </body>
         
@@ -340,7 +340,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c36_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c36_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0032327393653834094 0.004449484016109179 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0032327393653834094 0.004449484016109179 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c36" pos="0 0 0" size="0.002" />
         </body>
         
@@ -349,7 +349,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c37_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c37_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0016995516617543229 0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0016995516617543229 0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c37" pos="0 0 0" size="0.002" />
         </body>
         
@@ -358,7 +358,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c38_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c38_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="1.0103087566897264e-18 0.005499864708709716 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="1.0103087566897264e-18 0.005499864708709716 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c38" pos="0 0 0" size="0.002" />
         </body>
         
@@ -367,7 +367,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c39_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c39_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0016995516617543207 0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0016995516617543207 0.005230682169960122 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c39" pos="0 0 0" size="0.002" />
         </body>
         
@@ -376,7 +376,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c40_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c40_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.003232739365383408 0.00444948401610918 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.003232739365383408 0.00444948401610918 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c40" pos="0 0 0" size="0.002" />
         </body>
         
@@ -385,7 +385,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c41_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c41_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.004449484016109179 0.0032327393653834103 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.004449484016109179 0.0032327393653834103 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c41" pos="0 0 0" size="0.002" />
         </body>
         
@@ -394,7 +394,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c42_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c42_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.005230682169960122 0.001699551661754323 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.005230682169960122 0.001699551661754323 -0.004330298856417349" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c42" pos="0 0 0" size="0.002" />
         </body>
         
@@ -403,7 +403,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c43_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c43_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0037883727010233786 -0.0 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0037883727010233786 -0.0 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c43" pos="0 0 0" size="0.002" />
         </body>
         
@@ -412,7 +412,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c44_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c44_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0034999999999999996 -0.0014497474683058326 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0034999999999999996 -0.0014497474683058326 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c44" pos="0 0 0" size="0.002" />
         </body>
         
@@ -421,7 +421,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c45_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c45_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.002678784026555629 -0.002678784026555628 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.002678784026555629 -0.002678784026555628 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c45" pos="0 0 0" size="0.002" />
         </body>
         
@@ -430,7 +430,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c46_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c46_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0014497474683058328 -0.0034999999999999996 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0014497474683058328 -0.0034999999999999996 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c46" pos="0 0 0" size="0.002" />
         </body>
         
@@ -439,7 +439,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c47_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c47_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-2.3197092511427465e-19 -0.0037883727010233786 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-2.3197092511427465e-19 -0.0037883727010233786 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c47" pos="0 0 0" size="0.002" />
         </body>
         
@@ -448,7 +448,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c48_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c48_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0014497474683058324 -0.0034999999999999996 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0014497474683058324 -0.0034999999999999996 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c48" pos="0 0 0" size="0.002" />
         </body>
         
@@ -457,7 +457,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c49_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c49_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.002678784026555628 -0.002678784026555629 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.002678784026555628 -0.002678784026555629 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c49" pos="0 0 0" size="0.002" />
         </body>
         
@@ -466,7 +466,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c50_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c50_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0034999999999999996 -0.0014497474683058333 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0034999999999999996 -0.0014497474683058333 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c50" pos="0 0 0" size="0.002" />
         </body>
         
@@ -475,7 +475,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c51_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c51_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0037883727010233786 -4.639418502285493e-19 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0037883727010233786 -4.639418502285493e-19 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c51" pos="0 0 0" size="0.002" />
         </body>
         
@@ -484,7 +484,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c52_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c52_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0035000000000000005 0.0014497474683058324 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0035000000000000005 0.0014497474683058324 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c52" pos="0 0 0" size="0.002" />
         </body>
         
@@ -493,7 +493,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c53_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c53_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0026787840265556292 0.002678784026555628 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0026787840265556292 0.002678784026555628 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c53" pos="0 0 0" size="0.002" />
         </body>
         
@@ -502,7 +502,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c54_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c54_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0014497474683058348 0.003499999999999999 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0014497474683058348 0.003499999999999999 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c54" pos="0 0 0" size="0.002" />
         </body>
         
@@ -511,7 +511,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c55_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c55_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="6.95912775342824e-19 0.0037883727010233786 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="6.95912775342824e-19 0.0037883727010233786 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c55" pos="0 0 0" size="0.002" />
         </body>
         
@@ -520,7 +520,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c56_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c56_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0014497474683058335 0.003499999999999999 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0014497474683058335 0.003499999999999999 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c56" pos="0 0 0" size="0.002" />
         </body>
         
@@ -529,7 +529,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c57_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c57_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0026787840265556275 0.0026787840265556292 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0026787840265556275 0.0026787840265556292 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c57" pos="0 0 0" size="0.002" />
         </body>
         
@@ -538,7 +538,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c58_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c58_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.003499999999999999 0.0014497474683058352 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.003499999999999999 0.0014497474683058352 -0.005886274906776002" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c58" pos="0 0 0" size="0.002" />
         </body>
         
@@ -547,7 +547,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c59_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c59_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0019312956549806005 -0.0 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0019312956549806005 -0.0 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c59" pos="0 0 0" size="0.002" />
         </body>
         
@@ -556,7 +556,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c60_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c60_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0016247092926939405 -0.0010441372616571557 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0016247092926939405 -0.0010441372616571557 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c60" pos="0 0 0" size="0.002" />
         </body>
         
@@ -565,7 +565,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c61_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c61_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.000802289209624253 -0.0017567683202595154 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.000802289209624253 -0.0017567683202595154 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c61" pos="0 0 0" size="0.002" />
         </body>
         
@@ -574,7 +574,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c62_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c62_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.00027485202879646225 -0.001911637849911279 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.00027485202879646225 -0.001911637849911279 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c62" pos="0 0 0" size="0.002" />
         </body>
         
@@ -583,7 +583,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c63_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c63_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0012647296900859363 -0.0014595758692038175 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0012647296900859363 -0.0014595758692038175 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c63" pos="0 0 0" size="0.002" />
         </body>
         
@@ -592,7 +592,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c64_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c64_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.001853064610926095 -0.0005441088628944283 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.001853064610926095 -0.0005441088628944283 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c64" pos="0 0 0" size="0.002" />
         </body>
         
@@ -601,7 +601,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c65_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c65_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0018530646109260953 0.0005441088628944277 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0018530646109260953 0.0005441088628944277 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c65" pos="0 0 0" size="0.002" />
         </body>
         
@@ -610,7 +610,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c66_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c66_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0012647296900859366 0.0014595758692038173 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0012647296900859366 0.0014595758692038173 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c66" pos="0 0 0" size="0.002" />
         </body>
         
@@ -619,7 +619,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c67_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c67_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="0.0002748520287964627 0.0019116378499112786 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="0.0002748520287964627 0.0019116378499112786 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c67" pos="0 0 0" size="0.002" />
         </body>
         
@@ -628,7 +628,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c68_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c68_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0008022892096242523 0.0017567683202595157 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0008022892096242523 0.0017567683202595157 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c68" pos="0 0 0" size="0.002" />
         </body>
         
@@ -637,7 +637,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c69_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c69_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0016247092926939405 0.0010441372616571555 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0016247092926939405 0.0010441372616571555 -0.0067283056628733105" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c69" pos="0 0 0" size="0.002" />
         </body>
         
@@ -646,7 +646,7 @@
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 1 0" name="j_c70_y" stiffness="150" damping="3" armature="0.001" />
             <joint type="slide" springref="0" limited="true" range="-0.02 0.02" axis="0 0 1" name="j_c70_z" stiffness="150" damping="3" armature="0.001" />
             <geom type="sphere" size="0.001" rgba="1 1 1 0" mass="0.001" condim="3" contype="1" conaffinity="1" group="1" />
-            <geom pos="-0.0 -0.0 -0.006999999999999999" type="sphere" size="0.002" rgba="1 1 1 1" group="1" contype="0" conaffinity="0" mass="0" density="0" />
+            <geom pos="-0.0 -0.0 -0.006999999999999999" type="sphere" size="0.002" rgba="1 1 1 1" group="2" contype="0" conaffinity="0" mass="0" density="0" />
             <site name="s_c70" pos="0 0 0" size="0.002" />
         </body>
         
