@@ -37,7 +37,7 @@ The observation space is a dictionary containing tactile sensor images.
 
 | Space | Type | Shape | Description |
 |-------|------|-------|-------------|
-| Observation | Dict | `{"tactile_image": (H, W, C)}` | Tactile sensor image observation |
+| Observation | Dict | `{"image": (H, W, C)}` | Tactile sensor image observation |
 | Action | Box | `(6,)` | Six continuous motor commands |
 
 ```[python]
