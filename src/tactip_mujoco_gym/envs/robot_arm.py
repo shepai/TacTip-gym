@@ -56,3 +56,9 @@ class RobotArmEnv(TactileGymEnv):
         # ONLY update sim state once
         self.targets = result.qpos[:7]
         #mj.mj_forward(self.model, self.data)
+
+class Peg(RobotArmEnv):
+    pass
+
+class Edge(RobotArmEnv):
+    pass
