@@ -58,7 +58,85 @@ class RobotArmEnv(TactileGymEnv):
         #mj.mj_forward(self.model, self.data)
 
 class Peg(RobotArmEnv):
-    pass
+    def __init__(self):
+        super().__init__(
+            xml_subpath=["assets", "tactip_arm_peg.xml"],
+            obs_dim=8,
+            action_dim=3
+        )
+        self.set_arm()
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        #TODO place robot in position
+        return self._get_obs(), {}
+    def _reward(self): #TODO make gym for this
+        peg_pos = self.data.site_xpos[
+            self.model.site("peg_tip").id
+        ]
 
+        hole_pos = self.data.site_xpos[
+            self.model.site("hole").id
+        ]
+        # horizontal alignment
+        xy_error = np.linalg.norm(
+            peg_pos[:2] -
+            hole_pos[:2]
+        )
+        # insertion depth
+        depth = (
+            hole_pos[2]
+            -
+            peg_pos[2]
+        )
+
+        reward = (
+            -10 * xy_error
+            +5 * depth
+        )
+        # success condition
+        if depth > 0.05 and xy_error < 0.005:
+            reward += 100
+
+        return reward
 class Edge(RobotArmEnv):
-    pass
+    def __init__(self):
+        super().__init__(
+            xml_subpath=["assets", "tactip_arm_edge.xml"],
+            obs_dim=8,
+            action_dim=3
+        )
+        self.set_arm()
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        #TODO place robot in position
+        return self._get_obs(), {}
+    def _reward(self): #TODO make gym for this
+        # fingertip position
+        tip = self.data.site_xpos[
+            self.model.site("ee_site").id
+        ]
+        edge_point = self.closest_edge_point(tip) #TODO implement this
+
+        edge_error = np.linalg.norm(
+            tip[:2] - edge_point[:2]
+        )
+        progress = self.edge_progress(tip) #TODO implement this
+
+        delta_progress = (
+            progress -
+            self.previous_progress
+        )
+        self.previous_progress = progress
+        # contact force
+        force = self.get_contact_force() #TODO implement this
+        contact_penalty = 0
+        if force < 0.1:
+            contact_penalty = 5
+
+        reward = (
+            -2.0 * edge_error
+            +5.0 * delta_progress
+            -0.01 * np.linalg.norm(self.action)
+            -contact_penalty
+        )
+        return reward
