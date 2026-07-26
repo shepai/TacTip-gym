@@ -4,7 +4,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 import cv2
 import time
-import mujoco
+import mujoco.viewer
 def main(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",TOTAL_TIMESTEPS = 500_000):
 
     # Create environment
@@ -62,17 +62,13 @@ def show(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",):
     mujoco_model = env.unwrapped.model
     data = env.unwrapped.data
 
-
     # Passive viewer = you control simulation loop
     with mujoco.viewer.launch_passive(
         mujoco_model,
         data
     ) as viewer:
 
-
         while viewer.is_running():
-
-
             # -----------------------------
             # Policy chooses action
             # -----------------------------
@@ -89,19 +85,7 @@ def show(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",):
             # Sync MuJoCo viewer
             viewer.sync()
 
-
-            # -----------------------------
-            # Display TacTip image
-            # -----------------------------
-            img = obs["image"]
-
-            cv2.imshow(
-                "sensor_cam",
-                img
-            )
-
-            cv2.waitKey(1)
-
+            #cv2.waitKey(1)
 
             # Print reward occasionally
             print(
