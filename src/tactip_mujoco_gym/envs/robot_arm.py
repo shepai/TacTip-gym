@@ -40,10 +40,11 @@ class RobotArmEnv(TactileGymEnv):
         return np.random.randint(0,1)
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
-        self.current_position+action #treat as vector instead of position
-        self.move_gripper_to(action)
-        self.data.ctrl[:6] = self.targets[:-1]
-        mj_step(self.model, self.data)
+        if not(action[0]==0 and action[1]==0 and action[2]==0):
+            self.current_position+action #treat as vector instead of position
+            self.move_gripper_to(self.current_position)
+            self.data.ctrl[:6] = self.targets[:-1]
+            mj_step(self.model, self.data)
 
         self.step_count += 1
 
