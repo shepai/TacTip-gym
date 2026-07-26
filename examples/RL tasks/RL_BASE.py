@@ -15,7 +15,7 @@ def main(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",TOTAL_TIMESTE
 
     # Create PPO model
     model = PPO(
-        policy="MultiInputPolicy",      # Dict observations
+        policy= "MlpPolicy",    # Dict observations
         env=env,
 
         learning_rate=3e-4,

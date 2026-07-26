@@ -21,7 +21,7 @@ class TactileGymEnv(gym.Env):
         self.data = MjData(self.model)
 
         self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(action_dim,), dtype=np.float32
+            low=-0.02, high=0.02, shape=(action_dim,), dtype=np.float32
         )
 
         self.observation_space = spaces.Box(
@@ -83,3 +83,16 @@ class TactileGymEnv(gym.Env):
 
     def _done(self):
         return False
+    def get_nodes(self):
+        nodes = []
+
+        for i in range(self.model.nsite):
+
+            name = self.model.site(i).name
+
+            if name.startswith("s_c"):
+                nodes.append(
+                    self.data.site_xpos[i].copy()
+                )
+
+        return np.array(nodes)

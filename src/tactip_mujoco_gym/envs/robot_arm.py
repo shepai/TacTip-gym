@@ -122,7 +122,7 @@ class Edge(RobotArmEnv):
         self.previous_progress=0
         super().__init__(
             xml_subpath=["assets", "tactip_arm_edge.xml"],
-            obs_dim=8,
+            obs_dim=213,
             action_dim=3
         )
         #self.set_arm()
@@ -270,3 +270,7 @@ class Edge(RobotArmEnv):
             -contact_penalty
         )
         return reward
+    def _get_obs(self):
+        return self.get_nodes().flatten()#super()._get_obs()['image']
+
+    
