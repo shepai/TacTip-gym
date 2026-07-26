@@ -35,7 +35,7 @@
     <body name="robot">
         <include file="robotarm/worldbody.xml"/>
     </body>
-    <body name="block" pos="0.4 0.0 0.05">
+    <body name="block" pos="0.3 0.3 0.05">
         <geom
             name="block_geom"
             type="box"

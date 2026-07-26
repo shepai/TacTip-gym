@@ -28,20 +28,20 @@ class RobotArmEnv(TactileGymEnv):
         return self._get_obs(), {}
     def set_arm(self,default=[0.3,0.3,0.15]):
         print("MOVING ARM TO:", default)
-        for i in range(150):
-            self.move_gripper_to(default)
-            self.data.ctrl[:6] = self.targets[:-1]
+        self.move_gripper_to(default)
+        for i in range(250):       
+            self.data.ctrl[:7] = self.targets[:-1]
             mj_step(self.model, self.data)
-            mujoco.mj_forward(
+            """mujoco.mj_forward(
                 self.model,
                 self.data
-            )
+            )"""
     def _reward(self):
         return np.random.randint(0,1)
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
         if not(action[0]==0 and action[1]==0 and action[2]==0):
-            self.current_position+action #treat as vector instead of position
+            self.current_position+=action #treat as vector instead of position
             self.move_gripper_to(self.current_position)
             self.data.ctrl[:6] = self.targets[:-1]
             mj_step(self.model, self.data)
@@ -129,37 +129,42 @@ class Edge(RobotArmEnv):
     def random_edge_point(self):
         geom_id = self.model.geom("block_geom").id
 
-        center = self.data.geom_xpos[geom_id]
+        # World pose of the geom
+        geom_pos = self.data.geom_xpos[geom_id]
+        geom_rot = self.data.geom_xmat[geom_id].reshape(3, 3)
+
+        # Half extents in the geom's local frame
         hx, hy, hz = self.model.geom_size[geom_id]
 
-        s = np.random.uniform(0,1)
+        # Choose one of the four top-face edges (local coordinates)
+        edge = np.random.randint(4)
 
-        width = 2*hx
-        height = 2*hy
+        if edge == 0:       # +x edge
+            x = hx
+            y = np.random.uniform(-hy, hy)
+        elif edge == 1:     # -x edge
+            x = -hx
+            y = np.random.uniform(-hy, hy)
+        elif edge == 2:     # +y edge
+            x = np.random.uniform(-hx, hx)
+            y = hy
+        else:               # -y edge
+            x = np.random.uniform(-hx, hx)
+            y = -hy
 
-        d = s * 2*(width+height)
+        z = hz  # top surface
 
-        if d < width:
-            p = np.array([-hx+d, -hy, hz])
+        # Local point on the block
+        local_point = np.array([x, y, z])
 
-        elif d < width+height:
-            p = np.array([hx, -hy+(d-width), hz])
+        # Convert block-local coordinate -> world coordinate
+        world_point = geom_pos + geom_rot @ local_point
 
-        elif d < 2*width+height:
-            p = np.array([hx-(d-width-height), hy, hz])
-
-        else:
-            p = np.array([-hx, hy-(d-2*width-height), hz])
-
-
-        # rotate local point into world frame
-        R = self.data.geom_xmat[geom_id].reshape(3,3)
-
-        return center + R @ p
+        return world_point
     def randomize_block_rotation(self):
         angle = np.random.uniform(-np.pi, np.pi)
 
-        quat = np.array([
+        self.quat = np.array([
             np.cos(angle/2),
             0,
             0,
@@ -168,7 +173,7 @@ class Edge(RobotArmEnv):
 
         body_id = self.model.body("block").id
 
-        self.model.body_quat[body_id] = quat
+        self.model.body_quat[body_id] = self.quat
 
         mujoco.mj_forward(
             self.model,
