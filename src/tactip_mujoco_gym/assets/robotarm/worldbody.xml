@@ -43,7 +43,7 @@
                   <geom size="0.0325 0.0255" pos="0.0255 0 0" quat="1 0 1 0" class="collision"/>
                   <body name="sensor_root" pos="0.07 0 0" quat="0.7071 0 -0.7071 0">
                     <include file="sensor/worldbody.xml"/>
-                    <site name="ee_site" pos="0.08 0 0"/>
+                    <site name="ee_site" pos="0 0 -0.02"/>
                 </body>
                 </body>
               </body>
