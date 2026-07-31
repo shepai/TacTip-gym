@@ -28,7 +28,7 @@ class RobotArmEnv(TactileGymEnv):
         return self._get_obs(), {}
     def set_arm(self,default=[0.3,0.3,0.15]):
         print("MOVING ARM TO:", default)
-        self.move_gripper_to(default)
+        self.move_gripper_to(default,iter=750)
         for i in range(250):       
             self.data.ctrl[:7] = self.targets[:-1]
             mj_step(self.model, self.data)
@@ -41,7 +41,8 @@ class RobotArmEnv(TactileGymEnv):
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
         if not(action[0]==0 and action[1]==0 and action[2]==0):
-            self.current_position+=action #treat as vector instead of position
+            self.current_position+=action*0.1 #treat as vector instead of position
+            action[2]=0 # make z axis not move to reduce complexity 
             self.move_gripper_to(self.current_position)
             self.data.ctrl[:6] = self.targets[:-1]
             mj_step(self.model, self.data)
@@ -58,7 +59,7 @@ class RobotArmEnv(TactileGymEnv):
         ]
         self.current_position=tip.copy()
         return obs, reward, terminated, truncated, {}
-    def move_gripper_to(self, fingertip_coords):
+    def move_gripper_to(self, fingertip_coords,iter=150):
         fixed_orientation = [1.0, 0.0, 0.0, 0.0] 
         self.physics.data.qpos[:] = self.data.qpos[:]
         self.physics.data.qvel[:] = self.data.qvel[:]
@@ -69,7 +70,7 @@ class RobotArmEnv(TactileGymEnv):
             joint_names=["joint"+str(i) for i in range(1,7)],
             target_pos=fingertip_coords,
             target_quat=fixed_orientation,
-            max_steps=750
+            max_steps=iter
         )
 
         # ONLY update sim state once
@@ -266,7 +267,7 @@ class Edge(RobotArmEnv):
 
         reward = (
             -2.0 * edge_error
-            +5.0 * delta_progress
+            +20.0 * delta_progress
             -contact_penalty
         )
         return reward
