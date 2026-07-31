@@ -2,6 +2,7 @@ import gymnasium as gym
 import tactip_mujoco_gym          # Registers your environments
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.logger import configure
 import cv2
 import time
 import mujoco.viewer
@@ -20,15 +21,18 @@ def main(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",TOTAL_TIMESTE
 
         learning_rate=3e-4,
         n_steps=2048,
-        batch_size=64,
+        batch_size=256,
         n_epochs=10,
         gamma=0.99,
         gae_lambda=0.95,
         clip_range=0.2,
-
         verbose=1,
-        tensorboard_log="./tensorboard/",
+        device="cpu",
     )
+    log_dir = "./sb3_logs/"
+    # This tells SB3 to print to console, save to CSV, and save to JSON
+    new_logger = configure(log_dir, ["stdout", "csv", "json"])
+    model.set_logger(new_logger)
 
     # Train
     model.learn(
@@ -42,6 +46,7 @@ def main(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",TOTAL_TIMESTE
     env.close()
 
 def show(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",):
+    
      # -----------------------------
     # Load environment
     # -----------------------------
@@ -54,7 +59,7 @@ def show(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",):
     # Load trained model
     # -----------------------------
     model = PPO.load(
-        MODEL_NAME
+        "models/"+MODEL_NAME
     )
 
 
