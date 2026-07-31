@@ -85,14 +85,27 @@ class TactileGymEnv(gym.Env):
         return False
     def get_nodes(self):
         nodes = []
+        
+        # 1. Get the world position and 3x3 rotation matrix of your tactile sensor body
+        # (Replace "sensor_body_name" with the exact name of your sensor body from your XML)
+        sensor_site_id = self.model.site("ee_site").id
+        sensor_pos = self.data.site_xpos[sensor_site_id]
+        sensor_rot = self.data.site_xmat[sensor_site_id].reshape(3, 3)
 
         for i in range(self.model.nsite):
-
             name = self.model.site(i).name
 
             if name.startswith("s_c"):
-                nodes.append(
-                    self.data.site_xpos[i].copy()
-                )
+                # 2. Get the global position of the tactile node pin
+                world_pos = self.data.site_xpos[i]
+                
+                # 3. Compute relative vector: World Vector = World Pin Pos - World Sensor Center Pos
+                relative_world_vec = world_pos - sensor_pos
+                
+                # 4. Project into local space by multiplying by the inverse (transpose) rotation matrix
+                local_pos = sensor_rot.T @ relative_world_vec
+                
+                nodes.append(local_pos)
 
-        return np.array(nodes)
+        # 5. Explicitly cast to float32 to prevent Gymnasium warnings
+        return np.array(nodes, dtype=np.float32)
