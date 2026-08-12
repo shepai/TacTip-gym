@@ -181,6 +181,7 @@ class Edge(RobotArmEnv):
             self.data
         )
         self.positions=self.get_top_edge("block_geom", step=0.01)
+        self.get_first_point()
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.previous_progress=0
