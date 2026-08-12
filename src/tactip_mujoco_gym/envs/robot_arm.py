@@ -171,7 +171,7 @@ class Edge(RobotArmEnv):
             0,
             np.sin(angle/2)
         ])
-
+        geom = self.model.geom("block_geom")
         body_id = self.model.body("block").id
 
         self.model.body_quat[body_id] = self.quat
@@ -180,6 +180,7 @@ class Edge(RobotArmEnv):
             self.model,
             self.data
         )
+        self.positions=self.get_top_edge("block_geom", step=0.01)
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.previous_progress=0
@@ -199,49 +200,86 @@ class Edge(RobotArmEnv):
             block_pos - half_size,
             block_pos + half_size
         )
+    def get_top_edge(self, geom_name, step):
+        geom = self.model.geom(geom_name)
+        geom_id = geom.id
+
+        # MuJoCo box dimensions are half-extents
+        width, length, height = 2 * geom.size
+
+        # World-space position
+        position = self.data.geom_xpos[geom_id]
+
+        # World-space rotation matrix
+        rotation = self.data.geom_xmat[geom_id].reshape(3, 3)
+
+        # Local top corners
+        corners = np.array([
+            [-width / 2, -length / 2,  height / 2],
+            [ width / 2, -length / 2,  height / 2],
+            [ width / 2,  length / 2,  height / 2],
+            [-width / 2,  length / 2,  height / 2],
+        ])
+
+        # Transform into world coordinates
+        world_corners = corners @ rotation.T + position
+
+        points = []
+
+        for i in range(4):
+
+            start = world_corners[i]
+            end = world_corners[(i + 1) % 4]
+
+            edge = end - start
+            edge_length = np.linalg.norm(edge)
+
+            distances = np.arange(0, edge_length, step)
+
+            edge_points = (
+                start +
+                (distances[:, None] / edge_length) * edge
+            )
+
+            points.append(edge_points)
+
+        points = np.vstack(points)
+
+        # Close the loop
+        points = np.vstack([
+            points,
+            world_corners[0]
+        ])
+        """import matplotlib.pyplot as plt 
+        plt.scatter(points[:,0],points[:,1])
+        for i in range(len(points)):
+            plt.text(points[i, 0], points[i, 1], str(i))
+        plt.show()"""
+        return points
+    def get_first_point(self):
+        tip = self.data.site_xpos[
+                    self.model.site("ee_site").id
+                ]
+        dist=[]
+        tip = self.data.site_xpos[
+                    self.model.site("ee_site").id
+                ]
+        for i in range(len(self.positions)):
+            dist.append(np.linalg.norm(
+            tip[:2] - self.positions[i][:2]
+        ))
+        dist=np.array(dist)
+        self.current_target=np.argmax(dist)
     def edge_progress(self, tip):
-
         geom_id = self.model.geom("block_geom").id
-
         center = self.data.geom_xpos[geom_id]
         hx, hy, hz = self.model.geom_size[geom_id]
-
-        p = tip - center
-
-        x, y = p[:2]
-
-        # clockwise edge lengths
-        width = 2 * hx
-        height = 2 * hy
-        perimeter = 2 * (width + height)
-
-        # distances to each edge
-        edges = [
-            (abs(y + hy), "bottom"),
-            (abs(x - hx), "right"),
-            (abs(y - hy), "top"),
-            (abs(x + hx), "left"),
-        ]
-
-        _, edge = min(edges)
-
-        if edge == "bottom":
-            x = np.clip(x, -hx, hx)
-            s = x + hx
-
-        elif edge == "right":
-            y = np.clip(y, -hy, hy)
-            s = width + (y + hy)
-
-        elif edge == "top":
-            x = np.clip(x, -hx, hx)
-            s = width + height + (hx - x)
-
-        elif edge == "left":
-            y = np.clip(y, -hy, hy)
-            s = 2*width + height + (hy - y)
-
-        return s / perimeter
+        edge_error = np.linalg.norm(
+                    tip[:2] - self.positions[self.current_target]
+                )
+        if edge_error<0.01: self.current_target+=1
+        if self.current_target>len(self.positions): self.current_target=0
+        return edge_error
     def _reward(self): #
         # fingertip position
         tip = self.data.site_xpos[
