@@ -280,7 +280,7 @@ class Edge(RobotArmEnv):
                 )
         if edge_error<0.01: self.current_target+=1
         if self.current_target>len(self.positions): self.current_target=0
-        return edge_error
+        return 1/edge_error
     def _reward(self): #
         # fingertip position
         tip = self.data.site_xpos[
