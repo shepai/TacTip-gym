@@ -45,35 +45,74 @@ def main(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",TOTAL_TIMESTE
 
     env.close()
 
-def show(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",):
-    
-     # -----------------------------
+def show(
+    ENV_NAME="EdgeFollow-v0",
+    MODEL_NAME="ppo_edge_follow",
+    record=False,
+    filename="recording.mp4",
+):
+
+    import cv2
+
+    # -----------------------------
     # Load environment
     # -----------------------------
     env = gym.make(ENV_NAME)
 
     obs, info = env.reset()
 
-
     # -----------------------------
     # Load trained model
     # -----------------------------
     model = PPO.load(
-        "models/"+MODEL_NAME
+        "models/" + MODEL_NAME
     )
-
 
     # IMPORTANT: use underlying MuJoCo model/data
     mujoco_model = env.unwrapped.model
     data = env.unwrapped.data
 
-    # Passive viewer = you control simulation loop
+    # -----------------------------
+    # Video recorder
+    # -----------------------------
+    video = None
+    renderer = None
+
+    if record:
+
+        width = 640
+        height = 480
+
+        renderer = mujoco.Renderer(
+            mujoco_model,
+            height=height,
+            width=width
+        )
+
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+
+        video = cv2.VideoWriter(
+            filename,
+            fourcc,
+            30.0,
+            (width, height)
+        )
+
+        if not video.isOpened():
+            raise RuntimeError(
+                f"Could not open video file: {filename}"
+            )
+
+    # -----------------------------
+    # Passive viewer
+    # -----------------------------
     with mujoco.viewer.launch_passive(
         mujoco_model,
         data
     ) as viewer:
 
         while viewer.is_running():
+
             # -----------------------------
             # Policy chooses action
             # -----------------------------
@@ -82,38 +121,70 @@ def show(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",):
                 deterministic=True
             )
 
+            # -----------------------------
+            # Step simulation
+            # -----------------------------
+            obs, reward, terminated, truncated, info = env.step(
+                action
+            )
 
-            # Step simulation through Gym
-            obs, reward, terminated, truncated, info = env.step(action)
+            # -----------------------------
+            # Record MuJoCo frame
+            # -----------------------------
+            if record:
 
+                renderer.update_scene(
+                    data
+                )
 
-            # Sync MuJoCo viewer
+                frame = renderer.render()
+
+                # MuJoCo gives RGB
+                # OpenCV expects BGR
+                frame = cv2.cvtColor(
+                    frame,
+                    cv2.COLOR_RGB2BGR
+                )
+
+                video.write(frame)
+
+            # -----------------------------
+            # Sync viewer
+            # -----------------------------
             viewer.sync()
 
-            #cv2.waitKey(1)
-
-            # Print reward occasionally
             print(
                 f"Reward: {reward:.3f}",
                 end="\r"
             )
 
-
+            # -----------------------------
             # Reset episode
+            # -----------------------------
             if terminated or truncated:
 
                 print("\nEpisode finished")
 
                 obs, info = env.reset()
 
-
+            # -----------------------------
             # Prevent maxing CPU
+            # -----------------------------
             time.sleep(
                 env.unwrapped.model.opt.timestep
             )
 
+    # -----------------------------
+    # Close video
+    # -----------------------------
+    if renderer is not None:
+        renderer.close()
+
+    if video is not None:
+        video.release()
+
+        print(
+            f"\nSaved recording to:\n{filename}"
+        )
 
     env.close()
-
-if __name__ == "__main__":
-    main()
