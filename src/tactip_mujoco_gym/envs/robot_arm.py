@@ -41,7 +41,7 @@ class RobotArmEnv(TactileGymEnv):
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
         if not(action[0]==0 and action[1]==0 and action[2]==0):
-            self.current_position+=action*0.1 #treat as vector instead of position
+            self.current_position+=action*0.5 #treat as vector instead of position
             action[2]=0 # make z axis not move to reduce complexity 
             self.move_gripper_to(self.current_position)
             self.data.ctrl[:6] = self.targets[:-1]
@@ -276,7 +276,7 @@ class Edge(RobotArmEnv):
         center = self.data.geom_xpos[geom_id]
         hx, hy, hz = self.model.geom_size[geom_id]
         edge_error = np.linalg.norm(
-                    tip[:2] - self.positions[self.current_target]
+                    tip[:2] - self.positions[self.current_target][:2]
                 )
         if edge_error<0.01: self.current_target+=1
         if self.current_target>len(self.positions): self.current_target=0
@@ -306,7 +306,7 @@ class Edge(RobotArmEnv):
 
         reward = (
             -2.0 * edge_error
-            +20.0 * delta_progress
+            +5.0 * delta_progress
             -contact_penalty
         )
         return reward
