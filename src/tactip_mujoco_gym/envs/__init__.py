@@ -23,5 +23,5 @@ register(
 
 register(
     id="TacArm-peg",
-    entry_point="tactip_mujoco_gym.envs.robot_arm:peg",
+    entry_point="tactip_mujoco_gym.envs.robot_arm:Peg",
 )

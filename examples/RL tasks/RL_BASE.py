@@ -188,3 +188,47 @@ def show(
         )
 
     env.close()
+
+
+def view(
+    ENV_NAME="EdgeFollow-v0",
+):
+
+    env = gym.make(ENV_NAME)
+
+    obs, info = env.reset()
+
+    # IMPORTANT: use underlying MuJoCo model/data
+    mujoco_model = env.unwrapped.model
+    data = env.unwrapped.data
+
+    # -----------------------------
+    # Passive viewer
+    # -----------------------------
+    with mujoco.viewer.launch_passive(
+        mujoco_model,
+        data
+    ) as viewer:
+
+        while viewer.is_running():
+
+            action=env.action_space()
+            obs, reward, terminated, truncated, info = env.step(
+                action
+            )
+
+            
+            if terminated or truncated:
+
+                print("\nEpisode finished")
+
+                obs, info = env.reset()
+
+            # -----------------------------
+            # Prevent maxing CPU
+            # -----------------------------
+            time.sleep(
+                env.unwrapped.model.opt.timestep
+            )
+
+    env.close()
