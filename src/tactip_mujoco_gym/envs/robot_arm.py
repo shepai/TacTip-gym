@@ -78,46 +78,115 @@ class RobotArmEnv(TactileGymEnv):
         #mj.mj_forward(self.model, self.data)
 
 class Peg(RobotArmEnv):
+    # ---- task constants (match the XML) ----
+    HOLE_XY      = np.array([0.45, 0.0])
+    HOLE_HALF    = 0.03
+    PLATFORM_TOP = 0.05
+    CYL_R        = 0.02
+    CYL_HALF_H   = 0.03
+
+    TILT_LIMIT = 0.87     # cos(~30 deg); below this the cylinder counts as fallen
+    R_SUCCESS  = 100.0
+    R_FALL     = -50.0
+
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "tactip_arm_peg.xml"],
             obs_dim=8,
             action_dim=3
         )
-        self.set_arm()
+        self._cyl_body = self.model.body("peg_cyl").id
+        self._cyl_qadr = self.model.joint("peg_free").qposadr[0]
+        self._cyl_dadr = self.model.joint("peg_free").dofadr[0]
+        self._ee_site  = self.model.site("ee_site").id
+        self._prev_goal_dist = 0.0
+        self._prev_tip_dist = 0.0
+
+    # ---------- helpers ----------
+    def _tip_pos(self):
+        return self.data.site_xpos[self._ee_site].copy()
+
+    def _cyl_pos(self):
+        return self.data.xpos[self._cyl_body].copy()
+
+    def _upright(self):
+        """World-z component of the cylinder's own z axis (1 = upright, 0 = on its side)."""
+        return self.data.xmat[self._cyl_body][8]
+
+    def _push_point(self, cyl, tip_radius=0.01, margin=0.01):
+        """Point on the far side of the cylinder from the hole, at cylinder height."""
+        d = cyl[:2] - self.HOLE_XY
+        d = d / (np.linalg.norm(d) + 1e-8)
+        xy = cyl[:2] + d * (self.CYL_R + tip_radius + margin)
+        return np.array([xy[0], xy[1], cyl[2]])
+
+    def _in_hole(self, cyl):
+        return (np.all(np.abs(cyl[:2] - self.HOLE_XY) < self.HOLE_HALF)
+                and cyl[2] < self.PLATFORM_TOP + 0.5 * self.CYL_HALF_H)
+
+    def _fallen(self, cyl):
+        tipped = self._upright() < self.TILT_LIMIT
+        off_platform = (cyl[2] < self.PLATFORM_TOP) and not self._in_hole(cyl)
+        return tipped or off_platform
+
+    # ---------- gym API ----------
     def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        #TODO place robot in position
+        super().reset(seed=seed)   # mj_resetData, step_count=0, set_arm()
+
+        # random cylinder start on the platform, on the near side of the hole
+        rng = getattr(self, "np_random", None) or np.random.default_rng(seed)
+        x = rng.uniform(0.33, 0.37)
+        y = rng.uniform(-0.02, 0.02)
+        z = self.PLATFORM_TOP + self.CYL_HALF_H + 1e-3
+
+        a = self._cyl_qadr
+        self.data.qpos[a:a + 3] = [x, y, z]
+        self.data.qpos[a + 3:a + 7] = [1, 0, 0, 0]          # upright
+        self.data.qvel[self._cyl_dadr:self._cyl_dadr + 6] = 0
+        mujoco.mj_forward(self.model, self.data)
+
+        # let the cylinder settle while the arm holds its pose
+        for _ in range(50):
+            self.data.ctrl[:6] = self.targets[:-1]
+            mujoco.mj_step(self.model, self.data)
+
+        # your base step() integrates from current_position, so resync it
+        self.current_position = self._tip_pos()
+
+        cyl, tip = self._cyl_pos(), self._tip_pos()
+        self._prev_goal_dist = np.linalg.norm(cyl[:2] - self.HOLE_XY)
+        self._prev_tip_dist  = np.linalg.norm(tip - self._push_point(cyl))
         return self._get_obs(), {}
-    def _reward(self): #TODO make gym for this
-        peg_pos = self.data.site_xpos[
-            self.model.site("peg_tip").id
-        ]
 
-        hole_pos = self.data.site_xpos[
-            self.model.site("hole").id
-        ]
-        # horizontal alignment
-        xy_error = np.linalg.norm(
-            peg_pos[:2] -
-            hole_pos[:2]
-        )
-        # insertion depth
-        depth = (
-            hole_pos[2]
-            -
-            peg_pos[2]
-        )
+    def _get_obs(self):
+        tip, cyl = self._tip_pos(), self._cyl_pos()
+        # 3 tip + 3 cylinder + 2 (hole - cylinder, xy) = 8
+        return np.concatenate([tip, cyl, self.HOLE_XY - cyl[:2]]).astype(np.float32)
 
-        reward = (
-            -10 * xy_error
-            +5 * depth
-        )
-        # success condition
-        if depth > 0.05 and xy_error < 0.005:
-            reward += 100
+    # called by base step() as self._reward()
+    def _reward(self):
+        tip, cyl = self._tip_pos(), self._cyl_pos()
 
-        return reward
+        # success first: the cylinder tilts as it drops in, which must not count as a fall
+        if self._in_hole(cyl):
+            return self.R_SUCCESS
+        if self._fallen(cyl):
+            return self.R_FALL
+
+        goal_dist = np.linalg.norm(cyl[:2] - self.HOLE_XY)
+        tip_dist  = np.linalg.norm(tip - self._push_point(cyl))
+
+        r_push     = 10.0 * (self._prev_goal_dist - goal_dist)   # main signal
+        r_approach = 1.0  * (self._prev_tip_dist - tip_dist)     # weak, gets tip to cylinder
+        r_step     = -0.01
+
+        self._prev_goal_dist, self._prev_tip_dist = goal_dist, tip_dist
+        return r_push + r_approach + r_step
+
+    # called by base step() as self._done()
+    def _done(self):
+        cyl = self._cyl_pos()
+        return bool(self._in_hole(cyl) or self._fallen(cyl))
 class Edge(RobotArmEnv):
     def __init__(self):
         self.previous_progress=0

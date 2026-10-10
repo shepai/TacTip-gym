@@ -212,17 +212,17 @@ def view(
 
         while viewer.is_running():
 
-            action=env.action_space()
-            obs, reward, terminated, truncated, info = env.step(
-                action
-            )
+            #action=env.action_space()
+            #obs, reward, terminated, truncated, info = env.step(
+            #    action
+            #)
 
             
-            if terminated or truncated:
+            #if terminated or truncated:
 
-                print("\nEpisode finished")
+                #print("\nEpisode finished")
 
-                obs, info = env.reset()
+                #obs, info = env.reset()
 
             # -----------------------------
             # Prevent maxing CPU
