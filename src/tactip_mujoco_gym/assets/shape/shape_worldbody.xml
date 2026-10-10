@@ -1,0 +1,118 @@
+<mujoco>
+  <body name="platform">
+    <geom name="plat_0" type="box" pos="0.36500 0.00000 0.04000" size="0.08500 0.20000 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_1" type="box" pos="0.58500 0.00000 0.04000" size="0.03500 0.20000 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_2" type="box" pos="0.50000 -0.18750 0.04000" size="0.05000 0.01250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_3" type="box" pos="0.47327 -0.17375 0.04000" size="0.02327 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_4" type="box" pos="0.52673 -0.17375 0.04000" size="0.02327 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_5" type="box" pos="0.46942 -0.17125 0.04000" size="0.01942 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_6" type="box" pos="0.53058 -0.17125 0.04000" size="0.01942 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_7" type="box" pos="0.46751 -0.16875 0.04000" size="0.01751 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_8" type="box" pos="0.53249 -0.16875 0.04000" size="0.01751 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_9" type="box" pos="0.46617 -0.16625 0.04000" size="0.01617 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_10" type="box" pos="0.53383 -0.16625 0.04000" size="0.01617 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_11" type="box" pos="0.46516 -0.16375 0.04000" size="0.01516 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_12" type="box" pos="0.53484 -0.16375 0.04000" size="0.01516 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_13" type="box" pos="0.46440 -0.16125 0.04000" size="0.01440 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_14" type="box" pos="0.53560 -0.16125 0.04000" size="0.01440 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_15" type="box" pos="0.46383 -0.15875 0.04000" size="0.01383 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_16" type="box" pos="0.53617 -0.15875 0.04000" size="0.01383 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_17" type="box" pos="0.46341 -0.15625 0.04000" size="0.01341 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_18" type="box" pos="0.53659 -0.15625 0.04000" size="0.01341 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_19" type="box" pos="0.46315 -0.15375 0.04000" size="0.01315 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_20" type="box" pos="0.53685 -0.15375 0.04000" size="0.01315 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_21" type="box" pos="0.46302 -0.15000 0.04000" size="0.01302 0.00250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_22" type="box" pos="0.53698 -0.15000 0.04000" size="0.01302 0.00250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_23" type="box" pos="0.46315 -0.14625 0.04000" size="0.01315 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_24" type="box" pos="0.53685 -0.14625 0.04000" size="0.01315 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_25" type="box" pos="0.46341 -0.14375 0.04000" size="0.01341 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_26" type="box" pos="0.53659 -0.14375 0.04000" size="0.01341 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_27" type="box" pos="0.46383 -0.14125 0.04000" size="0.01383 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_28" type="box" pos="0.53617 -0.14125 0.04000" size="0.01383 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_29" type="box" pos="0.46440 -0.13875 0.04000" size="0.01440 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_30" type="box" pos="0.53560 -0.13875 0.04000" size="0.01440 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_31" type="box" pos="0.46516 -0.13625 0.04000" size="0.01516 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_32" type="box" pos="0.53484 -0.13625 0.04000" size="0.01516 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_33" type="box" pos="0.46617 -0.13375 0.04000" size="0.01617 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_34" type="box" pos="0.53383 -0.13375 0.04000" size="0.01617 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_35" type="box" pos="0.46751 -0.13125 0.04000" size="0.01751 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_36" type="box" pos="0.53249 -0.13125 0.04000" size="0.01751 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_37" type="box" pos="0.46942 -0.12875 0.04000" size="0.01942 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_38" type="box" pos="0.53058 -0.12875 0.04000" size="0.01942 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_39" type="box" pos="0.47327 -0.12625 0.04000" size="0.02327 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_40" type="box" pos="0.52673 -0.12625 0.04000" size="0.02327 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_41" type="box" pos="0.50000 -0.11250 0.04000" size="0.05000 0.01250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <site name="hole_circle" pos="0.5 -0.15 0.05" size="0.003" rgba="0 1 0 0.6"/>
+    <geom name="plat_42" type="box" pos="0.50000 -0.08750 0.04000" size="0.05000 0.01250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_43" type="box" pos="0.46300 -0.05000 0.04000" size="0.01300 0.02500 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_44" type="box" pos="0.53700 -0.05000 0.04000" size="0.01300 0.02500 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_45" type="box" pos="0.50000 -0.01250 0.04000" size="0.05000 0.01250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <site name="hole_square" pos="0.5 -0.05 0.05" size="0.003" rgba="0 1 0 0.6"/>
+    <geom name="plat_46" type="box" pos="0.50000 0.01500 0.04000" size="0.05000 0.01500 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_47" type="box" pos="0.45800 0.05000 0.04000" size="0.00800 0.02000 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_48" type="box" pos="0.54200 0.05000 0.04000" size="0.00800 0.02000 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_49" type="box" pos="0.50000 0.08500 0.04000" size="0.05000 0.01500 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <site name="hole_rectangle" pos="0.5 0.05 0.05" size="0.003" rgba="0 1 0 0.6"/>
+    <geom name="plat_50" type="box" pos="0.50000 0.11125 0.04000" size="0.05000 0.01125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_51" type="box" pos="0.46675 0.12375 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_52" type="box" pos="0.51877 0.12375 0.04000" size="0.03123 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_53" type="box" pos="0.46675 0.12625 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_54" type="box" pos="0.52093 0.12625 0.04000" size="0.02907 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_55" type="box" pos="0.46675 0.12875 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_56" type="box" pos="0.52310 0.12875 0.04000" size="0.02690 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_57" type="box" pos="0.46675 0.13125 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_58" type="box" pos="0.52526 0.13125 0.04000" size="0.02474 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_59" type="box" pos="0.46675 0.13375 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_60" type="box" pos="0.52743 0.13375 0.04000" size="0.02257 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_61" type="box" pos="0.46675 0.13625 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_62" type="box" pos="0.52959 0.13625 0.04000" size="0.02041 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_63" type="box" pos="0.46675 0.13875 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_64" type="box" pos="0.53176 0.13875 0.04000" size="0.01824 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_65" type="box" pos="0.46675 0.14125 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_66" type="box" pos="0.53392 0.14125 0.04000" size="0.01608 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_67" type="box" pos="0.46675 0.14375 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_68" type="box" pos="0.53609 0.14375 0.04000" size="0.01391 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_69" type="box" pos="0.46675 0.14625 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_70" type="box" pos="0.53825 0.14625 0.04000" size="0.01175 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_71" type="box" pos="0.46675 0.15000 0.04000" size="0.01675 0.00250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_72" type="box" pos="0.54042 0.15000 0.04000" size="0.00958 0.00250 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_73" type="box" pos="0.46675 0.15375 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_74" type="box" pos="0.53825 0.15375 0.04000" size="0.01175 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_75" type="box" pos="0.46675 0.15625 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_76" type="box" pos="0.53609 0.15625 0.04000" size="0.01391 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_77" type="box" pos="0.46675 0.15875 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_78" type="box" pos="0.53392 0.15875 0.04000" size="0.01608 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_79" type="box" pos="0.46675 0.16125 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_80" type="box" pos="0.53176 0.16125 0.04000" size="0.01824 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_81" type="box" pos="0.46675 0.16375 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_82" type="box" pos="0.52959 0.16375 0.04000" size="0.02041 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_83" type="box" pos="0.46675 0.16625 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_84" type="box" pos="0.52743 0.16625 0.04000" size="0.02257 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_85" type="box" pos="0.46675 0.16875 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_86" type="box" pos="0.52526 0.16875 0.04000" size="0.02474 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_87" type="box" pos="0.46675 0.17125 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_88" type="box" pos="0.52310 0.17125 0.04000" size="0.02690 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_89" type="box" pos="0.46675 0.17375 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_90" type="box" pos="0.52093 0.17375 0.04000" size="0.02907 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_91" type="box" pos="0.46675 0.17625 0.04000" size="0.01675 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_92" type="box" pos="0.51877 0.17625 0.04000" size="0.03123 0.00125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <geom name="plat_93" type="box" pos="0.50000 0.18875 0.04000" size="0.05000 0.01125 0.01" rgba="0.6 0.6 0.6 1" friction="0.8 0.005 0.0001"/>
+    <site name="hole_triangle" pos="0.5 0.15 0.05" size="0.003" rgba="0 1 0 0.6"/>
+  </body>
+  <body name="shape_circle" pos="0.35 -0.09 0.081">
+    <freejoint name="shape_circle_free"/>
+    <geom name="shape_circle_geom" type="cylinder" size="0.02 0.03" mass="0.05" rgba="0.9 0.2 0.2 1" friction="0.6 0.005 0.0001" condim="3"/>
+  </body>
+  <body name="shape_square" pos="0.35 -0.03 0.081">
+    <freejoint name="shape_square_free"/>
+    <geom name="shape_square_geom" type="box" size="0.02 0.02 0.03" mass="0.05" rgba="0.2 0.7 0.3 1" friction="0.6 0.005 0.0001" condim="3"/>
+  </body>
+  <body name="shape_rectangle" pos="0.35 0.03 0.081">
+    <freejoint name="shape_rectangle_free"/>
+    <geom name="shape_rectangle_geom" type="box" size="0.03 0.015 0.03" mass="0.05" rgba="0.2 0.4 0.9 1" friction="0.6 0.005 0.0001" condim="3"/>
+  </body>
+  <body name="shape_triangle" pos="0.35 0.09 0.081">
+    <freejoint name="shape_triangle_free"/>
+    <geom name="shape_triangle_geom" type="mesh" mesh="triangle_mesh" mass="0.05" rgba="0.9 0.7 0.1 1" friction="0.6 0.005 0.0001" condim="3"/>
+  </body>
+</mujoco>
