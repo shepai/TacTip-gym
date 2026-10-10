@@ -1,0 +1,77 @@
+<mujoco model="z1 scene">
+  <compiler angle="radian" meshdir="robotarm/assets"/>
+<option integrator="implicit" timestep="0.001" tolerance="1e-6">
+    <flag contact="enable" multiccd="enable"/>
+</option>
+<default>
+    <default class="z1">
+      <joint damping="1" frictionloss="1"/>
+      <general biastype="affine" gainprm="1000" biasprm="0 -1000 -100" forcerange="-30 30"/>
+      <default class="visual">
+        <geom type="mesh" group="2" contype="0" conaffinity="0"/>
+      </default>
+      <default class="collision">
+        <geom type="cylinder" group="3" mass="0" density="0"/>
+      </default>
+    </default>
+    </default>
+
+  <asset>
+    <include file="robotarm/assets.xml"/>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 .2 .3" width="512" height="512"/>
+        <material name="grid" texture="groundplane" reflectance=".2" texrepeat="5 5"/>
+       <include file="sensor/asset.xml"/>
+  </asset>
+  <statistic center="0 0 0.1" extent="0.6"/>
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="120" elevation="-20"/>
+  </visual>
+
+  <worldbody>
+   <geom name="floor" type="plane" size="0 0 1" pos="0 0 0" material="grid" condim="3" group="1" contype="1" conaffinity="1"/>
+    <body name="robot">
+        <include file="robotarm/worldbody.xml"/>
+    </body>
+  
+   <!-- Ramp: body origin is the bottom edge of the surface, local +x runs up the slope,
+     local +z is the surface normal. 15 deg => quat = (cos 7.5, 0, -sin 7.5, 0) -->
+<body name="ramp" pos="0.30 0 0.02" quat="0.991445 0 -0.130526 0">
+  <geom name="ramp_surface" type="box" pos="0.15 0 -0.01" size="0.15 0.08 0.01"
+        rgba="0.5 0.5 0.5 1" friction="0.5 0.005 0.002" condim="6"/>
+  <geom name="ramp_rail_l" type="box" pos="0.15  0.085 0.005" size="0.15 0.005 0.01"
+        rgba="0.3 0.3 0.3 1" friction="0.1 0.005 0.0001"/>
+  <geom name="ramp_rail_r" type="box" pos="0.15 -0.085 0.005" size="0.15 0.005 0.01"
+        rgba="0.3 0.3 0.3 1" friction="0.1 0.005 0.0001"/>
+  <geom name="ramp_stop"   type="box" pos="0.305 0 0.01" size="0.005 0.08 0.02"
+        rgba="0.3 0.3 0.3 1" friction="0.1 0.005 0.0001"/>
+</body>
+
+<!-- Ball: very low friction so the RAMP's friction dominates (MuJoCo uses the max of the two geoms) -->
+<body name="ball" pos="0.35 0 0.1">
+  <freejoint name="ball_free"/>
+  <geom name="ball_geom" type="sphere" size="0.02" mass="0.05"
+        rgba="0.9 0.3 0.1 1" friction="0.01 0.001 0.0001" condim="6"/>
+</body>
+  </worldbody>
+<contact>
+    <exclude body1="flexible_structure" body2="link06"/>
+    <exclude body1="cylinder_mount" body2="link06"/>
+</contact>
+   <equality>
+<include file="sensor/equality.xml"/>
+ </equality>
+  <deformable>
+  <!-- <include file="sensor/deformable.xml"/> -->
+  </deformable>
+
+  <tendon>
+  <include file="sensor/tendon.xml"/>
+  </tendon>
+  <actuator>
+<include file="robotarm/actuator.xml"/>
+  </actuator>
+
+</mujoco>

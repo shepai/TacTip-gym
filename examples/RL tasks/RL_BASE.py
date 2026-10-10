@@ -227,6 +227,8 @@ def view(
             # -----------------------------
             # Prevent maxing CPU
             # -----------------------------
+            mujoco.mj_forward(mujoco_model,data)
+            mujoco.mj_step(mujoco_model, data)
             time.sleep(
                 env.unwrapped.model.opt.timestep
             )

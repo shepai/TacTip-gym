@@ -572,3 +572,182 @@ class ShapeInsertion(RobotArmEnv):
     # called by base step() as self._done()
     def _done(self):
         return self._status() is not None
+
+
+class Incline(RobotArmEnv):
+    # ---- geometry ----
+    BALL_R = 0.02
+    TIP_R  = 0.01            # approx radius of the contact tip
+    TIP_H  = 0.02            # tip height above the surface along the normal (= ball centre height)
+
+    # ---- friction randomisation: one "level" f in [0,1] maps to both coefficients ----
+    F_SLIDE = (0.05, 1.0)    # sliding friction, log-interpolated
+    F_ROLL  = (0.0, 0.008)   # rolling friction, linear (needs condim=6). ~0.0054 holds a ball on 15 deg
+    OBSERVE_FRICTION = False # True = give the policy f (useful for debugging); False = hidden
+
+    # ---- control ----
+    ACTION_SCALE = 0.005     # metres per env step at |action| = 1
+    FRAME_SKIP   = 10        # physics steps per env step
+    S_MIN, Y_LIM = -0.06, 0.06
+
+    # ---- reward ----
+    SUCCESS_MARGIN = 0.04    # success when the ball is this close to the top
+    PROGRESS_W = 30.0        # reward per metre of progress up the slope
+    R_SUCCESS  = 100.0
+    R_FAIL     = -50.0
+
+    def __init__(self):
+        super().__init__(
+            xml_subpath=["assets", "tactip_arm_hill.xml"],
+            obs_dim=13 if self.OBSERVE_FRICTION else 12,
+            action_dim=2
+        )
+        m, d = self.model, self.data
+        self._rng = np.random.default_rng()
+        self._ee_site   = m.site("ee_site").id
+        self._ball_body = m.body("ball").id
+        jid = m.joint("ball_free").id
+        self._ball_qadr = m.jnt_qposadr[jid]
+        self._ball_dadr = m.jnt_dofadr[jid]
+        self._ramp_geom = m.geom("ramp_surface").id
+
+        # read the ramp frame from the model (static body, so compute once)
+        mujoco.mj_forward(m, d)
+        ramp = m.body("ramp").id
+        R = d.xmat[ramp].reshape(3, 3)
+        self._S = d.xpos[ramp].copy()      # bottom edge of the surface
+        self._D = R[:, 0].copy()           # up-slope direction
+        self._N = R[:, 2].copy()           # surface normal
+        self._L = 2.0 * m.geom_size[self._ramp_geom][0]   # surface length
+
+        self.friction_level = 0.5
+        self.S_MAX = self._L - 0.03
+        self._cmd_s = self._cmd_y = 0.0
+        self._prev_s = self._prev_tip = 0.0
+
+    # ---------- helpers ----------
+    def _tip_pos(self):
+        return self.data.site_xpos[self._ee_site].copy()
+
+    def _ball_pos(self):
+        return self.data.xpos[self._ball_body].copy()
+
+    def _slope_coords(self, p):
+        """(s, h, lat): distance up the slope, height above surface, sideways offset."""
+        rel = p - self._S
+        return float(rel @ self._D), float(rel @ self._N), float(rel[1])
+
+    def _tip_target(self, s, y):
+        t = self._S + s * self._D + self.TIP_H * self._N
+        t[1] += y
+        return t
+
+    def _set_friction(self, f):
+        self.friction_level = float(f)
+        slide = self.F_SLIDE[0] * (self.F_SLIDE[1] / self.F_SLIDE[0]) ** f
+        roll  = self.F_ROLL[0] + f * (self.F_ROLL[1] - self.F_ROLL[0])
+        self.model.geom_friction[self._ramp_geom] = [slide, 0.005, roll]
+        g = 0.8 - 0.5 * f                                    # darker ramp = grippier (visual only)
+        self.model.geom_rgba[self._ramp_geom] = [g, g, g, 1.0]
+
+    def _status(self):
+        s, h, lat = self._slope_coords(self._ball_pos())
+        if s >= self._L - self.SUCCESS_MARGIN:
+            return "success"
+        if s < -0.04 or abs(lat) > 0.10 or h > 0.08 or h < -0.02:
+            return "fail"                                    # rolled off the bottom / side / popped off
+        return None
+
+    def _push_dist(self, tip, ball):
+        """Distance (in the slope plane) from the tip to the point just below the ball."""
+        s_b, _, lat_b = self._slope_coords(ball)
+        s_t, _, lat_t = self._slope_coords(tip)
+        s_goal = s_b - (self.BALL_R + self.TIP_R + 0.01)
+        return float(np.hypot(s_t - s_goal, lat_t - lat_b))
+
+    # ---------- gym API ----------
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)               # resets data, step_count, set_arm()
+        if seed is not None:
+            self._rng = np.random.default_rng(seed)
+        options = options or {}
+
+        f = options["friction"] if "friction" in options else self._rng.uniform(0.0, 1.0)
+        self._set_friction(f)
+
+        # ball start near the bottom, tip just downhill of it
+        s0 = self._rng.uniform(0.07, 0.10)
+        y0 = self._rng.uniform(-0.02, 0.02)
+        self._cmd_s = s0 - (self.BALL_R + self.TIP_R + 0.01)
+        self._cmd_y = y0
+
+        self.set_arm(self._tip_target(self._cmd_s, self._cmd_y))   # arm first, so it can't sweep the ball
+
+        centre = self._S + s0 * self._D + (self.BALL_R + 1e-3) * self._N
+        centre[1] += y0
+        a, d = self._ball_qadr, self._ball_dadr
+        self.data.qpos[a:a + 7] = [*centre, 1, 0, 0, 0]
+        self.data.qvel[d:d + 6] = 0
+        mujoco.mj_forward(self.model, self.data)
+
+        for _ in range(50):                    # settle with the arm holding its pose
+            self.data.ctrl[:6] = self.targets[:-1]
+            mujoco.mj_step(self.model, self.data)
+
+        self.current_position = self._tip_pos()
+
+        tip, ball = self._tip_pos(), self._ball_pos()
+        self._prev_s   = self._slope_coords(ball)[0]
+        self._prev_tip = self._push_dist(tip, ball)
+        return self._get_obs(), {"friction": self.friction_level}
+
+    def step(self, action):
+        a = np.clip(np.asarray(action, dtype=float).ravel()[:2], -1.0, 1.0)
+        self._cmd_s = float(np.clip(self._cmd_s + a[0] * self.ACTION_SCALE, self.S_MIN, self.S_MAX))
+        self._cmd_y = float(np.clip(self._cmd_y + a[1] * self.ACTION_SCALE, -self.Y_LIM, self.Y_LIM))
+
+        self.move_gripper_to(self._tip_target(self._cmd_s, self._cmd_y), iter=150)   # sets self.targets
+        for _ in range(self.FRAME_SKIP):
+            self.data.ctrl[:6] = self.targets[:-1]
+            mujoco.mj_step(self.model, self.data)
+
+        self.step_count += 1
+        obs        = self._get_obs()
+        reward     = self._reward()
+        terminated = self._done()
+        truncated  = self.step_count >= self.max_steps
+        self.current_position = self._tip_pos()
+        s = self._slope_coords(self._ball_pos())[0]
+        return obs, reward, terminated, truncated, {"friction": self.friction_level, "ball_s": s}
+
+    def _get_obs(self):
+        tip, ball = self._tip_pos(), self._ball_pos()
+        vel = self.data.qvel[self._ball_dadr:self._ball_dadr + 3]   # free joint: linear vel, world frame
+        s_b, _, lat_b = self._slope_coords(ball)
+        s_t, _, lat_t = self._slope_coords(tip)
+        obs = [tip, ball, vel, [s_b / self._L], [s_t - s_b, lat_t - lat_b]]
+        if self.OBSERVE_FRICTION:
+            obs.append([self.friction_level])
+        return np.concatenate(obs).astype(np.float32)
+
+    # called by step() as self._reward()
+    def _reward(self):
+        status = self._status()
+        if status == "success":
+            return self.R_SUCCESS
+        if status == "fail":
+            return self.R_FAIL
+
+        tip, ball = self._tip_pos(), self._ball_pos()
+        s = self._slope_coords(ball)[0]
+        tip_d = self._push_dist(tip, ball)
+
+        r = (self.PROGRESS_W * (s - self._prev_s)      # up the slope = good, rolling back = bad
+             + 1.0 * (self._prev_tip - tip_d)          # weak: stay behind the ball
+             - 0.01)                                   # time penalty
+        self._prev_s, self._prev_tip = s, tip_d
+        return r
+
+    # called by step() as self._done()
+    def _done(self):
+        return self._status() is not None
