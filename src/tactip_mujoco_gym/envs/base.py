@@ -110,7 +110,7 @@ class TactileGymEnv(gym.Env):
         # 5. Explicitly cast to float32 to prevent Gymnasium warnings
         return np.array(nodes, dtype=np.float32)
 
-class TaxelMixin:
+class TaxelMixin(TactileGymEnv):
     """
     Event-based readout of the touch-sensor grid made by add_taxels.py.
 

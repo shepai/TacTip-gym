@@ -15,7 +15,9 @@
       </default>
     </default>
     </default>
-
+  <sensor>
+    <include file="shape/shape_sensors.xml"/>
+  </sensor>
   <asset>
     <include file="robotarm/assets.xml"/>
     <include file="shape/shape_assets.xml"/>
@@ -37,7 +39,7 @@
         <include file="robotarm/worldbody.xml"/>
     </body>
   
-   <include file="shape/shape_worldbody.xml"/>
+   <include file="shape/shape_worldbody_tx.xml"/>
 
   </worldbody>
 <contact>
