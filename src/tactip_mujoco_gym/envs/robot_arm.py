@@ -190,7 +190,7 @@ class Edge(RobotArmEnv):
     def __init__(self):
         self.previous_progress=0
         super().__init__(
-            xml_subpath=["assets", "tactip_arm_edge.xml"],
+            xml_subpath=["assets", "edge_worldbody_tx.xml"],
             obs_dim=213,
             action_dim=3
         )
@@ -379,7 +379,11 @@ class Edge(RobotArmEnv):
         )
         return reward
     def _get_obs(self):
-        return self.get_nodes().flatten()#super()._get_obs()['image']
+        obs= self.get_nodes().flatten()
+        if self.events:
+            obs = np.concatenate([obs, self._event_obs()])   # + n_taxels values
+
+        return obs.astype(np.float32)
 
 PLATE_TOP    = 0.05
 PLATE_HALF_T = 0.01            # plate spans z = 0.03 .. 0.05
