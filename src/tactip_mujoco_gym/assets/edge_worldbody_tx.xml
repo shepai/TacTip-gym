@@ -4,7 +4,7 @@
     <flag contact="enable" multiccd="enable" />
   </option>
   <sensor>
-    <include file="edge_sensors.xml"/>
+    <include file="eventsensors/edge_sensors.xml"/>
   </sensor>
   <default>
     <default class="z1">

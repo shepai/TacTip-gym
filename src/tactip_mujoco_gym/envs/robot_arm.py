@@ -90,7 +90,7 @@ class Peg(RobotArmEnv):
 
     def __init__(self):
         super().__init__(
-            xml_subpath=["assets", "tactip_arm_peg.xml"],
+            xml_subpath=["assets", "peg_worldbody_tx.xml"],
             obs_dim=8,
             action_dim=3
         )
@@ -606,7 +606,7 @@ class Incline(RobotArmEnv):
 
     def __init__(self):
         super().__init__(
-            xml_subpath=["assets", "tactip_arm_hill.xml"],
+            xml_subpath=["assets", "hill_worldbody_tx.xml"],
             obs_dim=13 if self.OBSERVE_FRICTION else 12,
             action_dim=2
         )
