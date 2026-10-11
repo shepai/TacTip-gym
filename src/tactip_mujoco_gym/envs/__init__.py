@@ -30,3 +30,8 @@ register(
     id="TacArm-shape",
     entry_point="tactip_mujoco_gym.envs.robot_arm:ShapeInsertion",
 )
+
+register(
+    id="TacArm-hill",
+    entry_point="tactip_mujoco_gym.envs.robot_arm:Incline",
+)
