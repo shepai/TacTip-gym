@@ -132,7 +132,20 @@ class TaxelMixin(TactileGymEnv):
     """
     TAXEL_PREFIX = "tx_"
     EVENT_THRESHOLD = 0.02      # newtons
-
+    def __init__(self, xml_subpath, obs_dim, action_dim):
+            super().__init__(xml_subpath, obs_dim, action_dim)
+            self.events=False 
+    def set_event(self, on=True, threshold=None):
+        if on:
+            self._init_taxels(threshold)      # raises a clear error if the XML has no taxels
+            self.events = True
+            self._reset_taxels()
+        else:
+            self.events = False
+        self._update_obs_space()
+    def _update_obs_space(self):
+        dim = self.base_obs_dim + (self.n_taxels if self.events else 0)
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(dim,), dtype=np.float32)
     def _init_taxels(self, threshold=None):
         m = self.model
         ids = []
@@ -153,10 +166,12 @@ class TaxelMixin(TactileGymEnv):
         self._tx_ref = np.zeros(self.n_taxels)
         self._tx_buf = []
 
-    def _reset_taxels(self):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         """Take the current forces as the baseline and drop any stored events."""
-        self._tx_ref = self.data.sensordata[self._tx_adr].copy()
-        self._tx_buf = []
+        if self.events:
+            self._tx_ref = self.data.sensordata[self._tx_adr].copy()
+            self._tx_buf = []
 
     def _sample_taxels(self):
         """Compare against the reference level and store new events. Call after mj_step."""

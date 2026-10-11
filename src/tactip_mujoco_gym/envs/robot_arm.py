@@ -1,12 +1,11 @@
-from .base import TactileGymEnv
+from .base import TactileGymEnv, TaxelMixin
 import numpy as np
 from mujoco import mj_step, mj_resetData
 import mujoco 
 from dm_control import mujoco
 from dm_control.utils import inverse_kinematics
 
-class RobotArmEnv(TactileGymEnv):
-
+class RobotArmEnv(TaxelMixin):
     def __init__(self, xml_subpath=["assets", "tactip_arm.xml"],
                 obs_dim=8,
                 action_dim=3):
@@ -541,13 +540,18 @@ class ShapeInsertion(RobotArmEnv):
         yaw = self._yaw()
         onehot = np.zeros(self.N_SHAPES)
         onehot[self.SHAPE_NAMES.index(self.shape)] = 1.0
-        return np.concatenate([
+        obs = np.concatenate([
             tip, obj,
             [np.sin(yaw), np.cos(yaw)],
             self._target_xy - obj[:2],
             [self._yaw_error()],
             onehot,
         ]).astype(np.float32)
+
+        if self.events:
+            obs = np.concatenate([obs, self._event_obs()])   # + n_taxels values
+
+        return obs.astype(np.float32)
 
     # called by base step() as self._reward()
     def _reward(self):
