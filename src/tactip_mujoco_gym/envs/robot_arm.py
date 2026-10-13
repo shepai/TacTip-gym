@@ -609,7 +609,7 @@ class Incline(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "hill_worldbody_tx.xml"],
-            obs_dim=213+ 10 if self.OBSERVE_FRICTION else 9,
+            obs_dim=213 + 10 if self.OBSERVE_FRICTION else 213+9,
             action_dim=2
         )
         m, d = self.model, self.data
@@ -681,7 +681,6 @@ class Incline(RobotArmEnv):
         if seed is not None:
             self._rng = np.random.default_rng(seed)
         options = options or {}
-
         f = options["friction"] if "friction" in options else self._rng.uniform(0.0, 1.0)
         self._set_friction(f)
 
@@ -735,10 +734,11 @@ class Incline(RobotArmEnv):
         ball =  self._ball_pos()
         vel = self.data.qvel[self._ball_dadr:self._ball_dadr + 3]   # free joint: linear vel, world frame
         s_b, _, lat_b = self._slope_coords(ball)
-        s_t, _, lat_t = self._slope_coords(tip)
+        s_t, _, lat_t = self._slope_coords(self._tip_pos())
         obs = [tip, ball, vel, [s_b / self._L], [s_t - s_b, lat_t - lat_b]]
         if self.OBSERVE_FRICTION:
             obs.append([self.friction_level])
+        #print("-----------------------------\n\n\n\n",np.concatenate(obs).shape)
         return np.concatenate(obs).astype(np.float32)
 
     # called by step() as self._reward()
