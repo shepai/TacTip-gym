@@ -29,7 +29,7 @@ def main(ENV_NAME = "EdgeFollow-v0",MODEL_NAME = "ppo_edge_follow",TOTAL_TIMESTE
         verbose=1,
         device="cpu",
     )
-    log_dir = "./sb3_logs/"
+    log_dir = "./sb3_logs/"+MODEL_NAME+"/"
     # This tells SB3 to print to console, save to CSV, and save to JSON
     new_logger = configure(log_dir, ["stdout", "csv", "json"])
     model.set_logger(new_logger)

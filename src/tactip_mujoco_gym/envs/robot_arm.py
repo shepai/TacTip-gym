@@ -91,7 +91,7 @@ class Peg(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "peg_worldbody_tx.xml"],
-            obs_dim=8,
+            obs_dim=213+5,
             action_dim=3
         )
         self._cyl_body = self.model.body("peg_cyl").id
@@ -158,7 +158,8 @@ class Peg(RobotArmEnv):
         return self._get_obs(), {}
 
     def _get_obs(self):
-        tip, cyl = self._tip_pos(), self._cyl_pos()
+        tip = self.get_nodes().flatten()
+        cyl = self._cyl_pos()
         # 3 tip + 3 cylinder + 2 (hole - cylinder, xy) = 8
         return np.concatenate([tip, cyl, self.HOLE_XY - cyl[:2]]).astype(np.float32)
 
@@ -421,7 +422,7 @@ class ShapeInsertion(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "tactip_arm_shapes.xml"],
-            obs_dim=15,               # tip3 + obj3 + sin/cos yaw 2 + to-hole 2 + yaw err 1 + onehot 4
+            obs_dim=12+213,               # tip3 + obj3 + sin/cos yaw 2 + to-hole 2 + yaw err 1 + onehot 4
             action_dim=3
         )
         m = self.model
@@ -540,7 +541,8 @@ class ShapeInsertion(RobotArmEnv):
         return self._get_obs(), {"shape": name}
 
     def _get_obs(self):
-        tip, obj = self._tip_pos(), self._obj_pos()
+        tip = self.get_nodes().flatten()
+        obj = self._obj_pos()
         yaw = self._yaw()
         onehot = np.zeros(self.N_SHAPES)
         onehot[self.SHAPE_NAMES.index(self.shape)] = 1.0
@@ -607,7 +609,7 @@ class Incline(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "hill_worldbody_tx.xml"],
-            obs_dim=13 if self.OBSERVE_FRICTION else 12,
+            obs_dim=213+ 10 if self.OBSERVE_FRICTION else 9,
             action_dim=2
         )
         m, d = self.model, self.data
@@ -729,7 +731,8 @@ class Incline(RobotArmEnv):
         return obs, reward, terminated, truncated, {"friction": self.friction_level, "ball_s": s}
 
     def _get_obs(self):
-        tip, ball = self._tip_pos(), self._ball_pos()
+        tip = self.get_nodes().flatten()
+        ball =  self._ball_pos()
         vel = self.data.qvel[self._ball_dadr:self._ball_dadr + 3]   # free joint: linear vel, world frame
         s_b, _, lat_b = self._slope_coords(ball)
         s_t, _, lat_t = self._slope_coords(tip)
