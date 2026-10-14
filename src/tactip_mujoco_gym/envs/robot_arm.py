@@ -23,12 +23,12 @@ class RobotArmEnv(TaxelMixin):
         super().reset(seed=seed)
         mj_resetData(self.model, self.data)
         self.step_count = 0
-        self.set_arm()
+        self.set_arm(iter=250)
         return self._get_obs(), {}
-    def set_arm(self,default=[0.3,0.3,0.15]):
+    def set_arm(self,default=[0.3,0.3,0.15],iter=25):
         print("MOVING ARM TO:", default)
         self.move_gripper_to(default,iter=750)
-        for i in range(250):       
+        for i in range(iter):       
             self.data.ctrl[:7] = self.targets[:-1]
             mj_step(self.model, self.data)
             """mujoco.mj_forward(
@@ -42,9 +42,10 @@ class RobotArmEnv(TaxelMixin):
         if not(action[0]==0 and action[1]==0 and action[2]==0):
             self.current_position+=action*0.5 #treat as vector instead of position
             action[2]=0 # make z axis not move to reduce complexity 
-            self.move_gripper_to(self.current_position)
-            self.data.ctrl[:6] = self.targets[:-1]
-            mj_step(self.model, self.data)
+            #self.move_gripper_to(self.current_position)
+            #self.data.ctrl[:6] = self.targets[:-1]
+            #mj_step(self.model, self.data)
+            self.set_arm(self.current_position,iter=25)
 
         self.step_count += 1
 
@@ -181,7 +182,10 @@ class Peg(RobotArmEnv):
         r_step     = -0.01
 
         self._prev_goal_dist, self._prev_tip_dist = goal_dist, tip_dist
-        return r_push + r_approach + r_step
+        r_low=0
+        if tip[2]<cyl[2]:
+            r_low=(tip[2]-cyl[2])*5
+        return r_push + r_approach + r_step + r_low
 
     # called by base step() as self._done()
     def _done(self):
@@ -378,7 +382,10 @@ class Edge(RobotArmEnv):
             +5.0 * delta_progress
             -contact_penalty
         )
-        return reward
+        r_low=0
+        if tip[2]<edge_point[2]:
+            r_low=(tip[2]-edge_point[2])*5
+        return reward+r_low
     def _get_obs(self):
         obs= self.get_nodes().flatten()
         if self.events:
@@ -576,8 +583,11 @@ class ShapeInsertion(RobotArmEnv):
              + 1.0 * (self._prev_yaw - yaw_abs)   # rotate toward the hole's orientation
              + 1.0 * (self._prev_tip - tip_d)     # weak: get the tip to the object
              - 0.01)                              # time penalty
-        self._prev_goal, self._prev_yaw, self._prev_tip = goal, yaw_abs, tip_d
-        return r
+        r_low=0
+        if tip[2]<obj[2]:
+            r_low=(tip[2]-obj[2])*5
+        self._prev_goal, self._prev_yaw, self._prev_tip = goal, yaw_abs, tip_d 
+        return r + r_low
 
     # called by base step() as self._done()
     def _done(self):
