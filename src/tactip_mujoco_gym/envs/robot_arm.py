@@ -25,8 +25,7 @@ class RobotArmEnv(TaxelMixin):
         self.step_count = 0
         self.set_arm(iter=250)
         return self._get_obs(), {}
-    def set_arm(self,default=[0.3,0.3,0.15],iter=25):
-        print("MOVING ARM TO:", default)
+    def set_arm(self,default=[0.3,0.3,0.15],iter=10):
         self.move_gripper_to(default,iter=750)
         for i in range(iter):       
             self.data.ctrl[:7] = self.targets[:-1]
@@ -40,8 +39,8 @@ class RobotArmEnv(TaxelMixin):
     def step(self,action):
         mujoco.mj_forward(self.model, self.data)
         if not(action[0]==0 and action[1]==0 and action[2]==0):
-            self.current_position+=action*0.5 #treat as vector instead of position
-            action[2]=0 # make z axis not move to reduce complexity 
+            self.current_position+=action*0.005 #treat as vector instead of position
+            #action[2]=0 # make z axis not move to reduce complexity 
             #self.move_gripper_to(self.current_position)
             #self.data.ctrl[:6] = self.targets[:-1]
             #mj_step(self.model, self.data)
@@ -92,7 +91,7 @@ class Peg(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "peg_worldbody_tx.xml"],
-            obs_dim=213+5,
+            obs_dim=3+5, #213
             action_dim=3
         )
         self._cyl_body = self.model.body("peg_cyl").id
@@ -145,21 +144,20 @@ class Peg(RobotArmEnv):
         self.data.qvel[self._cyl_dadr:self._cyl_dadr + 6] = 0
         mujoco.mj_forward(self.model, self.data)
 
-        # let the cylinder settle while the arm holds its pose
-        for _ in range(50):
-            self.data.ctrl[:6] = self.targets[:-1]
-            mujoco.mj_step(self.model, self.data)
-
+        target=self._cyl_pos()
+        target[2]+=(z/3) *2
+        self.set_arm(target,600)
         # your base step() integrates from current_position, so resync it
         self.current_position = self._tip_pos()
-
+        #print(target,self.current_position)
         cyl, tip = self._cyl_pos(), self._tip_pos()
         self._prev_goal_dist = np.linalg.norm(cyl[:2] - self.HOLE_XY)
         self._prev_tip_dist  = np.linalg.norm(tip - self._push_point(cyl))
         return self._get_obs(), {}
 
     def _get_obs(self):
-        tip = self.get_nodes().flatten()
+        #tip = self.get_nodes().flatten()
+        tip=self._tip_pos()
         cyl = self._cyl_pos()
         # 3 tip + 3 cylinder + 2 (hole - cylinder, xy) = 8
         return np.concatenate([tip, cyl, self.HOLE_XY - cyl[:2]]).astype(np.float32)
@@ -429,7 +427,7 @@ class ShapeInsertion(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "tactip_arm_shapes.xml"],
-            obs_dim=12+213,               # tip3 + obj3 + sin/cos yaw 2 + to-hole 2 + yaw err 1 + onehot 4
+            obs_dim=12+3,#213,               # tip3 + obj3 + sin/cos yaw 2 + to-hole 2 + yaw err 1 + onehot 4
             action_dim=3
         )
         m = self.model
@@ -534,10 +532,9 @@ class ShapeInsertion(RobotArmEnv):
                                    np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
         self.data.qvel[d:d + 6] = 0
         mujoco.mj_forward(self.model, self.data)
-
-        for _ in range(50):                       # settle with the arm holding its pose
-            self.data.ctrl[:6] = self.targets[:-1]
-            mujoco.mj_step(self.model, self.data)
+        target=self._obj_pos()
+        target[2]+=0.1
+        self.set_arm(target,600)
 
         self.current_position = self._tip_pos()   # base step() integrates from this
 
@@ -548,7 +545,8 @@ class ShapeInsertion(RobotArmEnv):
         return self._get_obs(), {"shape": name}
 
     def _get_obs(self):
-        tip = self.get_nodes().flatten()
+        #tip = self.get_nodes().flatten()
+        tip=self._tip_pos()
         obj = self._obj_pos()
         yaw = self._yaw()
         onehot = np.zeros(self.N_SHAPES)
@@ -619,7 +617,7 @@ class Incline(RobotArmEnv):
     def __init__(self):
         super().__init__(
             xml_subpath=["assets", "hill_worldbody_tx.xml"],
-            obs_dim=213 + 10 if self.OBSERVE_FRICTION else 213+9,
+            obs_dim=3 + 10 if self.OBSERVE_FRICTION else 3+9, #213
             action_dim=2
         )
         m, d = self.model, self.data
@@ -687,34 +685,42 @@ class Incline(RobotArmEnv):
 
     # ---------- gym API ----------
     def reset(self, seed=None, options=None):
-        super().reset(seed=seed)               # resets data, step_count, set_arm()
+        super().reset(seed=seed)
         if seed is not None:
             self._rng = np.random.default_rng(seed)
         options = options or {}
         f = options["friction"] if "friction" in options else self._rng.uniform(0.0, 1.0)
         self._set_friction(f)
 
-        # ball start near the bottom, tip just downhill of it
-        s0 = self._rng.uniform(0.07, 0.10)
-        y0 = self._rng.uniform(-0.02, 0.02)
-        self._cmd_s = s0 - (self.BALL_R + self.TIP_R + 0.01)
-        self._cmd_y = y0
-
-        self.set_arm(self._tip_target(self._cmd_s, self._cmd_y))   # arm first, so it can't sweep the ball
-
-        centre = self._S + s0 * self._D + (self.BALL_R + 1e-3) * self._N
-        centre[1] += y0
         a, d = self._ball_qadr, self._ball_dadr
+
+        # 1. park the ball well away from the arm's workspace
+        self.data.qpos[a:a + 7] = [1.0, 1.0, 0.5, 1, 0, 0, 0]
+        self.data.qvel[d:d + 6] = 0
+        mujoco.mj_forward(self.model, self.data)
+
+        # 2. move the arm to a mid-slope contact pose (downhill of where the ball will sit)
+        lo, hi = 0.0, 0.5
+        s_ball = self._rng.uniform(lo, hi) * self._L
+        y0     = self._rng.uniform(-0.02, 0.02)
+        gap    = 0.003
+        self.set_arm(self._tip_target(s_ball - (self.BALL_R + self.TIP_R + gap), y0),600)
+
+        # 3. place the ball against the ACTUAL tip (IK leaves a few mm of error)
+        s_ball = self._rng.uniform(0.5, 0.85) * self._L
+        y_ball = self._rng.uniform(-0.02, 0.02)
+        centre = self._S + s_ball * self._D + (self.BALL_R + 1e-3) * self._N
+        centre[1] += y_ball
         self.data.qpos[a:a + 7] = [*centre, 1, 0, 0, 0]
         self.data.qvel[d:d + 6] = 0
         mujoco.mj_forward(self.model, self.data)
 
-        for _ in range(50):                    # settle with the arm holding its pose
-            self.data.ctrl[:6] = self.targets[:-1]
-            mujoco.mj_step(self.model, self.data)
+        # 4. sync the command to where the tip really is, then settle
+        _, _, _ = self._slope_coords(self._tip_pos())
+        s_t, _, lat_t = self._slope_coords(self._tip_pos())
+        self._cmd_s, self._cmd_y = s_t, lat_t
 
         self.current_position = self._tip_pos()
-
         tip, ball = self._tip_pos(), self._ball_pos()
         self._prev_s   = self._slope_coords(ball)[0]
         self._prev_tip = self._push_dist(tip, ball)
@@ -740,7 +746,8 @@ class Incline(RobotArmEnv):
         return obs, reward, terminated, truncated, {"friction": self.friction_level, "ball_s": s}
 
     def _get_obs(self):
-        tip = self.get_nodes().flatten()
+        #tip = self.get_nodes().flatten()
+        tip=self._tip_pos()
         ball =  self._ball_pos()
         vel = self.data.qvel[self._ball_dadr:self._ball_dadr + 3]   # free joint: linear vel, world frame
         s_b, _, lat_b = self._slope_coords(ball)
