@@ -32,7 +32,6 @@ for csv_file in csv_files:
         df[y_col] = pd.to_numeric(df[y_col], errors="coerce")
         df = df.dropna(subset=[x_col, y_col])
 
-        if df.empty:
             continue
 
         # Create label from the parent folder name
