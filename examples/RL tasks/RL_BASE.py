@@ -11,8 +11,13 @@ import os
 def run(env_name, model_name, log_name, total_timesteps, n_envs=8):
     os.makedirs("models", exist_ok=True)
     env = make_vec_env(env_name, n_envs=n_envs)
-    model = PPO(
-            policy= "MlpPolicy",    # Dict observations
+    model = PPO("MlpPolicy", env, n_steps=512, batch_size=1024, device="cpu", verbose=1)
+    model.set_logger(configure(f"logs/{log_name}", ["stdout", "csv"]))   # add "tensorboard" if installed
+    model.learn(total_timesteps)
+    model.save(f"models/{model_name}")
+ 
+"""
+ policy= "MlpPolicy",    # Dict observations
             env=env,
             learning_rate=3e-4,
             n_steps=2048,
@@ -23,12 +28,7 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=8):
             clip_range=0.2,
             verbose=1,
             device="cpu",
-        )
-    model.set_logger(configure(f"logs/{log_name}", ["stdout", "csv"]))   # add "tensorboard" if installed
-    model.learn(total_timesteps)
-    model.save(f"models/{model_name}")
- 
- 
+ """
 
 def visualise(env_name, model_name,
               record=False,          # save a video?
