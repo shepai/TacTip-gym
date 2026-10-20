@@ -1,4 +1,4 @@
-@ -1,91 +0,0 @@
+
 import os
 import glob
 import math
@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Root directory to search
-root_dir = "/home/dexter/Documents/GitHub/TacTip-gym/sb3_logs"
+root_dir = "/home/dexter/Documents/GitHub/TacTip-gym/logs/"
 
 # Column names
 x_col = "time/total_timesteps"
