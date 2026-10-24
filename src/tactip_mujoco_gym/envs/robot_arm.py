@@ -75,7 +75,54 @@ class RobotArmEnv(TaxelMixin):
         # ONLY update sim state once
         self.targets = result.qpos[:7]
         #mj.mj_forward(self.model, self.data)
+        # ---- contact + staged push reward helpers ----
+    W_APPROACH = 10.0   # must dominate the -0.01 time penalty (0.005 m/step * 10 = 0.05)
+    W_PUSH     = 20.0
+    R_CONTACT  = 2.0    # one-off, first touch of the episode
+    R_KEEP     = 0.02   # per step while touching
+    W_ALIGN    = 0.05   # tip behind the object relative to the goal
 
+    def _touching(self, obj_body):
+        """True if any arm geom is in contact with the object's body."""
+        m, d = self.model, self.data
+        arm_root = m.body_rootid[m.site_bodyid[m.site("ee_site").id]]
+        for c in d.contact[:d.ncon]:
+            b1, b2 = m.geom_bodyid[c.geom1], m.geom_bodyid[c.geom2]
+            if b1 == obj_body:
+                other = b2
+            elif b2 == obj_body:
+                other = b1
+            else:
+                continue
+            if m.body_rootid[other] == arm_root:
+                return True
+        return False
+
+    def _push_reward(self, tip, obj, goal_xy, push_pt, obj_body):
+        touching = self._touching(obj_body)
+        goal_d = np.linalg.norm(obj[:2] - goal_xy)
+        tip_d  = np.linalg.norm(tip - push_pt)
+
+        r = -0.01
+        if not touching:
+            # STAGE 1: get to the contact pose
+            r += self.W_APPROACH * (self._prev_tip - tip_d)
+        else:
+            # STAGE 2: push
+            if not self._made_contact:
+                r += self.R_CONTACT
+                self._made_contact = True
+            r += self.R_KEEP
+            to_goal = goal_xy - obj[:2]
+            to_obj  = obj[:2] - tip[:2]
+            to_goal /= (np.linalg.norm(to_goal) + 1e-8)
+            to_obj  /= (np.linalg.norm(to_obj) + 1e-8)
+            r += self.W_ALIGN * float(to_goal @ to_obj)      # +1 = pushing the right way
+        # progress counts whenever the object moves (it can only move if pushed)
+        r += self.W_PUSH * (self._prev_goal - goal_d)
+
+        self._prev_tip, self._prev_goal = tip_d, goal_d      # always update, so no stale deltas
+        return r
 class Peg(RobotArmEnv):
     # ---- task constants (match the XML) ----
     HOLE_XY      = np.array([0.45, 0.0])
@@ -165,25 +212,12 @@ class Peg(RobotArmEnv):
     # called by base step() as self._reward()
     def _reward(self):
         tip, cyl = self._tip_pos(), self._cyl_pos()
-
-        # success first: the cylinder tilts as it drops in, which must not count as a fall
         if self._in_hole(cyl):
             return self.R_SUCCESS
         if self._fallen(cyl):
             return self.R_FALL
-
-        goal_dist = np.linalg.norm(cyl[:2] - self.HOLE_XY)
-        tip_dist  = np.linalg.norm(tip - self._push_point(cyl))
-
-        r_push     = 10.0 * (self._prev_goal_dist - goal_dist)   # main signal
-        r_approach = 1.0  * (self._prev_tip_dist - tip_dist)     # weak, gets tip to cylinder
-        r_step     = -0.01
-
-        self._prev_goal_dist, self._prev_tip_dist = goal_dist, tip_dist
-        r_low=0
-        if tip[2]<cyl[2]:
-            r_low=(tip[2]-cyl[2])*5
-        return r_push + r_approach + r_step + r_low
+        return self._push_reward(tip, cyl, self.HOLE_XY,
+                                 self._push_point(cyl), self._cyl_body)
 
     # called by base step() as self._done()
     def _done(self):
@@ -501,49 +535,29 @@ class ShapeInsertion(RobotArmEnv):
             return "fail"
         return None
 
-    # ---------- gym API ----------
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)                  # resets data, step_count, set_arm()
-        if seed is not None:
-            self._rng = np.random.default_rng(seed)
-        options = options or {}
+        YAW_FADE = 0.10      # start caring about yaw within 10 cm of the hole
+    W_YAW    = 3.0
 
-        name = options.get("shape") or str(self._rng.choice(self.SHAPE_NAMES))
-        self.shape = name
-        idx = self.SHAPE_NAMES.index(name)
-        self._target_xy = np.array([HOLE_X, HOLE_Y[idx]])
+    def _reward(self):
+        status = self._status()
+        if status == "success":
+            return self.R_SUCCESS
+        if status == "fail":
+            return self.R_FALL
 
-        self.set_arm(self.START_TIP)              # move arm first so it can't sweep the object
-        self._show_only(name)
+        tip, obj = self._tip_pos(), self._obj_pos()
 
-        # park the hidden shapes far away, at rest
-        for i, n in enumerate(self.SHAPE_NAMES):
-            if n != name:
-                a, d = self._qadr[n], self._dadr[n]
-                self.data.qpos[a:a + 7] = [1.5, -0.6 + 0.4 * i, 0.5, 1, 0, 0, 0]
-                self.data.qvel[d:d + 6] = 0
+        # STAGE 3: yaw only matters near the hole (pushing off-centre far away just wanders)
+        goal_d  = np.linalg.norm(obj[:2] - self._target_xy)
+        yaw_abs = abs(self._yaw_error())
+        near    = np.clip(1.0 - goal_d / self.YAW_FADE, 0.0, 1.0)
+        r_yaw   = self.W_YAW * near * (self._prev_yaw - yaw_abs)
+        self._prev_yaw = yaw_abs
 
-        # place the chosen shape with a random yaw
-        x = self._rng.uniform(*self.SPAWN_X)
-        y = self._rng.uniform(*self.SPAWN_Y)
-        yaw = self._rng.uniform(-self.spawn_yaw, self.spawn_yaw)
-        a, d = self._qadr[name], self._dadr[name]
-        self.data.qpos[a:a + 7] = [x, y, PLATE_TOP + OBJ_HALF_H + 1e-3,
-                                   np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
-        self.data.qvel[d:d + 6] = 0
-        mujoco.mj_forward(self.model, self.data)
-        target=self._obj_pos()
-        target[2]+=0.1
-        self.set_arm(target,600)
-
-        self.current_position = self._tip_pos()   # base step() integrates from this
-
-        obj, tip = self._obj_pos(), self._tip_pos()
-        self._prev_goal = np.linalg.norm(obj[:2] - self._target_xy)
-        self._prev_yaw  = abs(self._yaw_error())
-        self._prev_tip  = np.linalg.norm(tip - self._push_point(obj))
-        return self._get_obs(), {"shape": name}
-
+        # STAGES 1+2: reach, then push to the correct hole
+        r = self._push_reward(tip, obj, self._target_xy,
+                              self._push_point(obj), self._body[self.shape])
+        return r + r_yaw
     def _get_obs(self):
         #tip = self.get_nodes().flatten()
         tip=self._tip_pos()
@@ -564,7 +578,9 @@ class ShapeInsertion(RobotArmEnv):
 
         return obs.astype(np.float32)
 
-    # called by base step() as self._reward()
+    YAW_FADE = 0.10      # start caring about yaw within 10 cm of the hole
+    W_YAW    = 3.0
+
     def _reward(self):
         status = self._status()
         if status == "success":
@@ -573,19 +589,18 @@ class ShapeInsertion(RobotArmEnv):
             return self.R_FALL
 
         tip, obj = self._tip_pos(), self._obj_pos()
-        goal    = np.linalg.norm(obj[:2] - self._target_xy)
-        yaw_abs = abs(self._yaw_error())
-        tip_d   = np.linalg.norm(tip - self._push_point(obj))
 
-        r = (10.0 * (self._prev_goal - goal)      # push toward the correct hole
-             + 1.0 * (self._prev_yaw - yaw_abs)   # rotate toward the hole's orientation
-             + 1.0 * (self._prev_tip - tip_d)     # weak: get the tip to the object
-             - 0.01)                              # time penalty
-        r_low=0
-        if tip[2]<obj[2]:
-            r_low=(tip[2]-obj[2])*5
-        self._prev_goal, self._prev_yaw, self._prev_tip = goal, yaw_abs, tip_d 
-        return r + r_low
+        # STAGE 3: yaw only matters near the hole (pushing off-centre far away just wanders)
+        goal_d  = np.linalg.norm(obj[:2] - self._target_xy)
+        yaw_abs = abs(self._yaw_error())
+        near    = np.clip(1.0 - goal_d / self.YAW_FADE, 0.0, 1.0)
+        r_yaw   = self.W_YAW * near * (self._prev_yaw - yaw_abs)
+        self._prev_yaw = yaw_abs
+
+        # STAGES 1+2: reach, then push to the correct hole
+        r = self._push_reward(tip, obj, self._target_xy,
+                              self._push_point(obj), self._body[self.shape])
+        return r + r_yaw
 
     # called by base step() as self._done()
     def _done(self):
@@ -683,48 +698,55 @@ class Incline(RobotArmEnv):
         s_goal = s_b - (self.BALL_R + self.TIP_R + 0.01)
         return float(np.hypot(s_t - s_goal, lat_t - lat_b))
 
-    # ---------- gym API ----------
-    def reset(self, seed=None, options=None):
-        super().reset(seed=seed)
-        if seed is not None:
-            self._rng = np.random.default_rng(seed)
-        options = options or {}
-        f = options["friction"] if "friction" in options else self._rng.uniform(0.0, 1.0)
-        self._set_friction(f)
+        HOLD_STEPS = 10      # consecutive steps of stable hold before pushing starts
+    HOLD_V     = 0.02    # m/s downhill speed counted as "held"
 
-        a, d = self._ball_qadr, self._ball_dadr
+    def _reward(self):
+        status = self._status()
+        if status == "success":
+            return self.R_SUCCESS
+        if status == "fail":
+            return self.R_FAIL
 
-        # 1. park the ball well away from the arm's workspace
-        self.data.qpos[a:a + 7] = [1.0, 1.0, 0.5, 1, 0, 0, 0]
-        self.data.qvel[d:d + 6] = 0
-        mujoco.mj_forward(self.model, self.data)
-
-        # 2. move the arm to a mid-slope contact pose (downhill of where the ball will sit)
-        lo, hi = 0.0, 0.5
-        s_ball = self._rng.uniform(lo, hi) * self._L
-        y0     = self._rng.uniform(-0.02, 0.02)
-        gap    = 0.003
-        self.set_arm(self._tip_target(s_ball - (self.BALL_R + self.TIP_R + gap), y0),600)
-
-        # 3. place the ball against the ACTUAL tip (IK leaves a few mm of error)
-        s_ball = self._rng.uniform(0.5, 0.85) * self._L
-        y_ball = self._rng.uniform(-0.02, 0.02)
-        centre = self._S + s_ball * self._D + (self.BALL_R + 1e-3) * self._N
-        centre[1] += y_ball
-        self.data.qpos[a:a + 7] = [*centre, 1, 0, 0, 0]
-        self.data.qvel[d:d + 6] = 0
-        mujoco.mj_forward(self.model, self.data)
-
-        # 4. sync the command to where the tip really is, then settle
-        _, _, _ = self._slope_coords(self._tip_pos())
-        s_t, _, lat_t = self._slope_coords(self._tip_pos())
-        self._cmd_s, self._cmd_y = s_t, lat_t
-
-        self.current_position = self._tip_pos()
         tip, ball = self._tip_pos(), self._ball_pos()
-        self._prev_s   = self._slope_coords(ball)[0]
-        self._prev_tip = self._push_dist(tip, ball)
-        return self._get_obs(), {"friction": self.friction_level}
+        s, _, lat_b = self._slope_coords(ball)
+        _, _, lat_t = self._slope_coords(tip)
+        tip_d  = self._push_dist(tip, ball)
+        v_up   = float(self.data.qvel[self._ball_dadr:self._ball_dadr + 3] @ self._D)
+        v_down = max(0.0, -v_up)
+        ds     = s - self._prev_s
+        touching = self._touching(self._ball_body)
+
+        r = -0.01
+        if not touching:
+            # STAGE 0: reach the ball
+            self._stage, self._hold = 0, 0
+            r += self.W_APPROACH * (self._prev_tip - tip_d)
+            r += self.PROGRESS_W * min(0.0, ds)            # rolling downhill is bad
+        else:
+            if not self._made_contact:
+                r += self.R_CONTACT
+                self._made_contact = True
+            if self._stage == 0:
+                self._stage = 1
+
+            if self._stage == 1:
+                # STAGE 1: stop it falling; no reward for pushing up yet
+                r += 0.05 - 2.0 * v_down
+                r += self.PROGRESS_W * min(0.0, ds)
+                self._hold = self._hold + 1 if v_down < self.HOLD_V else 0
+                if self._hold >= self.HOLD_STEPS:
+                    self._stage = 2
+                    r += 5.0                                # bonus for a stable hold
+            else:
+                # STAGE 2: push up the slope
+                r += self.PROGRESS_W * ds
+                r += self.R_KEEP - 0.5 * abs(lat_t - lat_b) # stay centred behind the ball
+                if v_down > 0.05:                           # ball slipped past the tip
+                    self._stage, self._hold = 1, 0
+
+        self._prev_s, self._prev_tip = s, tip_d
+        return r
 
     def step(self, action):
         a = np.clip(np.asarray(action, dtype=float).ravel()[:2], -1.0, 1.0)
