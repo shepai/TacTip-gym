@@ -147,7 +147,7 @@ class Peg(RobotArmEnv):
         self._ee_site  = self.model.site("ee_site").id
         self._prev_goal_dist = 0.0
         self._prev_tip_dist = 0.0
-
+        self._prev_tip=self._tip_pos()
     # ---------- helpers ----------
     def _tip_pos(self):
         return self.data.site_xpos[self._ee_site].copy()
@@ -481,7 +481,7 @@ class ShapeInsertion(RobotArmEnv):
             self._rgba0[n]    = m.geom_rgba[g].copy()
             self._contype0[n] = int(m.geom_contype[g])
             self._conaff0[n]  = int(m.geom_conaffinity[g])
-
+        
         self.shape = self.SHAPE_NAMES[0]
         self._target_xy = np.array([HOLE_X, HOLE_Y[0]])
         self._prev_goal = self._prev_yaw = self._prev_tip = 0.0
