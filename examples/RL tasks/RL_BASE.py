@@ -13,7 +13,7 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=8):
     env = make_vec_env(env_name, n_envs=n_envs)
     model = PPO("MlpPolicy", env, n_steps=512, batch_size=1024, device="cpu", verbose=1)
     model.set_logger(configure(f"logs/{log_name}", ["stdout", "csv"]))   # add "tensorboard" if installed
-    model.learn(total_timesteps)
+    model.learn(total_timesteps, progress_bar=True)
     model.save(f"models/{model_name}")
  
 """
