@@ -146,8 +146,10 @@ class Peg(RobotArmEnv):
         self._cyl_dadr = self.model.joint("peg_free").dofadr[0]
         self._ee_site  = self.model.site("ee_site").id
         self._prev_goal_dist = 0.0
+        self._prev_goal = 0.0
         self._prev_tip_dist = 0.0
-        self._prev_tip=self._tip_pos()
+        self._prev_tip=0
+        self._made_contact = False
     # ---------- helpers ----------
     def _tip_pos(self):
         return self.data.site_xpos[self._ee_site].copy()
@@ -200,6 +202,10 @@ class Peg(RobotArmEnv):
         cyl, tip = self._cyl_pos(), self._tip_pos()
         self._prev_goal_dist = np.linalg.norm(cyl[:2] - self.HOLE_XY)
         self._prev_tip_dist  = np.linalg.norm(tip - self._push_point(cyl))
+        self._prev_goal = 0.0
+        self._prev_tip_dist = 0.0
+        self._prev_tip=0
+        self._made_contact = False
         return self._get_obs(), {}
 
     def _get_obs(self):
