@@ -7,11 +7,18 @@ import cv2
 import time
 import mujoco.viewer
 import os 
+import torch 
+print("PyTorch version:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
+print("CUDA version:", torch.version.cuda)
+print("GPU count:", torch.cuda.device_count())
 
+if torch.cuda.is_available():
+    print("GPU:", torch.cuda.get_device_name(0))
 def run(env_name, model_name, log_name, total_timesteps, n_envs=8):
     os.makedirs("models", exist_ok=True)
     env = make_vec_env(env_name, n_envs=n_envs)
-    model = PPO("MlpPolicy", env, n_steps=512, batch_size=1024, device="cpu", verbose=1)
+    model = PPO("MlpPolicy", env, n_steps=512, batch_size=1024, device="auto", verbose=1)
     model.set_logger(configure(f"logs/{log_name}", ["stdout", "csv"]))   # add "tensorboard" if installed
     model.learn(total_timesteps, progress_bar=True)
     model.save(f"models/{model_name}")
