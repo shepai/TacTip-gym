@@ -7,6 +7,6 @@ LOG_NAME = "TacArm-peg_v1"        # -> logs/urchin_v1/progress.csv
 STEPS = 5_000_000
  
 if __name__ == "__main__":
-    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS)
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS,record_video=True)
     visualise(ENV_NAME, MODEL_NAME)
  
