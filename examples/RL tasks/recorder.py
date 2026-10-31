@@ -33,8 +33,8 @@ class TrainingVideoCallback(BaseCallback):
         env_name,
         total_timesteps,
         video_dir,
-        every_percent=5,
-        video_seconds=5,
+        every_percent=20,
+        video_seconds=10,
         verbose=1,
     ):
         super().__init__(verbose)
@@ -77,7 +77,7 @@ class TrainingVideoCallback(BaseCallback):
         raw = env.unwrapped
         obs, _ = env.reset()
 
-        policy_dt = raw.frame_skip * raw.model.opt.timestep
+        policy_dt = raw.FRAME_SKIP * raw.model.opt.timestep
         fps = max(1, round(1.0 / policy_dt))
         n_frames = max(1, round(self.video_seconds * fps))
         frames = []
