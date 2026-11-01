@@ -123,7 +123,7 @@ def load_policy(env_name, model_name, model_dir="models", env_kwargs=None, algo=
 
 # ----------------------------------------------------------------------------- training
 def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_video=True,
-        video_every_percent=20, video_seconds=7, privileged=True, algo="PPO", seed=0,
+        video_every_percent=10, video_seconds=7, privileged=True, algo="PPO", seed=0,
         env_kwargs=None, algo_kwargs=None, checkpoint_every=500_000):
     """
     privileged : True  -> tip + object state observations (default)
