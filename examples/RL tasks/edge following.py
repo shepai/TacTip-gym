@@ -1,12 +1,14 @@
-from RL_BASE import*
+from RL_BASE import run, evaluate, visualise
 
-#main(ENV_NAME = "TacArm-edge",MODEL_NAME = "ppo_edge_follow1",TOTAL_TIMESTEPS = 500_000)
 ENV_NAME = "TacArm-edge"
-MODEL_NAME = "TacArm-edge_v1"      # -> models/urchin_v1.zip
-LOG_NAME = "TacArm-edge_v1"        # -> logs/urchin_v1/progress.csv
+PRIVILEGED = True                  # False = learn from the tactip markers instead
+MODEL_NAME = "TacArm-edge_v2" + ("" if PRIVILEGED else "_tactile")   # -> models/<MODEL_NAME>.zip
+LOG_NAME = MODEL_NAME              # -> logs/<LOG_NAME>/progress.csv
 STEPS = 5_000_000
- 
-if __name__ == "__main__":
-    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS,record_video=True)
+ENV_KWARGS = {}
+
+if __name__ == "__main__":         # required: training uses one subprocess per env
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, privileged=PRIVILEGED, env_kwargs=ENV_KWARGS,
+        record_video=True)
+    evaluate(ENV_NAME, MODEL_NAME, n_episodes=50)
     visualise(ENV_NAME, MODEL_NAME)
- 

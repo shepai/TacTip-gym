@@ -1,105 +1,251 @@
-import torch
-import tactip_mujoco_gym          # Registers your environments
-import os, time
-import numpy as np
+"""
+Training / evaluation helpers for the tactip arm tasks (Stable-Baselines3).
+
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS)                     # privileged obs, PPO
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, privileged=False)   # tactip marker obs
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, algo="SAC")         # more sample-efficient
+    evaluate(ENV_NAME, MODEL_NAME)                                 # success rate, no viewer
+    visualise(ENV_NAME, MODEL_NAME)                                # MuJoCo viewer
+
+What run() saves (both in logs/<LOG_NAME>/ and models/):
+    <MODEL_NAME>.zip                  the policy
+    <MODEL_NAME>_vecnormalize.pkl     observation statistics - the policy is useless without them
+    <MODEL_NAME>.json                 env name / kwargs / algo, so evaluate() and visualise()
+                                      rebuild exactly the same environment
+"""
+import json
+import os
+import time
+
 import gymnasium as gym
-from gymnasium import spaces
-import mujoco, mujoco.viewer
+import mujoco
+import numpy as np
+try:
+    import mujoco.viewer             # needs a display; only used by visualise()
+except Exception:                    # pragma: no cover
+    pass
+import torch
 from stable_baselines3 import PPO, SAC
+from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
-from stable_baselines3.common.vec_env import VecNormalize
-from recorder import *
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
-print("PyTorch version:", torch.__version__)
-print("CUDA available:", torch.cuda.is_available())
-print("CUDA version:", torch.version.cuda)
-print("GPU count:", torch.cuda.device_count())
+import tactip_mujoco_gym  # noqa: F401  (registers the environments)
+from recorder import TrainingVideoCallback, write_video
 
-if torch.cuda.is_available():
-    print("GPU:", torch.cuda.get_device_name(0))
+ALGOS = {"PPO": PPO, "SAC": SAC}
 
-     
 
-def run(env_name, model_name, log_name, total_timesteps, n_envs=8, record_video=True,
-        video_every_percent=20, video_seconds=7):
+def print_device_info():
+    print("PyTorch version:", torch.__version__)
+    print("CUDA available:", torch.cuda.is_available())
+    if torch.cuda.is_available():
+        print("GPU:", torch.cuda.get_device_name(0))
+
+
+def env_id(env_name):
+    """'module:EnvId' makes gym.make import the package inside SubprocVecEnv workers too."""
+    return env_name if ":" in env_name else f"tactip_mujoco_gym:{env_name}"
+
+
+# ----------------------------------------------------------------------------- hyper-parameters
+def default_algo_kwargs(algo, n_envs):
+    if algo == "PPO":
+        return dict(
+            learning_rate=3e-4,
+            n_steps=1024,                 # x n_envs = 8192 samples per update (~30 episodes)
+            batch_size=512,
+            n_epochs=10,
+            gamma=0.99,
+            gae_lambda=0.95,
+            clip_range=0.2,
+            ent_coef=0.0,
+            vf_coef=0.5,
+            max_grad_norm=0.5,
+            target_kl=0.03,               # stop an update early if the policy moves too far
+            policy_kwargs=dict(net_arch=dict(pi=[256, 256], vf=[256, 256]),
+                               activation_fn=torch.nn.Tanh,
+                               log_std_init=-0.5),   # initial action std 0.6 of the [-1, 1] range
+        )
+    if algo == "SAC":
+        return dict(
+            learning_rate=3e-4,
+            buffer_size=1_000_000,
+            learning_starts=10_000,
+            batch_size=256,
+            tau=0.005,
+            gamma=0.99,
+            train_freq=1,
+            gradient_steps=-1,            # one gradient step per environment step
+            ent_coef="auto",
+            policy_kwargs=dict(net_arch=[256, 256]),
+        )
+    raise ValueError(f"unknown algo {algo!r}; choose from {list(ALGOS)}")
+
+
+# ----------------------------------------------------------------------------- envs
+def make_vec(env_name, n_envs, seed=0, env_kwargs=None):
+    vec_cls = SubprocVecEnv if n_envs > 1 else DummyVecEnv
+    return make_vec_env(env_id(env_name), n_envs=n_envs, seed=seed,
+                        vec_env_cls=vec_cls, env_kwargs=env_kwargs or {})
+
+
+def _paths(model_name, model_dir="models"):
+    base = os.path.join(model_dir, model_name)
+    return base + ".zip", base + "_vecnormalize.pkl", base + ".json"
+
+
+def load_policy(env_name, model_name, model_dir="models", env_kwargs=None, algo=None):
+    """Returns (model, raw gym env, obs-normaliser function, config)."""
+    zip_path, vn_path, cfg_path = _paths(model_name, model_dir)
+    cfg = {}
+    if os.path.exists(cfg_path):
+        with open(cfg_path) as f:
+            cfg = json.load(f)
+    kwargs = dict(cfg.get("env_kwargs", {}))
+    kwargs.update(env_kwargs or {})
+    algo = algo or cfg.get("algo", "PPO")
+
+    env = gym.make(env_id(env_name), **kwargs)
+    model = ALGOS[algo].load(zip_path, device="cpu")
+
+    if os.path.exists(vn_path):
+        vn = VecNormalize.load(vn_path, DummyVecEnv([lambda: gym.make(env_id(env_name), **kwargs)]))
+        vn.training, vn.norm_reward = False, False
+        normalise = vn.normalize_obs
+    else:
+        print(f"WARNING: {vn_path} not found - observations will NOT be normalised, "
+              "so the policy will behave much worse than in training.")
+        normalise = lambda o: o  # noqa: E731
+    return model, env, normalise, cfg
+
+
+# ----------------------------------------------------------------------------- training
+def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_video=True,
+        video_every_percent=20, video_seconds=7, privileged=True, algo="PPO", seed=0,
+        env_kwargs=None, algo_kwargs=None, checkpoint_every=500_000):
+    """
+    privileged : True  -> tip + object state observations (default)
+                 False -> tactip marker displacements + proprioception
+    env_kwargs : extra constructor args, e.g. {"spawn_yaw": 0.5} for TacArm-shape
+    """
+    print_device_info()
+    algo = algo.upper()
+    n_envs = n_envs or (8 if algo == "PPO" else 4)
+    n_envs = max(1, min(n_envs, os.cpu_count() or 1))
+
     os.makedirs("models", exist_ok=True)
     log_dir = os.path.join("logs", log_name)
     os.makedirs(log_dir, exist_ok=True)
 
-    env = make_vec_env(env_name, n_envs=n_envs)
-    env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0)
-    env.save(f"{log_dir}/vecnorm.pkl") 
-    probe = gym.make(env_name).unwrapped          # not the vectorised one
-    probe.close()
+    env_kwargs = dict(env_kwargs or {})
+    env_kwargs.setdefault("privileged", privileged)
+    kw = default_algo_kwargs(algo, n_envs)
+    kw.update(algo_kwargs or {})
 
-    model = PPO("MlpPolicy", env, n_steps=512, batch_size=1024, device="auto", verbose=1)
-    model.set_logger(configure(log_dir, ["stdout", "csv"]))   # progress.csv lands in log_dir
-    """
-    policy= "MlpPolicy",    # Dict observations
-                env=env,
-                learning_rate=3e-4,
-                n_steps=2048,
-                batch_size=256,
-                n_epochs=10,
-                gamma=0.99,
-                gae_lambda=0.95,
-                clip_range=0.2,
-                verbose=1,
-                device="cpu",
-    """
-    callbacks = []
+    env = make_vec(env_name, n_envs, seed=seed, env_kwargs=env_kwargs)
+    env = VecNormalize(env, norm_obs=True, norm_reward=(algo == "PPO"),
+                       clip_obs=10.0, gamma=kw.get("gamma", 0.99))
+    print(f"{env_name}: obs {env.observation_space.shape}, act {env.action_space.shape}, "
+          f"{n_envs} envs, {algo}, privileged={env_kwargs['privileged']}")
+
+    device = "cpu" if algo == "PPO" else "auto"     # small MLPs + PPO are faster on CPU
+    model = ALGOS[algo]("MlpPolicy", env, verbose=1, seed=seed, device=device, **kw)
+    model.set_logger(configure(log_dir, ["stdout", "csv"]))
+
+    config = dict(env_name=env_name, algo=algo, env_kwargs=env_kwargs,
+                  total_timesteps=total_timesteps, n_envs=n_envs, seed=seed)
+    callbacks = [CheckpointCallback(save_freq=max(checkpoint_every // n_envs, 1),
+                                    save_path=os.path.join(log_dir, "checkpoints"),
+                                    name_prefix=model_name, save_vecnormalize=True)]
     if record_video:
         callbacks.append(TrainingVideoCallback(
-            env_name=env_name,
+            env_name=env_id(env_name),
             total_timesteps=total_timesteps,
             video_dir=os.path.join(log_dir, "videos"),
             every_percent=video_every_percent,
             video_seconds=video_seconds,
+            env_kwargs=env_kwargs,
         ))
 
+    t0 = time.time()
     try:
-        model.learn(total_timesteps, callback=callbacks or None, progress_bar=True)
+        try:
+            model.learn(total_timesteps, callback=callbacks, progress_bar=True)
+        except ImportError:                 # tqdm / rich not installed
+            model.learn(total_timesteps, callback=callbacks)
     except KeyboardInterrupt:
         print("Interrupted - saving the current model.")
+    print(f"training took {(time.time() - t0) / 60:.1f} min")
 
-    model.save(os.path.join(log_dir, model_name))     # next to the log and videos
-    model.save(os.path.join("models", model_name))    # copy for visualise()
-    
+    for d in (log_dir, "models"):
+        zip_path, vn_path, cfg_path = _paths(model_name, d)
+        model.save(zip_path)
+        env.save(vn_path)                   # AFTER training: these are the statistics it learned with
+        with open(cfg_path, "w") as f:
+            json.dump(config, f, indent=2)
+    env.close()
+    return model
+
+
+# ----------------------------------------------------------------------------- evaluation
+def evaluate(env_name, model_name, n_episodes=50, model_dir="models", deterministic=True,
+             env_kwargs=None, seed=1000):
+    model, env, normalise, _ = load_policy(env_name, model_name, model_dir, env_kwargs)
+    returns, successes, lengths = [], [], []
+    for ep in range(n_episodes):
+        obs, _ = env.reset(seed=seed + ep)
+        R, L = 0.0, 0
+        while True:
+            action, _ = model.predict(normalise(obs), deterministic=deterministic)
+            obs, r, terminated, truncated, info = env.step(action)
+            R += r
+            L += 1
+            if terminated or truncated:
+                break
+        returns.append(R)
+        successes.append(bool(info.get("is_success", False)))
+        lengths.append(L)
+    env.close()
+    res = dict(success_rate=float(np.mean(successes)), mean_return=float(np.mean(returns)),
+               mean_length=float(np.mean(lengths)))
+    print(f"{env_name} / {model_name}: success {res['success_rate']:.0%}, "
+          f"return {res['mean_return']:.1f}, length {res['mean_length']:.0f}")
+    return res
+
+
 def visualise(env_name, model_name, record_dir=None, video_name="visualisation.mp4",
-              model_dir="models"):
-    env = gym.make(env_name)                          # no render_mode
+              model_dir="models", env_kwargs=None, deterministic=True):
+    model, env, normalise, _ = load_policy(env_name, model_name, model_dir, env_kwargs)
     raw = env.unwrapped
-    model = PPO.load(os.path.join(model_dir, model_name), device="cpu")
-
-    dt = raw.frame_skip * raw.model.opt.timestep
+    dt = raw.FRAME_SKIP * raw.model.opt.timestep
     fps = max(1, round(1.0 / dt))
-    obs, _ = env.reset()
+    obs, info = env.reset()
     frames, renderer, cam = [], None, None
 
     if record_dir is not None:
         renderer = mujoco.Renderer(raw.model, height=480, width=640)
-        cam = mujoco.MjvCamera()
-        cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
-        cam.trackbodyid = mujoco.mj_name2id(raw.model, mujoco.mjtObj.mjOBJ_BODY, "core")
-        cam.distance, cam.azimuth, cam.elevation = 0.5, 135, -25
+        cam = _tracking_camera(raw.model)
 
+    episode, R = 0, 0.0
     try:
         with mujoco.viewer.launch_passive(raw.model, raw.data) as viewer:
             while viewer.is_running():
-                action, _ = model.predict(obs, deterministic=True)
-                obs, _, terminated, truncated, _ = env.step(action)
-
+                t = time.time()
+                action, _ = model.predict(normalise(obs), deterministic=deterministic)
+                obs, r, terminated, truncated, info = env.step(action)
+                R += r
                 if renderer is not None:
                     renderer.update_scene(raw.data, camera=cam)
                     frames.append(renderer.render().copy())
-
                 if terminated or truncated:
-                    obs, _ = env.reset()
-                    print("new command:", getattr(raw, "cmd", None))
-
+                    episode += 1
+                    print(f"episode {episode}: return {R:.1f}, success {info.get('is_success')}")
+                    R = 0.0
+                    obs, info = env.reset()
                 viewer.sync()
-                time.sleep(dt)
+                time.sleep(max(0.0, dt - (time.time() - t)))
     finally:
         if renderer is not None:
             renderer.close()
@@ -110,3 +256,16 @@ def visualise(env_name, model_name, record_dir=None, video_name="visualisation.m
         path = os.path.join(record_dir, video_name)
         write_video(frames, path, fps=fps)
         print(f"Saved visualisation video: {path}")
+
+
+def _tracking_camera(model):
+    cam = mujoco.MjvCamera()
+    core = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "core")
+    if core >= 0:
+        cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+        cam.trackbodyid = core
+    else:
+        mujoco.mjv_defaultFreeCamera(model, cam)
+        cam.lookat[:] = [0.4, 0.0, 0.05]
+    cam.distance, cam.azimuth, cam.elevation = 0.5, 135, -25
+    return cam
