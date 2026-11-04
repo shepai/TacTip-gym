@@ -75,6 +75,9 @@ class RobotArmEnv(TaxelMixin):
     R_SUCCESS = 100.0
     R_FAIL    = -10.0
 
+    CAMERA_NAME = "handcam"
+    CAMERA_WIDTH = 640
+    CAMERA_HEIGHT = 480
     def __init__(self, xml_subpath=("assets", "tactip_arm.xml"), action_dim=3,
                  privileged=True, events=False, render_mode=None, max_steps=None):
         super().__init__(list(xml_subpath), 1, action_dim)     # obs space is sized below
@@ -139,11 +142,89 @@ class RobotArmEnv(TaxelMixin):
             self.set_event(True)            # also builds the observation space
         else:
             self.set_privileged(self.privileged)
-
+        self._renderer = None
+        self._camera_width = self.CAMERA_WIDTH
+        self._camera_height = self.CAMERA_HEIGHT
     # ------------------------------------------------------------------ task hooks
     def _setup_task(self):
         """Look up ids, set per-task state. Called once from __init__."""
+    def get_camera(
+        self,
+        mode="rgb",
+        camera=None,
+        width=None,
+        height=None,
+    ):
+        """
+        Render an image from a MuJoCo camera attached to the robot.
 
+        Args:
+            mode: "rgb" or "depth"
+            camera: Camera name (defaults to CAMERA_NAME)
+            width: Image width (defaults to CAMERA_WIDTH)
+            height: Image height (defaults to CAMERA_HEIGHT)
+
+        Returns:
+            rgb:   uint8 array, shape (H, W, 3)
+            depth: float32 array, shape (H, W), depth in metres
+        """
+
+        camera = camera or self.CAMERA_NAME
+        width = width or self.CAMERA_WIDTH
+        height = height or self.CAMERA_HEIGHT
+
+        if mode not in ("rgb", "depth"):
+            raise ValueError(
+                f"Unknown camera mode '{mode}'. Use 'rgb' or 'depth'."
+            )
+
+        # Check camera exists
+        try:
+            self.model.camera(camera)
+        except KeyError:
+            raise ValueError(
+                f"Camera '{camera}' not found in MuJoCo model."
+            )
+
+        # Create renderer on first use
+        if (
+            self._renderer is None
+            or self._camera_width != width
+            or self._camera_height != height
+        ):
+            if self._renderer is not None:
+                self._renderer.close()
+
+            self._renderer = mujoco.Renderer(
+                self.model,
+                height=height,
+                width=width,
+            )
+
+            self._camera_width = width
+            self._camera_height = height
+
+        # Switch between RGB and depth rendering
+        if mode == "depth":
+            self._renderer.enable_depth_rendering()
+        else:
+            self._renderer.disable_depth_rendering()
+
+        # Render from the selected camera
+        self._renderer.update_scene(
+            self.data,
+            camera=camera,
+        )
+
+        image = self._renderer.render()
+
+        return image.copy()
+    def close(self):
+        """Release the MuJoCo camera renderer."""
+
+        if self._renderer is not None:
+            self._renderer.close()
+            self._renderer = None
     def _reset_task(self, options):
         """Place objects and the arm. Must leave self._q_cmd / self._target consistent."""
         self._place_arm(self.HOME_TIP)
