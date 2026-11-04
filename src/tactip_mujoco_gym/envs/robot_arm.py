@@ -6,7 +6,12 @@ Tactip arm tasks.
     TacArm-shape  ShapeInsertion  start touching a shape, identify it, push it into its own hole
     TacArm-edge   Edge            start touching the top edge of a block, follow it round (CCW)
 
-Every task accepts   privileged=True/False   (see base.py) and   events=True/False.
+Every task accepts:
+    obs_modes={"vision": bool, "tactile": bool, "privileged": bool}   (see base.py; default:
+              privileged only; missing keys count as False)
+    obs_format="flat" | "dict"     one long vector (default) or one key per input
+    events=True/False              append tx_* taxel events
+    privileged=True/False          earlier shortcut: privileged only / tactile only
 
 Control (shared by all tasks)
 -----------------------------
@@ -75,13 +80,22 @@ class RobotArmEnv(TaxelMixin):
     R_SUCCESS = 100.0
     R_FAIL    = -10.0
 
-    CAMERA_NAME = "handcam"
+    # ---- hand camera ----
+    CAMERA_NAME = "handcam"          # get_camera() default (viewing / recording)
     CAMERA_WIDTH = 640
     CAMERA_HEIGHT = 480
+    VISION_CAMERA = CAMERA_NAME      # camera used for the "vision" observation (size: see base.py)
+
     def __init__(self, xml_subpath=("assets", "tactip_arm.xml"), action_dim=3,
-                 privileged=True, events=False, render_mode=None, max_steps=None):
+                 obs_modes=None, privileged=None, obs_format="flat", events=False,
+                 render_mode=None, max_steps=None):
         super().__init__(list(xml_subpath), 1, action_dim)     # obs space is sized below
         self.render_mode = render_mode
+        # get_camera() keeps its own renderer: self._renderer belongs to the base class
+        # (in-sensor camera), and sharing it mixed up image sizes between the two
+        self._cam_renderer = None
+        self._camera_width = self.CAMERA_WIDTH
+        self._camera_height = self.CAMERA_HEIGHT
         m = self.model
         self.max_steps = int(max_steps or self.MAX_STEPS)
         self._action_dim = action_dim
@@ -137,17 +151,21 @@ class RobotArmEnv(TaxelMixin):
         self._place_arm(self.HOME_TIP, settle=300)
         self._capture_marker_rest()
 
-        self.privileged = bool(privileged)
+        modes = self.resolve_obs_modes(obs_modes, privileged)
+        self.obs_format = obs_format
         if events:
+            self.obs_modes = modes
             self.set_event(True)            # also builds the observation space
         else:
-            self.set_privileged(self.privileged)
-        self._renderer = None
-        self._camera_width = self.CAMERA_WIDTH
-        self._camera_height = self.CAMERA_HEIGHT
+            self.set_obs_modes(modes)       # validates the selection, builds the space
+        if obs_format != "flat":
+            self.set_obs_format(obs_format)
+
     # ------------------------------------------------------------------ task hooks
     def _setup_task(self):
         """Look up ids, set per-task state. Called once from __init__."""
+
+    # ------------------------------------------------------------------ hand camera
     def get_camera(
         self,
         mode="rgb",
@@ -184,18 +202,18 @@ class RobotArmEnv(TaxelMixin):
         except KeyError:
             raise ValueError(
                 f"Camera '{camera}' not found in MuJoCo model."
-            )
+            ) from None
 
         # Create renderer on first use
         if (
-            self._renderer is None
+            self._cam_renderer is None
             or self._camera_width != width
             or self._camera_height != height
         ):
-            if self._renderer is not None:
-                self._renderer.close()
+            if self._cam_renderer is not None:
+                self._cam_renderer.close()
 
-            self._renderer = mujoco.Renderer(
+            self._cam_renderer = mujoco.Renderer(
                 self.model,
                 height=height,
                 width=width,
@@ -206,25 +224,27 @@ class RobotArmEnv(TaxelMixin):
 
         # Switch between RGB and depth rendering
         if mode == "depth":
-            self._renderer.enable_depth_rendering()
+            self._cam_renderer.enable_depth_rendering()
         else:
-            self._renderer.disable_depth_rendering()
+            self._cam_renderer.disable_depth_rendering()
 
         # Render from the selected camera
-        self._renderer.update_scene(
+        self._cam_renderer.update_scene(
             self.data,
             camera=camera,
         )
 
-        image = self._renderer.render()
+        image = self._cam_renderer.render()
 
         return image.copy()
-    def close(self):
-        """Release the MuJoCo camera renderer."""
 
-        if self._renderer is not None:
-            self._renderer.close()
-            self._renderer = None
+    def close(self):
+        """Release the camera renderer, then the base class renderers."""
+        if self._cam_renderer is not None:
+            self._cam_renderer.close()
+            self._cam_renderer = None
+        super().close()
+
     def _reset_task(self, options):
         """Place objects and the arm. Must leave self._q_cmd / self._target consistent."""
         self._place_arm(self.HOME_TIP)
@@ -283,15 +303,26 @@ class RobotArmEnv(TaxelMixin):
         info.update(self._task_info())
         return info
 
-    def _get_obs(self):
+    def _obs_parts(self):
+        """The selected inputs, in a fixed order. Proprioception is always included."""
         tip = self._tip_pos()
-        parts = [tip,
-                 (self._target - tip) / self.LEASH,       # commanded vs measured: a crude force sense
-                 self._cmd_vel]                           # filtered velocity command (part of the state)
-        parts.append(self._privileged_obs() if self.privileged else self._tactile_obs())
+        parts = {"proprio": np.concatenate([
+            tip,
+            (self._target - tip) / self.LEASH,      # commanded vs measured: a crude force sense
+            self._cmd_vel,                          # filtered velocity command (part of the state)
+        ])}
+        if self.obs_modes["privileged"]:
+            parts["privileged"] = self._privileged_obs()
+        if self.obs_modes["tactile"]:
+            parts["tactile"] = self._tactile_obs()
+        if self.obs_modes["vision"]:
+            parts["vision"] = self.get_vision()
         if self.events:
-            parts.append(self._event_obs())
-        return np.concatenate(parts).astype(np.float32)
+            parts["events"] = self._event_obs()
+        return parts
+
+    def _get_obs(self):
+        return self._format_obs(self._obs_parts())
 
     # ------------------------------------------------------------------ control
     def _apply_action(self, a):

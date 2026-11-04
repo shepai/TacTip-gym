@@ -2,7 +2,9 @@
 Training / evaluation helpers for the tactip arm tasks (Stable-Baselines3).
 
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS)                     # privileged obs, PPO
-    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, privileged=False)   # tactip marker obs
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS,
+        obs_modes={"vision": True, "tactile": True, "privileged": False})   # pick the inputs
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, obs_format="dict")  # one key per input (fusion)
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, algo="SAC")         # more sample-efficient
     evaluate(ENV_NAME, MODEL_NAME)                                 # success rate, no viewer
     visualise(ENV_NAME, MODEL_NAME)                                # MuJoCo viewer
@@ -20,19 +22,21 @@ import time
 import gymnasium as gym
 import mujoco
 import numpy as np
+from gymnasium import spaces
 try:
     import mujoco.viewer             # needs a display; only used by visualise()
 except Exception:                    # pragma: no cover
     pass
 import torch
 from stable_baselines3 import PPO, SAC
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
 
+import cv2
+
 import tactip_mujoco_gym  # noqa: F401  (registers the environments)
-from recorder import TrainingVideoCallback, write_video
 
 ALGOS = {"PPO": PPO, "SAC": SAC}
 
@@ -85,6 +89,29 @@ def default_algo_kwargs(algo, n_envs):
 
 
 # ----------------------------------------------------------------------------- envs
+def policy_for(obs_space):
+    """MlpPolicy for a flat vector. For a dict: MultiInputPolicy (SB3 runs a CNN on image keys
+    and an MLP on the rest, then concatenates the features), with images kept out of
+    VecNormalize. Returns (policy name, keys to normalise or None, has images)."""
+    if isinstance(obs_space, spaces.Dict):
+        image_keys = [k for k, sp in obs_space.spaces.items()
+                      if sp.dtype == np.uint8 and len(sp.shape) == 3]
+        return "MultiInputPolicy", [k for k in obs_space.spaces if k not in image_keys], bool(image_keys)
+    return "MlpPolicy", None, False
+
+
+def _obs_bytes(obs_space):
+    if isinstance(obs_space, spaces.Dict):
+        return sum(_obs_bytes(sp) for sp in obs_space.spaces.values())
+    return int(np.prod(obs_space.shape)) * np.dtype(obs_space.dtype).itemsize
+
+
+def _describe(obs_space):
+    if isinstance(obs_space, spaces.Dict):
+        return "{" + ", ".join(f"{k}: {sp.shape}" for k, sp in obs_space.spaces.items()) + "}"
+    return str(obs_space.shape)
+
+
 def make_vec(env_name, n_envs, seed=0, env_kwargs=None):
     vec_cls = SubprocVecEnv if n_envs > 1 else DummyVecEnv
     return make_vec_env(env_id(env_name), n_envs=n_envs, seed=seed,
@@ -121,13 +148,116 @@ def load_policy(env_name, model_name, model_dir="models", env_kwargs=None, algo=
     return model, env, normalise, cfg
 
 
+# ----------------------------------------------------------------------------- videos
+# (lives here rather than in recorder.py so an old recorder.py next to this file can't be
+#  picked up by mistake)
+
+
+def write_video(frames, path, fps=30):
+    if not frames:
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    height, width = frames[0].shape[:2]
+    writer = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+    if not writer.isOpened():
+        raise RuntimeError(f"Could not open video writer: {path}")
+    try:
+        for frame in frames:
+            writer.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))   # RGB -> BGR for OpenCV
+    finally:
+        writer.release()
+
+
+class TrainingVideoCallback(BaseCallback):
+    """Records a short video of the current policy every `every_percent` of training.
+
+    Uses the training VecNormalize statistics to normalise observations - without that the
+    videos show a policy fed un-normalised inputs, i.e. near-random behaviour, even when
+    training is going well.
+    """
+
+    def __init__(self, env_name, total_timesteps, video_dir, every_percent=20, video_seconds=10,
+                 env_kwargs=None, verbose=1):
+        super().__init__(verbose)
+        self.env_name = env_name
+        self.env_kwargs = env_kwargs or {}
+        self.total_timesteps = total_timesteps
+        self.video_dir = video_dir
+        self.every_percent = every_percent
+        self.video_seconds = video_seconds
+        self.next_percent = every_percent
+        self.render_env = None
+        self.renderer = None
+
+    def _on_training_start(self):
+        os.makedirs(self.video_dir, exist_ok=True)
+        self.render_env = gym.make(self.env_name, **self.env_kwargs)
+        raw = self.render_env.unwrapped
+        self.renderer = mujoco.Renderer(raw.model, height=480, width=640)
+        self.cam = mujoco.MjvCamera()
+        core = mujoco.mj_name2id(raw.model, mujoco.mjtObj.mjOBJ_BODY, "core")
+        if core >= 0:                                       # follow the sensor
+            self.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+            self.cam.trackbodyid = core
+        else:
+            mujoco.mjv_defaultFreeCamera(raw.model, self.cam)
+            self.cam.lookat[:] = [0.4, 0.0, 0.05]
+        self.cam.distance, self.cam.azimuth, self.cam.elevation = 0.5, 135, -25
+
+    def _on_step(self):
+        progress = 100 * self.num_timesteps / self.total_timesteps
+        while self.next_percent <= 100 and progress >= self.next_percent:
+            self._record(self.next_percent)
+            self.next_percent += self.every_percent
+        return True
+
+    def _normalise(self, obs):
+        vn = self.model.get_vec_normalize_env()
+        return vn.normalize_obs(obs) if vn is not None else obs
+
+    def _record(self, percent):
+        env = self.render_env
+        raw = env.unwrapped
+        obs, _ = env.reset()
+        policy_dt = raw.FRAME_SKIP * raw.model.opt.timestep
+        fps = max(1, round(1.0 / policy_dt))
+        n_frames = max(1, round(self.video_seconds * fps))
+        frames, successes, episodes = [], 0, 0
+        for _ in range(n_frames):
+            self.renderer.update_scene(raw.data, camera=self.cam)
+            frames.append(self.renderer.render().copy())
+            action, _ = self.model.predict(self._normalise(obs), deterministic=True)
+            obs, _, terminated, truncated, info = env.step(action)
+            if terminated or truncated:
+                episodes += 1
+                successes += bool(info.get("is_success", False))
+                obs, _ = env.reset()
+        path = os.path.join(self.video_dir, f"progress_{percent:03d}pct_{self.num_timesteps}.mp4")
+        write_video(frames, path, fps=fps)
+        if self.verbose:
+            print(f"Saved training video: {path}  ({successes}/{episodes} episodes succeeded)")
+
+    def _on_training_end(self):
+        if self.renderer is not None:
+            self.renderer.close()
+            self.renderer = None
+        if self.render_env is not None:
+            self.render_env.close()
+            self.render_env = None
+
+
 # ----------------------------------------------------------------------------- training
 def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_video=True,
-        video_every_percent=10, video_seconds=7, privileged=True, algo="PPO", seed=0,
-        env_kwargs=None, algo_kwargs=None, checkpoint_every=500_000):
+        video_every_percent=20, video_seconds=7, obs_modes=None, privileged=None,
+        obs_format="flat", algo="PPO", seed=0, env_kwargs=None, algo_kwargs=None,
+        checkpoint_every=500_000):
     """
-    privileged : True  -> tip + object state observations (default)
-                 False -> tactip marker displacements + proprioception
+    obs_modes  : {"vision": bool, "tactile": bool, "privileged": bool}; missing keys = False.
+                 Proprioception is always included. Default: privileged only.
+    privileged : earlier shortcut (True = privileged only, False = tactile only); ignored
+                 when obs_modes is given
+    obs_format : "flat" (one long vector, MlpPolicy) or "dict" (one key per input,
+                 MultiInputPolicy: CNN on the camera image, MLP on the rest)
     env_kwargs : extra constructor args, e.g. {"spawn_yaw": 0.5} for TacArm-shape
     """
     print_device_info()
@@ -140,18 +270,36 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     os.makedirs(log_dir, exist_ok=True)
 
     env_kwargs = dict(env_kwargs or {})
-    env_kwargs.setdefault("privileged", privileged)
+    if obs_modes is not None:
+        env_kwargs.setdefault("obs_modes", dict(obs_modes))
+    elif privileged is not None:
+        env_kwargs.setdefault("privileged", bool(privileged))
+    if obs_format != "flat":
+        env_kwargs.setdefault("obs_format", obs_format)
     kw = default_algo_kwargs(algo, n_envs)
     kw.update(algo_kwargs or {})
 
     env = make_vec(env_name, n_envs, seed=seed, env_kwargs=env_kwargs)
+    policy, norm_keys, has_images = policy_for(env.observation_space)
     env = VecNormalize(env, norm_obs=True, norm_reward=(algo == "PPO"),
-                       clip_obs=10.0, gamma=kw.get("gamma", 0.99))
-    print(f"{env_name}: obs {env.observation_space.shape}, act {env.action_space.shape}, "
-          f"{n_envs} envs, {algo}, privileged={env_kwargs['privileged']}")
+                       clip_obs=10.0, gamma=kw.get("gamma", 0.99), norm_obs_keys=norm_keys)
+    modes = env.get_attr("obs_modes")[0]
+    print(f"{env_name}: inputs {[k for k, on in modes.items() if on] or ['proprioception only']}, "
+          f"obs {_describe(env.observation_space)}, act {env.action_space.shape}, "
+          f"{n_envs} envs, {algo}, {policy}")
 
-    device = "cpu" if algo == "PPO" else "auto"     # small MLPs + PPO are faster on CPU
-    model = ALGOS[algo]("MlpPolicy", env, verbose=1, seed=seed, device=device, **kw)
+    if algo == "SAC" and "buffer_size" not in (algo_kwargs or {}):
+        # a replay buffer stores every observation twice; camera inputs make that huge
+        cap = int(4e9 // (2 * _obs_bytes(env.observation_space)))
+        if cap < kw["buffer_size"]:
+            print(f"SAC replay buffer reduced to {cap:,} transitions to stay under ~4 GB "
+                  "(pass algo_kwargs={'buffer_size': ...} to override)")
+            kw["buffer_size"] = cap
+            kw["learning_starts"] = min(kw["learning_starts"], cap // 2)
+
+    # small MLPs + PPO are faster on CPU; a CNN on camera images wants the GPU
+    device = "cpu" if (algo == "PPO" and not has_images) else "auto"
+    model = ALGOS[algo](policy, env, verbose=1, seed=seed, device=device, **kw)
     model.set_logger(configure(log_dir, ["stdout", "csv"]))
 
     config = dict(env_name=env_name, algo=algo, env_kwargs=env_kwargs,

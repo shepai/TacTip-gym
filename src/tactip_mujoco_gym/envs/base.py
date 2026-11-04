@@ -1,27 +1,43 @@
 """
 Shared MuJoCo + Gymnasium plumbing for the tactip environments.
 
-TactileGymEnv  - loads the model, owns the tactip marker read-out (get_nodes) and the
-                 privileged / tactile observation switch. The original constructor signature
-                 (xml_subpath, obs_dim, action_dim) and the legacy reset/step/_get_obs are kept
-                 so other envs built on it (RobotFoot, RandomTac) behave exactly as before.
+TactileGymEnv  - loads the model, owns the tactip marker read-out (get_nodes), the hand-camera
+                 read-out (get_vision) and the observation-mode selection. The original
+                 constructor signature (xml_subpath, obs_dim, action_dim) and the legacy
+                 reset/step/_get_obs are kept so other envs built on it (RobotFoot, RandomTac)
+                 behave exactly as before.
 TaxelMixin     - optional event-based read-out of the tx_* touch sensors on the objects.
 
-Observation switch (arm tasks)
-------------------------------
-    env.unwrapped.set_privileged(True)    # default: tip + object state ("object marker")
-    env.unwrapped.set_privileged(False)   # tactip marker displacements + proprioception
-or at construction time (what you want for vectorised training):
-    gym.make("TacArm-hill", privileged=False)
+Observation modes (arm tasks)
+-----------------------------
+Proprioception (the arm's own state) is always included. On top of it, any combination of:
 
-Both rebuild env.observation_space. Call set_privileged before wrapping the env in a
-VecEnv / VecNormalize, or pass privileged=... through env_kwargs (see RL_BASE.run).
+    "privileged"  true task state: object position, goal vector, ... (default)
+    "tactile"     tactip marker displacements and their change since the last step
+    "vision"      the hand camera image (VISION_CAMERA, VISION_WIDTH x VISION_HEIGHT)
+
+    gym.make("TacArm-peg", obs_modes={"vision": True, "tactile": True, "privileged": False})
+    env.unwrapped.set_obs_modes({"tactile": True})     # a dict is a full selection: others off
+    env.unwrapped.set_obs_modes(vision=True)           # keywords change only those keys
+
+The selected parts are concatenated into one flat vector (obs_format="flat", default), in the
+order proprio, privileged, tactile, vision, events. obs_format="dict" returns them as separate
+keys instead, ready for a fusion network (SB3: MultiInputPolicy).
+
+Every change rebuilds env.observation_space, so call these before wrapping the env in a VecEnv /
+VecNormalize, or pass obs_modes=... through env_kwargs (see RL_BASE.run).
+The earlier privileged=True/False argument and set_privileged() still work:
+True = privileged only, False = tactile only.
 """
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 import mujoco
 from importlib.resources import files
+
+OBS_MODES = ("vision", "tactile", "privileged")
+DEFAULT_OBS_MODES = {"vision": False, "tactile": False, "privileged": True}
+OBS_FORMATS = ("flat", "dict")
 
 
 class TactileGymEnv(gym.Env):
@@ -35,6 +51,12 @@ class TactileGymEnv(gym.Env):
     SENSOR_CAM    = "sensor_cam"
     MARKER_SCALE  = 1e-3         # marker displacement is reported in mm (keeps obs ~O(1))
     MARKER_CLIP   = 20.0
+
+    VISION_CAMERA    = "handcam"
+    VISION_WIDTH     = 64        # keep small: in "flat" format every pixel is an input
+    VISION_HEIGHT    = 64        # (>= 36 if you use SB3's default CNN in "dict" format)
+    VISION_MODE      = "rgb"     # "rgb", "gray" or "depth"
+    VISION_MAX_DEPTH = 1.0       # metres; depth is divided by this in "flat" format
 
     def __init__(self, xml_subpath, obs_dim, action_dim):
         super().__init__()
@@ -52,7 +74,9 @@ class TactileGymEnv(gym.Env):
         self.render_mode = None
         self.step_count = 0
         self.max_steps = 200
-        self.privileged = True
+        self.obs_modes = dict(DEFAULT_OBS_MODES)
+        self.obs_format = "flat"
+        self._vision_renderer = None
 
         m = self.model
         self._ee_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, self.SENSOR_SITE)
@@ -128,21 +152,118 @@ class TactileGymEnv(gym.Env):
     def _done(self):
         return False
 
-    # ------------------------------------------------------------------ observation switch
-    def set_privileged(self, privileged=True):
-        """True: privileged state (tip + object positions). False: tactip markers + proprioception."""
-        if not privileged and self.n_markers == 0:
+    # ------------------------------------------------------------------ observation modes
+    @staticmethod
+    def _clean_obs_modes(modes):
+        unknown = set(modes) - set(OBS_MODES)
+        if unknown:
+            raise ValueError(f"Unknown observation mode(s) {sorted(unknown)}; "
+                             f"choose from {list(OBS_MODES)}")
+        return {k: bool(v) for k, v in modes.items()}
+
+    @classmethod
+    def resolve_obs_modes(cls, obs_modes=None, privileged=None):
+        """obs_modes dict (missing keys = False) > legacy privileged flag > default."""
+        if obs_modes is not None:
+            if privileged is not None:
+                import warnings
+                warnings.warn("Both obs_modes and privileged were given; using obs_modes.", stacklevel=3)
+            modes = {k: False for k in OBS_MODES}
+            modes.update(cls._clean_obs_modes(obs_modes))
+            return modes
+        if privileged is not None:              # earlier API: privileged XOR tactile
+            return {"vision": False, "tactile": not privileged, "privileged": bool(privileged)}
+        return dict(DEFAULT_OBS_MODES)
+
+    def set_obs_modes(self, obs_modes=None, **flags):
+        """Choose which inputs make up the observation (proprioception is always included).
+
+            env.set_obs_modes({"vision": True, "tactile": True})   # full selection, others off
+            env.set_obs_modes(privileged=False)                    # change just these keys
+        """
+        modes = self.resolve_obs_modes(obs_modes) if obs_modes is not None else dict(self.obs_modes)
+        modes.update(self._clean_obs_modes(flags))
+        if modes["tactile"] and self.n_markers == 0:
             raise RuntimeError(f"No '{self.MARKER_PREFIX}*' marker sites in the model; "
                                "tactile observations are unavailable.")
-        self.privileged = bool(privileged)
+        if modes["vision"] and mujoco.mj_name2id(
+                self.model, mujoco.mjtObj.mjOBJ_CAMERA, self.VISION_CAMERA) < 0:
+            raise RuntimeError(f"Camera '{self.VISION_CAMERA}' not found in the model; "
+                               "vision observations are unavailable.")
+        self.obs_modes = modes
         self._update_obs_space()
         return self.observation_space
+
+    def set_obs_format(self, obs_format="flat"):
+        """"flat": one long vector. "dict": one key per selected input (for fusion networks)."""
+        if obs_format not in OBS_FORMATS:
+            raise ValueError(f"obs_format must be one of {OBS_FORMATS}, not {obs_format!r}")
+        self.obs_format = obs_format
+        self._update_obs_space()
+        return self.observation_space
+
+    def set_privileged(self, privileged=True):
+        """Earlier API, kept for existing scripts: True = privileged state only,
+        False = tactile markers only. Vision is left as it is."""
+        return self.set_obs_modes(privileged=bool(privileged), tactile=not privileged)
+
+    @property
+    def privileged(self):
+        return self.obs_modes["privileged"]
+
+    @privileged.setter
+    def privileged(self, value):
+        self.obs_modes["privileged"] = bool(value)
 
     def _update_obs_space(self):
         """Size the observation space from an actual observation, so it can never drift out
         of sync with _get_obs (the old hand-written obs_dim values could)."""
         obs = self._get_obs()
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype=np.float32)
+        if isinstance(obs, dict):
+            self.observation_space = spaces.Dict(
+                {k: self._space_for(k, v) for k, v in obs.items()})
+        else:
+            self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs.shape, dtype=np.float32)
+
+    @staticmethod
+    def _space_for(key, value):
+        if value.dtype == np.uint8:                         # camera image (rgb / gray)
+            return spaces.Box(0, 255, shape=value.shape, dtype=np.uint8)
+        return spaces.Box(-np.inf, np.inf, shape=value.shape, dtype=np.float32)
+
+    def _format_obs(self, parts):
+        """parts: ordered {name: array}. Returns one flat float32 vector, or a dict."""
+        if self.obs_format == "dict":
+            return {k: (v if v.dtype == np.uint8 else v.astype(np.float32)) for k, v in parts.items()}
+        flat = []
+        for k, v in parts.items():
+            if k == "vision":
+                v = (v.astype(np.float32) / 255.0 if v.dtype == np.uint8
+                     else np.clip(v / self.VISION_MAX_DEPTH, 0.0, 1.0))
+            flat.append(np.asarray(v, dtype=np.float32).ravel())
+        return np.concatenate(flat).astype(np.float32)
+
+    # ------------------------------------------------------------------ hand camera read-out
+    def get_vision(self):
+        """Hand-camera image used for the "vision" input, shape (H, W, C).
+        rgb: uint8 (H, W, 3); gray: uint8 (H, W, 1); depth: float32 metres (H, W, 1).
+        Uses its own small renderer, separate from any viewing / video renderer."""
+        if self.VISION_MODE not in ("rgb", "gray", "depth"):
+            raise ValueError(f"VISION_MODE must be 'rgb', 'gray' or 'depth', not {self.VISION_MODE!r}")
+        if self._vision_renderer is None:
+            self._vision_renderer = mujoco.Renderer(
+                self.model, height=self.VISION_HEIGHT, width=self.VISION_WIDTH)
+            if self.VISION_MODE == "depth":
+                self._vision_renderer.enable_depth_rendering()
+        r = self._vision_renderer
+        r.update_scene(self.data, camera=self.VISION_CAMERA)
+        img = r.render()
+        if self.VISION_MODE == "depth":
+            return img.astype(np.float32)[..., None]
+        if self.VISION_MODE == "gray":
+            gray = img.astype(np.float32) @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+            return np.clip(gray, 0, 255).astype(np.uint8)[..., None]
+        return img.copy()
 
     # ------------------------------------------------------------------ tactip read-out
     def get_nodes(self):
@@ -199,10 +320,10 @@ class TactileGymEnv(gym.Env):
         return self._view_renderer.render().copy()
 
     def close(self):
-        for r in (self._renderer, self._view_renderer):
+        for r in (self._renderer, self._view_renderer, self._vision_renderer):
             if r is not None:
                 r.close()
-        self._renderer = self._view_renderer = None
+        self._renderer = self._view_renderer = self._vision_renderer = None
         super().close()
 
 
