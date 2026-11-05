@@ -5,7 +5,7 @@ ENV_NAME = "TacArm-edge"
 #   privileged = true object / goal state, tactile = tactip markers, vision = hand camera
 OBS_MODES = {"vision": True, "tactile": False, "privileged": False}
 OBS_FORMAT = "flat"                # "flat" = one long vector; "dict" = one key per input (fusion)
-MODEL_NAME = "TacArm-edge_v3_" + "+".join(k for k, on in OBS_MODES.items() if on)  # -> models/<MODEL_NAME>.zip
+MODEL_NAME = "TacArm-edge_visiononly_" + "+".join(k for k, on in OBS_MODES.items() if on)  # -> models/<MODEL_NAME>.zip
 LOG_NAME = MODEL_NAME              # -> logs/<LOG_NAME>/progress.csv
 STEPS = 5_000_000
 ENV_KWARGS = {}

@@ -7,21 +7,26 @@ name = "my-package"
 version = "0.1.0"
 description = "My awesome package"
 readme = "README.md"
-requires-python = ">=3.9"
 authors = [
     {name = "Dexter Shepherd"}
 ]
+requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2.0",
-    "torch>=2.7",
-    "opencv-python>=4.10",
-    "mujoco",
-    "gymnasium",
-    "dm_control",
-    "rich",
-    "tqdm",
-    "stable_baselines3"
+    "mujoco>=3.2",            # tested on 3.3.7
+    "gymnasium>=1.0,<2.0",    # tested on 1.4; SB3 requires <2
+    "numpy>=1.24",
+]
 
+[project.optional-dependencies]
+train = [
+    "stable-baselines3>=2.4,<3",   # Gymnasium 1.x support; code checked against 2.9
+    "torch>=2.0",                  # SB3 2.9 itself needs torch>=2.8 and will pull it in
+    "opencv-python",               # training videos, viewing camera images
+    "tqdm",                        # progress bar in run()
+    "rich",
+]
+legacy = [
+    "dm_control",             # only for env.physics on the old base class
 ]
 
 [tool.setuptools]
