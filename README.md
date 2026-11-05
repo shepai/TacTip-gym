@@ -11,7 +11,9 @@ The simulator models the TacTip's silicone skin as a mesh of points with a flexi
 
 - Gymnasium-style API (`reset()` / `step()`), compatible with PPO, SAC and other standard RL libraries
 - Soft-body TacTip simulation with marker-based tactile observations
-- Two observation modes for every task: **privileged** (true object and goal state) and **tactile** (TacTip markers and the arm's own position only)
+- Three inputs that can be combined freely: **privileged** (true object and goal state), **tactile** (TacTip markers) and **vision** (a camera on the hand), always alongside the arm's own position
+- Observations as one flat vector, or as a dictionary with one key per input, ready for fusion networks
+- A visuo-tactile pipeline: collect paired datasets from the gym, pretrain tactile and vision encoders, then train a policy on top of them
 - A 6-DoF robot arm controlled through the fingertip, with a smooth Cartesian controller: no drift, no IK jumps, and the fingertip moves at the speed it is asked to
 - Four manipulation tasks: edge following, peg pushing, shape insertion and incline pushing
 - Peg, shape and edge episodes start with the sensor already touching the object
@@ -25,29 +27,27 @@ The simulator models the TacTip's silicone skin as a mesh of points with a flexi
 Navigate to the folder where you downloaded the repo and run:
 
 ```bash
-pip install -e .
+pip install -e .              # the environments: mujoco, gymnasium, numpy
+pip install -e ".[train]"     # + everything in examples/RL tasks/ (stable-baselines3, torch, opencv, tqdm, rich)
+pip install -e ".[legacy]"    # + dm_control, only needed for the old env.physics attribute
 ```
 
-The training scripts in `examples/RL tasks/` also need:
+For GPU training on Windows, install PyTorch from the selector at [pytorch.org](https://pytorch.org) **before** `pip install -e ".[train]"`; a plain `pip install torch` gives the CPU-only build there.
 
-```bash
-pip install stable-baselines3 torch opencv-python tqdm rich
-```
-
-The arm environments only use the official `mujoco` package. `dm_control` is only loaded if something asks for the legacy `env.physics` attribute.
+The vision input and the training videos render offscreen. On a Linux machine without a display, set `MUJOCO_GL=egl` before running.
 
 ## Environments
 
-Every task builds on a shared `RobotArmEnv` base class, which owns the arm, the controller, the observation modes and the reset logic. Each task supplies its own scene, task state, reward and success / failure rule.
+Every task builds on a shared `RobotArmEnv` base class, which owns the arm, the controller, the observation inputs and the reset logic. Each task supplies its own scene, task state, reward and success / failure rule.
 
-| Gym ID | Class | Goal | Observation (privileged / tactile) | Action | Episode | Success |
-|--------|-------|------|------------------------------------|--------|---------|---------|
-| `TacArm-edge` | `Edge` | Start touching the top edge of a randomly rotated block and follow it all the way round | 22 / 435 | 3 (x, y, z) | 400 steps (8 s) | One full anticlockwise lap |
-| `TacArm-peg` | `Peg` | Start touching an upright cylinder and push it into a hole | 20 / 434 | 2 (x, y) | 250 steps (5 s) | Cylinder drops into the hole |
-| `TacArm-shape` | `ShapeInsertion` | Start touching one of four shapes and push it into its own hole | 25 / 434 | 2 (x, y) | 300 steps (6 s) | Shape goes into the correct hole |
-| `TacArm-hill` | `Incline` | Intercept a ball rolling down a ramp whose friction changes each episode, then push it to the top | 23 (24 with friction) / 434 | 2 (along / across the slope) | 300 steps (6 s) | Ball within 4 cm of the top |
+| Gym ID | Class | Goal | Action | Episode | Success |
+|--------|-------|------|--------|---------|---------|
+| `TacArm-edge` | `Edge` | Start touching the top edge of a randomly rotated block and follow it all the way round | 3 (x, y, z) | 400 steps (8 s) | One full anticlockwise lap |
+| `TacArm-peg` | `Peg` | Start touching an upright cylinder and push it into a hole | 2 (x, y) | 250 steps (5 s) | Cylinder drops into the hole |
+| `TacArm-shape` | `ShapeInsertion` | Start touching one of four shapes and push it into its own hole | 2 (x, y) | 300 steps (6 s) | Shape goes into the correct hole |
+| `TacArm-hill` | `Incline` | Intercept a ball rolling down a ramp whose friction changes each episode, then push it to the top | 2 (along / across the slope) | 300 steps (6 s) | Ball within 4 cm of the top |
 
-Tactile sizes are for the 71-marker TacTip (213 marker values). The policy runs at 50 Hz: each environment step is 20 MuJoCo steps of 1 ms.
+The policy runs at 50 Hz: each environment step is 20 MuJoCo steps of 1 ms.
 
 There are also two basic environments that are registered with Gymnasium:
 
@@ -58,7 +58,9 @@ Every arm environment accepts these keyword arguments through `gym.make(...)`:
 
 | Argument | Default | Meaning |
 |----------|---------|---------|
-| `privileged` | `True` | `True`: true task state. `False`: TacTip markers + proprioception |
+| `obs_modes` | privileged only | Which inputs to use: `{"vision": bool, "tactile": bool, "privileged": bool}`. Keys left out count as `False` |
+| `obs_format` | `"flat"` | `"flat"`: one long vector. `"dict"`: one key per input |
+| `privileged` | | Earlier shortcut: `True` = privileged only, `False` = tactile only. Ignored if `obs_modes` is given |
 | `events` | `False` | Append taxel events to the observation (see below) |
 | `max_steps` | per task | Override the episode length |
 | `start_touching` | `True` | `Peg` / `ShapeInsertion`: start in contact with the object |
@@ -66,29 +68,64 @@ Every arm environment accepts these keyword arguments through `gym.make(...)`:
 | `spawn_toward_hole` | `0.0` | `ShapeInsertion`: 0 = start in the middle, 1 = start in line with the correct hole |
 | `observe_friction` | `False` | `Incline`: add the true friction level to the observation |
 
-### Observation modes
+### Observation inputs
 
-Both modes start with the same short **proprioception** block, because a real robot always knows where its own arm is:
+Every observation starts with a short **proprioception** block, because a real robot always knows where its own arm is:
 
 - fingertip position (3)
 - commanded fingertip position minus measured fingertip position, divided by 1 cm (3). When the fingertip is pressed against something it lags behind the command, so this acts as a rough force sense
 - the smoothed velocity command the arm is following (2, or 3 for edge following)
 
-After that:
+Any combination of three inputs can be added to it:
 
-- **Privileged** (default): the task state, such as object position, vector to the goal, object velocity and whether the sensor is touching. Each task's list is below.
-- **Tactile:** marker displacement from the untouched sensor (3 values per marker, in mm), then the change in each marker since the previous step (3 per marker, in mm). The object and the goal are never given directly.
+| Input | Contents | Size |
+|-------|----------|------|
+| `privileged` | The true task state: object position, vector to the goal, object velocity, whether the sensor is touching, and so on. Each task's list is below | 12 to 17 |
+| `tactile` | Marker displacement from the untouched sensor (3 values per marker, in mm), then the change in each marker since the previous step (3 per marker, in mm) | 426 |
+| `vision` | The image from the hand camera, `handcam` (64 × 64 RGB by default) | 12,288 |
+
+Sizes per task, with the 71-marker TacTip and the default camera settings:
+
+| Task | proprio | privileged | tactile | vision |
+|------|---------|------------|---------|--------|
+| `TacArm-edge` | 9 | 13 | 426 | 12,288 |
+| `TacArm-peg` | 8 | 12 | 426 | 12,288 |
+| `TacArm-shape` | 8 | 17 | 426 | 12,288 |
+| `TacArm-hill` | 8 | 15 (16 with friction) | 426 | 12,288 |
+
+In the default `"flat"` format the selected parts are joined into one vector, in the order proprio, privileged, tactile, vision, events, with the image scaled to 0 to 1. In the `"dict"` format each part keeps its own key, and the image stays as `uint8` with shape (H, W, C), which is what Stable-Baselines3's `MultiInputPolicy` expects.
 
 ```python
-env = gym.make("TacArm-peg", privileged=False)   # tactile from the start (use this for training)
-env.unwrapped.set_privileged(True)               # or switch later; rebuilds env.observation_space
+env = gym.make("TacArm-peg", obs_modes={"vision": True, "tactile": True})     # privileged off
+env = gym.make("TacArm-peg", obs_modes={"tactile": True}, obs_format="dict")   # one key per input
+
+env.unwrapped.set_obs_modes({"vision": True})    # a dict is a full selection: the others turn off
+env.unwrapped.set_obs_modes(tactile=True)        # keywords change only those inputs
+env.unwrapped.set_obs_format("dict")
+env.unwrapped.set_privileged(False)              # earlier API, still works: tactile only
 ```
 
-The observation space is rebuilt from a real observation, so its size can never get out of step with what `step()` returns. Call `set_privileged()` before wrapping the env in a `VecEnv` or `VecNormalize`. For vectorised training, pass `privileged` through `env_kwargs` instead.
+Each of these rebuilds the observation space from a real observation, so its size can never get out of step with what `step()` returns. Call them before wrapping the env in a `VecEnv` or `VecNormalize`. For vectorised training, pass `obs_modes` through `run()` or `env_kwargs` instead.
 
-The markers are read by `get_nodes()`, which returns every `s_c*` marker site in the sensor's own (`ee_site`) frame. The untouched marker positions are recorded once, when the environment is built, with the arm in free space.
+**Tactile.** The markers are read by `get_nodes()`, which returns every `s_c*` marker site in the sensor's own (`ee_site`) frame. The untouched marker positions are recorded once, when the environment is built, with the arm in free space.
 
-Privileged mode is the quickest way to check that a task, reward and controller can be learned at all. Tactile mode is the setting a real robot faces.
+**Vision.** The camera and image are set by class attributes:
+
+| Attribute | Default | Meaning |
+|-----------|---------|---------|
+| `VISION_CAMERA` | `"handcam"` | Camera used for the vision input |
+| `VISION_WIDTH`, `VISION_HEIGHT` | 64, 64 | Image size. Keep it small: in the flat format every pixel is an input (and SB3's default CNN needs at least 36) |
+| `VISION_MODE` | `"rgb"` | `"rgb"`, `"gray"` or `"depth"` (depth in metres) |
+| `VISION_MAX_DEPTH` | 1.0 | Depth is divided by this in the flat format |
+
+The vision input has its own small renderer. For viewing or recording at full size, use `get_camera()`, which keeps a separate renderer:
+
+```python
+img = env.unwrapped.get_camera()                          # handcam, 640 x 480, uint8 RGB
+depth = env.unwrapped.get_camera("depth", width=320, height=240)   # float32, metres
+```
+
+Privileged mode is the quickest way to check that a task, reward and controller can be learned at all. Tactile and vision are the settings a real robot faces.
 
 ### How the arm is controlled
 
@@ -120,7 +157,7 @@ Action layouts:
 2. The arm is teleported to an IK solution for the start pose, just clear of the object, and held still for 100 physics steps. Teleporting avoids swinging the arm across the scene.
 3. For edge, peg and shape, the fingertip creeps towards the object (about 1 mm every 10 ms) until the sensor touches it. If a light object is nudged away and contact is lost, it retries with finer steps.
 
-So these episodes start with the sensor touching the object, which is essential in tactile mode. The incline is the exception by design: the fingertip is placed on the lower half of the ramp and the ball is dropped above it, so the episode begins with the ball rolling down.
+So these episodes start with the sensor touching the object, which is essential with touch as the only input. The incline is the exception by design: the fingertip is placed on the lower half of the ramp and the ball is dropped above it, so the episode begins with the ball rolling down.
 
 ### Rewards
 
@@ -134,13 +171,13 @@ closeness(d, sigma) = 1 - tanh(abs(d) / sigma)                            # smal
 - **Success:** +100 (`R_SUCCESS`) and the episode ends.
 - **Unrecoverable failure:** -10 (`R_FAIL`) and the episode ends.
 
-All terms depend only on the current state, with no hidden stage counters. An earlier version paid mainly for being *near* the goal. A policy that did nothing then scored 103 over a peg episode, while noisy pushing attempts scored 16 to 56 because they often tipped the cylinder, so the agent learned to sit still. Paying for progress fixes this.
+All terms depend only on the current state, with no hidden stage counters. The reward is the same whichever inputs the policy sees. An earlier version paid mainly for being *near* the goal. A policy that did nothing then scored 103 over a peg episode, while noisy pushing attempts scored 16 to 56 because they often tipped the cylinder, so the agent learned to sit still. Paying for progress fixes this.
 
 ### Edge following
 
 The block is randomly rotated each episode and the start point is chosen at random on one of the top edges, at least 1.5 cm from a corner. The fingertip is lowered onto the edge until it touches. The contact height is recorded, and the agent is rewarded for keeping that depth. The top of the block is treated as a 0.6 m loop: for any fingertip position the environment finds the closest point, its distance round the loop (arc length), the sideways error and the anticlockwise edge direction.
 
-- **Privileged observation (22):** proprioception (9), block centre relative to the fingertip (2), sine and cosine of the block's rotation (2), nearest edge point relative to the fingertip (2), edge direction (2), sideways error, height error, distance to the next corner, fraction of the lap completed, and touching (5)
+- **Privileged input (13):** block centre relative to the fingertip (2), sine and cosine of the block's rotation (2), nearest edge point relative to the fingertip (2), edge direction (2), sideways error, height error, distance to the next corner, fraction of the lap completed, and touching (5)
 - **Reward:** `0.10 * on_edge + 0.05 * touching + 0.05 * depth + 0.80 * on_edge * touching * progress`, where `on_edge = closeness(sideways_error, 5 mm)`, `depth = closeness(height_error, 3 mm)` and progress is the change in arc length (going the wrong way round is negative)
 - **Success:** +100 after one full lap (`LAP_FRACTION`)
 - **Fail:** -10 if the fingertip is more than 2.5 cm from the edge, lifts more than 2 cm, or slips more than 1.5 cm down the side
@@ -149,7 +186,7 @@ The block is randomly rotated each episode and the start point is chosen at rand
 
 An upright cylinder (4 cm wide) sits on a platform with a 6 cm hole (1 cm clearance per side). It starts 8 to 12 cm from the hole and up to 2 cm to either side, with the fingertip touching it on the side facing away from the hole.
 
-- **Privileged observation (20):** proprioception (8), cylinder position (3), vector from cylinder to hole (2), vector from cylinder to fingertip (2), cylinder tilt (2), cylinder velocity (2), touching (1)
+- **Privileged input (12):** cylinder position (3), vector from cylinder to hole (2), vector from cylinder to fingertip (2), cylinder tilt (2), cylinder velocity (2), touching (1)
 - **Reward:** `0.1 * closeness(tip - push_point, 2 cm) + 0.2 * closeness(goal_dist, 8 cm) + 0.7 * progress(goal_dist)`. The push point is on the far side of the cylinder from the hole and is recomputed every step
 - **Success:** +100 when the cylinder is over the hole and has dropped 1.5 cm
 - **Fail:** -10 if the cylinder tips more than about 30 degrees, is lying on its side, or leaves the platform anywhere other than the hole. Tipping is ignored while it is over the hole, because it tilts as it drops in
@@ -158,11 +195,11 @@ MuJoCo cannot cut a hole in a solid, so the platform is built from four box slab
 
 ### ShapeInsertion
 
-The platform has four holes (circle, square, rectangle and triangle). Each episode one of the four shapes is shown, with a random start position and rotation, and the fingertip starts touching it. The agent must push it to its own hole. In tactile mode it is not told which shape it has, so it has to identify the shape by touch.
+The platform has four holes (circle, square, rectangle and triangle). Each episode one of the four shapes is shown, with a random start position and rotation, and the fingertip starts touching it. The agent must push it to its own hole. Without the privileged input it is not told which shape it has, so it has to identify the shape by touch or sight.
 
 - **Hidden shapes:** all four shapes exist in the scene, but three are hidden each episode: transparent, collisions off, and put back in their parking spot after every step. Setting gravity compensation at runtime has no effect unless the model was built with it.
 - **Generated holes:** `shape_config.py` writes the scene XML from one shared configuration, so the Python code and the geometry cannot drift apart. Run `python shape_config.py` to regenerate it.
-- **Privileged observation (25):** proprioception (8), shape position (3), sine and cosine of (symmetry order × yaw) and the yaw error (3), vector to the target hole (2), vector from shape to fingertip (2), shape velocity (2), touching (1), one-hot shape identity (4)
+- **Privileged input (17):** shape position (3), sine and cosine of (symmetry order × yaw) and the yaw error (3), vector to the target hole (2), vector from shape to fingertip (2), shape velocity (2), touching (1), one-hot shape identity (4)
 - **Symmetry-aware yaw error:** the yaw error wraps by each shape's rotational symmetry (circle: none, square: 90 degrees, rectangle: 180 degrees, triangle: 120 degrees), so rotations that already fit are not penalised.
 - **Reward:** `0.10 * closeness(tip - push_point, 2 cm) + 0.15 * closeness(goal_dist, 12 cm) + 0.60 * progress(goal_dist) + 0.15 * near * closeness(yaw_error, 0.15 rad)`, where `near` rises from 0 to 1 over the last 10 cm to the hole
 - **Success:** +100 when part of the shape is at least 8 mm below the plate surface (`INSERT_DEPTH`) within 3 cm of the correct hole
@@ -179,7 +216,7 @@ The fingertip starts on the lower half of a 15 degree ramp and a ball is dropped
 
 Low friction means the ball rolls back down as soon as the push stops, so the agent has to push continuously. High friction means the ball holds its place, so short pushes are enough. The friction is hidden from the policy by default, so it has to be inferred from how the ball moves.
 
-- **Privileged observation (23):** proprioception (8), fingertip position in slope coordinates (3), ball position in slope coordinates (3), fingertip offset from the ball (2), ball velocity in slope coordinates (3), ball spin times its radius (3), touching (1). `observe_friction=True` adds the friction level as a 24th value.
+- **Privileged input (15):** fingertip position in slope coordinates (3), ball position in slope coordinates (3), fingertip offset from the ball (2), ball velocity in slope coordinates (3), ball spin times its radius (3), touching (1). `observe_friction=True` adds the friction level as a 16th value.
 - **Reward:** `0.15 * closeness(tip - point_below_ball, 3 cm) + 0.25 * ball_height + 0.60 * progress(ball_height)`. The ball is rolling down at the start, so progress is negative until the agent stops it, which pushes the agent to meet the ball early.
 - **Success:** +100 when the ball is within 4 cm of the top
 - **Fail:** -10 if the ball rolls off the bottom, goes more than 10 cm sideways, or pops off the surface
@@ -195,7 +232,7 @@ import gymnasium as gym
 import mujoco.viewer
 import tactip_mujoco_gym  # triggers register()
 
-env = gym.make("TacArm-peg")                    # add privileged=False for tactile observations
+env = gym.make("TacArm-peg", obs_modes={"tactile": True, "vision": True})
 raw = env.unwrapped
 obs, info = env.reset(seed=0)
 dt = raw.FRAME_SKIP * raw.model.opt.timestep    # 0.02 s per step
@@ -213,12 +250,12 @@ with mujoco.viewer.launch_passive(raw.model, raw.data) as viewer:
 
 `info` contains `is_success` plus task details such as `goal_dist`, `touching`, `friction` or `laps`.
 
-You can view the image from the camera inside the sensor with:
+To look at the hand camera, or the camera inside the sensor:
 
 ```python
 import cv2
-img = raw.get_tactile_image()                   # float32 RGB in [0, 1]
-cv2.imshow("sensor_cam", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+cv2.imshow("handcam", cv2.cvtColor(raw.get_camera(), cv2.COLOR_RGB2BGR))       # uint8 RGB
+cv2.imshow("sensor_cam", cv2.cvtColor(raw.get_tactile_image(), cv2.COLOR_RGB2BGR))  # float32 in [0, 1]
 cv2.waitKey(1)
 ```
 
@@ -231,25 +268,37 @@ The examples in `examples/RL tasks/` wrap Stable-Baselines3:
 | File | Purpose |
 |------|---------|
 | `RL_BASE.py` | `run()`, `evaluate()`, `visualise()` and the training-video callback |
-| `edge_following.py`, `peg_insertion.py`, `shape_insertion.py`, `incline_ball.py` | One script per task: set `PRIVILEGED` and the step count, then run |
+| `edge_following.py`, `peg_insertion.py`, `shape_insertion.py`, `incline_ball.py` | One script per task: set `OBS_MODES`, `OBS_FORMAT` and the step count, then run |
 | `check_envs.py` | Checks each task before training (see below) |
+| `collect_dataset.py`, `train_encoders.py`, `vt_encoders.py`, `visuotactile_train.py` | The visuo-tactile pipeline (see below) |
 
 ```python
 from RL_BASE import run, evaluate, visualise
 
 if __name__ == "__main__":          # required: each environment runs in its own process
-    run("TacArm-peg", "peg_v2", "peg_v2", 3_000_000, privileged=True)    # or privileged=False
-    evaluate("TacArm-peg", "peg_v2", n_episodes=50)                      # success rate, no viewer
-    visualise("TacArm-peg", "peg_v2")                                    # MuJoCo viewer
+    run("TacArm-peg", "peg_v3", "peg_v3", 3_000_000,
+        obs_modes={"vision": False, "tactile": True, "privileged": False})
+    evaluate("TacArm-peg", "peg_v3", n_episodes=50)                      # success rate, no viewer
+    visualise("TacArm-peg", "peg_v3")                                    # MuJoCo viewer
 ```
 
-`run()` creates one environment per process (`SubprocVecEnv`), normalises observations and rewards with `VecNormalize`, writes `logs/<name>/progress.csv`, saves a checkpoint every 500k steps and records a short video at every 20% of training. Extra environment arguments go in `env_kwargs`, e.g. `run(..., env_kwargs={"spawn_yaw": 0.5})`, and `algo="SAC"` switches algorithm. It saves, in both `logs/<name>/` and `models/`:
+`run()` creates one environment per process (`SubprocVecEnv`), normalises observations and rewards with `VecNormalize`, writes `logs/<name>/progress.csv`, saves a checkpoint every 500k steps and records a short video at every 20% of training. Extra environment arguments go in `env_kwargs`, e.g. `run(..., env_kwargs={"spawn_yaw": 0.5})`, and `algo="SAC"` switches algorithm. The task scripts name each model after its inputs, e.g. `TacArm-peg_v3_vision+tactile`.
+
+The policy follows the observation format:
+
+- `obs_format="flat"` (default): `MlpPolicy` on the whole vector.
+- `obs_format="dict"`: `MultiInputPolicy`. SB3 runs a small CNN on the camera image and an MLP on the other inputs, then joins them. The image is kept out of `VecNormalize`.
+- `encoders=...`: the pretrained encoders from the visuo-tactile pipeline, then an MLP (see below).
+
+`run()` saves, in both `logs/<name>/` and `models/`:
 
 - `<name>.zip`: the policy
 - `<name>_vecnormalize.pkl`: the observation statistics. The policy was trained on normalised observations and acts almost randomly without them, so these are saved **after** training and loaded by `evaluate()`, `visualise()` and the videos.
-- `<name>.json`: environment name, arguments and algorithm, so the same environment is rebuilt for evaluation
+- `<name>.json`: environment name, arguments, algorithm and encoders, so the same environment is rebuilt for evaluation
 
-Default PPO settings: 8 environments, 1024 steps each per update, minibatch 512, 10 epochs, learning rate 3e-4, gamma 0.99, GAE lambda 0.95, clip 0.2, target KL 0.03, separate 256 x 256 tanh policy and value networks, initial action standard deviation 0.6.
+Default PPO settings: 8 environments, 1024 steps each per update, minibatch 512, 10 epochs, learning rate 3e-4, gamma 0.99, GAE lambda 0.95, clip 0.2, target KL 0.03, separate 256 x 256 tanh policy and value networks, initial action standard deviation 0.6. PPO runs on the CPU unless the policy has a CNN.
+
+With SAC, the replay buffer stores every observation twice, so camera inputs make the default 1M-step buffer enormous. `run()` caps it at about 4 GB and prints a note when it does; pass `algo_kwargs={"buffer_size": ...}` to override.
 
 ### Check an environment first
 
@@ -273,6 +322,76 @@ Success rate over the last 100 training episodes, with PPO:
 | ShapeInsertion (central start) | Privileged | 27% after 100k steps, 53% after 500k (still improving) |
 
 The first version of the incline task stayed at 3 to 5% success over a million training steps. These runs used a stand-in arm (a Unitree Z1 with a simplified 37-marker TacTip) and a minimal PPO implementation with the same normalisation and loss, so exact numbers on the full TacTip model will differ.
+
+## Visuo-tactile pipeline
+
+Learning from camera images and tactile markers with RL alone is slow: on peg, the tactile-only policy needed several times more steps than the privileged one. The pipeline uses the simulator's privileged state as free labels to pretrain the encoders first, then trains the policy on top of them.
+
+```bash
+python collect_dataset.py --env TacArm-peg --frames 50000 --workers 4
+python train_encoders.py --data datasets/TacArm-peg --out encoders/peg_vt.pt
+python visuotactile_train.py
+```
+
+### 1. Collect a dataset
+
+`collect_dataset.py` runs the environments with every input switched on and saves compressed shards to `datasets/<env>/`, plus a `meta.json`. Each frame holds:
+
+| Key | Contents |
+|-----|----------|
+| `proprio`, `privileged`, `tactile`, `vision` | The observation **before** the action |
+| `teacher_action` | What the teacher does in this state (labels for behaviour cloning) |
+| `action` | What was actually executed |
+| `reward`, `terminated`, `truncated`, `success` | What happened next |
+| `touching`, `contact_force` | Contact between the sensor and the object |
+| `shape_id` | `TacArm-shape` only: index into `ShapeInsertion.SHAPE_NAMES` (-1 otherwise) |
+| `episode`, `t` | Episode id and step index |
+
+The teacher is the hand-written privileged controller from `check_envs.py`, or a privileged model trained with `run()` (`--teacher <model name>`). So the data covers good and bad states, each episode picks one behaviour: 70% teacher plus noise, 20% random actions, 10% teacher without noise. `--env all` collects every task, `--workers` runs several processes, and `--env-kwargs '{"spawn_yaw": 0.5}'` passes environment arguments. A frame takes about 1.5 KB on disk, so 50,000 frames is about 75 MB.
+
+### 2. Train the encoders
+
+`train_encoders.py` trains a **tactile encoder** (an MLP on the marker vector, which stores its own input normalisation) and a **vision encoder** (a small CNN on the camera image). Given several `--data` folders, one pair of encoders is shared across all of them, with small prediction heads per task. For each frame it learns to predict the privileged state from:
+
+- the tactile features and the proprioception,
+- the vision features and the proprioception,
+- both together.
+
+Validation uses held-out episodes, and every epoch prints an R² table (1 = predicts the privileged state perfectly, 0 = no better than the average). That shows what touch and sight each know about each task. Check this before training a policy: if an encoder cannot predict the privileged state, a policy built on it will struggle too.
+
+| Option | Default | Meaning |
+|--------|---------|---------|
+| `--align` | 0 | Weight of a contrastive loss that aligns the tactile and vision features of the same frame (only on frames where the sensor is touching) |
+| `--shift` | 4 | Random image shift augmentation, in pixels |
+| `--latent` | 64 | Size of each encoder's output |
+| `--epochs`, `--batch`, `--lr` | 20, 256, 3e-4 | Training settings |
+
+The checkpoint holds the encoder weights and settings, the prediction heads and the validation scores, with a CSV log alongside it.
+
+### 3. Train the policy
+
+`VisuoTactilePolicy` (in `vt_encoders.py`) runs each input through its own encoder: tactile and vision through the pretrained encoders, while proprioception and any privileged values pass straight through. It joins the results and feeds them to the MLP actor and critic. Use it through `run()`:
+
+```python
+run("TacArm-peg", name, name, 3_000_000,
+    obs_modes={"vision": True, "tactile": True},
+    encoders="encoders/peg_vt.pt", freeze_encoders=True)
+```
+
+`visuotactile_train.py` sets this up. Useful comparisons with the same inputs:
+
+| Setting | Meaning |
+|---------|---------|
+| `encoders="encoders/peg_vt.pt"`, `freeze_encoders=True` | Pretrained encoders, kept fixed |
+| `encoders="encoders/peg_vt.pt"`, `freeze_encoders=False` | Pretrained encoders, fine-tuned by RL |
+| `encoders="scratch"` | The same networks without pretraining |
+| `encoders=None`, `obs_format="dict"` | SB3's default `MultiInputPolicy` |
+
+Notes:
+
+- The encoders handle their own input scaling, so `run()` keeps the tactile and vision inputs out of `VecNormalize`.
+- SB3's PPO policies re-initialise every layer of the feature extractor after building it, which would erase pretrained weights. `VisuoTactilePolicy` loads them again afterwards. With SAC the encoders are passed through `policy_kwargs`, because SAC does not re-initialise them.
+- Collect the dataset with the same sensor, camera, image size and `VISION_MODE` you train the policy with. A mismatch raises an error when the encoders are loaded.
 
 ## Event-based tactile layer (taxels)
 
@@ -313,7 +432,7 @@ env.unwrapped.set_event(True)                # or later; grows env.observation_s
 
 Turn events on **before** creating the policy, because it changes the observation size. `set_event(False)` turns them off again.
 
-When events are on, the observation gains one value per taxel: the signed event count since the previous step (+1 per force increase, -1 per decrease, clipped to ±5). Events fire when a taxel's force changes by at least `EVENT_THRESHOLD` (0.02 N by default, or `set_event(True, threshold=...)`). Taxels are sampled after every physics step, not just every environment step.
+When events are on, the observation gains one value per taxel: the signed event count since the previous step (+1 per force increase, -1 per decrease, clipped to ±5). In the dict format they are under the `events` key. Events fire when a taxel's force changes by at least `EVENT_THRESHOLD` (0.02 N by default, or `set_event(True, threshold=...)`). Taxels are sampled after every physics step, not just every environment step.
 
 While events are off, MuJoCo's sensor evaluation is switched off entirely (if every sensor in the model is a taxel), because computing thousands of unused touch sensors is a large part of the simulation cost. In the peg scene this made each physics step about 3.4 times faster.
 
@@ -335,20 +454,22 @@ The taxel sites are in site group 4, which the viewer hides by default. In the M
 
 ## Training tips
 
-- **Privileged first.** Train in privileged mode to confirm the task and reward work, then move to `privileged=False`.
+- **Privileged first.** Train with the privileged input to confirm the task and reward work, then move to tactile and vision.
+- **Pretrain for camera and touch.** For tactile and vision inputs, the visuo-tactile pipeline is usually much faster than RL from scratch. Compare frozen, fine-tuned and scratch encoders on the same inputs.
+- **Keep images small.** 64 × 64 is already 12,288 values. Rendering is fast on a GPU but slow on a CPU-only machine.
 - **Curriculum.** For `ShapeInsertion`, start with `spawn_toward_hole=1.0` (straight pushes) and the default small `spawn_yaw`, then move to central starts, then larger rotations up to pi. A single shape can be fixed with `env.reset(options={"shape": "square"})`. For `Incline`, fix the friction with `options={"friction": ...}` and widen the range gradually. `start_touching=False` makes the agent find the object first.
-- **Hidden friction.** In privileged mode the ball's velocity and spin were enough to learn the incline without frame stacking. In tactile mode the ball is only felt once it touches the sensor, so frame stacking or a recurrent policy may help.
+- **Hidden friction.** With the privileged input, the ball's velocity and spin were enough to learn the incline without frame stacking. With touch alone the ball is only felt once it touches the sensor, so frame stacking or a recurrent policy may help.
 - **Speed.** Keep events off unless you need them. `run()` already uses one process per environment. If the simulation is slow, try `algo="SAC"`, which usually needs fewer environment steps.
 - **Evaluation.** Always evaluate with the saved `VecNormalize` statistics. `evaluate()` and `visualise()` do this for you.
 - **Time limits** are reported as `truncated`, not `terminated`, so the value function bootstraps correctly.
 
 ## Adding your own task
 
-A new task needs a MuJoCo scene file and a class that inherits from `RobotArmEnv`. The base class handles the controller, both observation modes, the marker readout, taxel events, the success and failure bonuses and the episode length. The task fills in these hooks:
+A new task needs a MuJoCo scene file and a class that inherits from `RobotArmEnv`. The base class handles the controller, the observation inputs and formats, the marker and camera readouts, taxel events, the success and failure bonuses and the episode length. The task fills in these hooks:
 
 - `_setup_task()`: look up the bodies and joints it needs, once
 - `_reset_task(options)`: place the objects, then the arm. `self._place_arm(tip_position)` teleports the arm by IK and lets it settle, and `self._approach(direction, body_id)` creeps into contact
-- `_privileged_obs()`: the task state for privileged mode (proprioception and markers are added for you)
+- `_privileged_obs()`: the task state for the privileged input (proprioception, tactile and vision are added for you)
 - `_reward()`: the per-step reward. `self._delta(key, distance)` gives the clipped progress term
 - `_status()`: return `"success"`, `"fail"` or `None`
 
