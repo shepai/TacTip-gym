@@ -272,6 +272,7 @@ class RobotArmEnv(TaxelMixin):
         self.step_count = 0
         self._cmd_vel = np.zeros(self._action_dim)
         self._potentials = {}
+        self._fail_reason = ""
         self._reset_task(options or {})
         self._reset_marker_history()
         self._reset_taxels()
@@ -299,9 +300,15 @@ class RobotArmEnv(TaxelMixin):
         return self._get_obs(), float(reward), terminated, truncated, info
 
     def _info(self, status=None):
-        info = {"is_success": status == "success", "ik_err": self._ik_err}
+        info = {"is_success": status == "success", "ik_err": self._ik_err,
+                "fail_reason": self._fail_reason if status == "fail" else ""}
         info.update(self._task_info())
         return info
+
+    def _fail(self, reason):
+        """Use in _status: `return self._fail("tipped")`; the reason appears in info["fail_reason"]."""
+        self._fail_reason = reason
+        return "fail"
 
     def _obs_parts(self):
         """The selected inputs, in a fixed order. Proprioception is always included."""
@@ -569,12 +576,14 @@ class Peg(_PushTask):
         if self._in_hole(cyl):
             return "success"
         if self._upright() < 0.3 and cyl[2] > self.PLATFORM_TOP:
-            return "fail"                                   # lying on the platform: unrecoverable
+            return self._fail("lying on platform")          # unrecoverable
         over_hole = np.all(np.abs(cyl[:2] - self.HOLE_XY) < self.HOLE_HALF + self.CYL_R)
         if over_hole:
             return None                                     # tilting while it drops in is fine
-        if self._upright() < self.TILT_LIMIT or cyl[2] < self.PLATFORM_TOP:
-            return "fail"                                   # tipped over / pushed off the platform
+        if self._upright() < self.TILT_LIMIT:
+            return self._fail("tipped")
+        if cyl[2] < self.PLATFORM_TOP:
+            return self._fail("below platform top")        # pushed off the platform
         return None
 
     # ---------- episode ----------
@@ -734,11 +743,11 @@ class ShapeInsertion(_PushTask):
         if self._lowest_z() < PLATE_TOP - self.INSERT_DEPTH:
             # part of the shape is below the plate surface -> it is in a hole (or off the plate);
             # a shape that tips and wedges in its own hole still counts as inserted
-            return "success" if dist < self.HOLE_TOL else "fail"
+            return "success" if dist < self.HOLE_TOL else self._fail("wrong hole / off plate")
         if self._upright() < self.TILT_LIMIT and dist > 0.05:
-            return "fail"                                  # tipped over away from its hole
+            return self._fail("tipped")                    # away from its hole
         if self._upright() < 0.3 and obj[2] > PLATE_TOP:
-            return "fail"                                  # lying on the plate: unrecoverable
+            return self._fail("lying on plate")            # unrecoverable
         return None
 
     # ---------- episode ----------
@@ -872,8 +881,12 @@ class Incline(RobotArmEnv):
         s, h, lat = self._slope_coords(self._ball_pos())
         if s >= self._L - self.SUCCESS_MARGIN:
             return "success"
-        if s < -0.04 or abs(lat) > 0.10 or h > 0.08 or h < -0.02:
-            return "fail"
+        if s < -0.04:
+            return self._fail("ball rolled past the bottom")
+        if abs(lat) > 0.10:
+            return self._fail("ball off the side")
+        if h > 0.08 or h < -0.02:
+            return self._fail("ball left the slope surface")
         return None
 
     # ---------- control: actions are (along slope, sideways) ----------
@@ -1011,8 +1024,12 @@ class Edge(RobotArmEnv):
         dz = tip[2] - self._top_z - self._z_ref
         if self._travelled >= self.LAP_FRACTION * self._P:
             return "success"
-        if abs(lat) > self.LOST_LAT or dz > self.LOST_UP or dz < -self.LOST_DOWN:
-            return "fail"
+        if abs(lat) > self.LOST_LAT:
+            return self._fail("lost the edge")
+        if dz > self.LOST_UP:
+            return self._fail("lifted off")
+        if dz < -self.LOST_DOWN:
+            return self._fail("pressed too deep")
         return None
 
     # ---------- episode ----------
@@ -1020,12 +1037,15 @@ class Edge(RobotArmEnv):
         self._randomize_block()
         rng = self.np_random
         # random start point on the perimeter, away from the corners
-        while True:
+        for _ in range(1000):
             u0 = rng.uniform(0, self._P)
             i = int(np.searchsorted(self._cum, u0, side="right") - 1)
             along = u0 - self._cum[i]
             if self.CORNER_CLEAR < along < self._seg_len[i] - self.CORNER_CLEAR:
                 break
+        else:                                   # block too small for CORNER_CLEAR: use a mid-point
+            i = int(np.argmax(self._seg_len))
+            along = 0.5 * self._seg_len[i]
         p = self._corners[i] + self._seg[i] / self._seg_len[i] * along
         self._place_arm([p[0], p[1], self._top_z + 0.025])
         self._approach([0, 0, -1], self._block_body, step=0.001, max_steps=40, press=0.0015)

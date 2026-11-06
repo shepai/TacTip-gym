@@ -57,6 +57,8 @@ class TactileGymEnv(gym.Env):
     VISION_HEIGHT    = 64        # (>= 36 if you use SB3's default CNN in "dict" format)
     VISION_MODE      = "rgb"     # "rgb", "gray" or "depth"
     VISION_MAX_DEPTH = 1.0       # metres; depth is divided by this in "flat" format
+    VISION_SHADOWS   = False     # shadow + reflection passes: most of the render time, little
+    VISION_ANTIALIAS = False     # information at 64 px. Together ~6x faster with software GL.
 
     def __init__(self, xml_subpath, obs_dim, action_dim):
         super().__init__()
@@ -251,8 +253,19 @@ class TactileGymEnv(gym.Env):
         if self.VISION_MODE not in ("rgb", "gray", "depth"):
             raise ValueError(f"VISION_MODE must be 'rgb', 'gray' or 'depth', not {self.VISION_MODE!r}")
         if self._vision_renderer is None:
-            self._vision_renderer = mujoco.Renderer(
-                self.model, height=self.VISION_HEIGHT, width=self.VISION_WIDTH)
+            q = self.model.vis.quality
+            samples = q.offsamples                  # read when the GL context is made
+            if not self.VISION_ANTIALIAS:
+                q.offsamples = 0
+            try:
+                self._vision_renderer = mujoco.Renderer(
+                    self.model, height=self.VISION_HEIGHT, width=self.VISION_WIDTH)
+            finally:
+                q.offsamples = samples              # leave other renderers (videos) unchanged
+            if not self.VISION_SHADOWS:
+                flags = self._vision_renderer.scene.flags
+                flags[mujoco.mjtRndFlag.mjRND_SHADOW] = 0
+                flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = 0
             if self.VISION_MODE == "depth":
                 self._vision_renderer.enable_depth_rendering()
         r = self._vision_renderer

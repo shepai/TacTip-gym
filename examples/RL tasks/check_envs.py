@@ -6,7 +6,12 @@ Sanity checks for the tactip arm environments - run this on YOUR model before tr
 
 It reports, per task:
   * controller: tip drift with zero action, achieved vs commanded speed, IK residual
-  * reset: how often the episode starts with the sensor touching the object
+  * reset: how often the episode starts with the sensor touching the object, how deep it
+    starts inside it, and anything else the sensor touches (e.g. the platform)
+  * peg only: the sensor radius measured at PUSH_Z, compared with TIP_R
+  * zero action: how long an episode lasts if the arm holds still; a few steps means the
+    reset itself leaves the object falling / tipping (geometry constants)
+  * episode lengths and why episodes fail (info["fail_reason"])
   * scripted policy (uses privileged state): success rate -> proves the task is solvable
     with your geometry; if this is ~0, fix the geometry constants before training RL
   * random policy return, and env steps per second (single process)
@@ -74,7 +79,13 @@ TASKS = {
 }
 
 
+def zero_policy(raw):
+    return np.zeros(raw.action_space.shape)
+
+
 def rollout(env, policy, seed):
+    """Returns (return, success, steps, outcome) with outcome "success", "timeout" or the
+    fail reason."""
     raw = env.unwrapped
     env.reset(seed=seed)
     R, n = 0.0, 0
@@ -84,7 +95,34 @@ def rollout(env, policy, seed):
         R += r
         n += 1
         if te or tr:
-            return R, bool(info["is_success"]), n
+            ok = bool(info["is_success"])
+            outcome = "success" if ok else (info.get("fail_reason") or "fail") if te else "timeout"
+            return R, ok, n, outcome
+
+
+def summarise(label, results, extra=""):
+    outcomes = {}
+    for x in results:
+        outcomes[x[3]] = outcomes.get(x[3], 0) + 1
+    ends = ", ".join(f"{k} {v}" for k, v in sorted(outcomes.items(), key=lambda kv: -kv[1]))
+    print(f"{label:<11}: return {np.mean([x[0] for x in results]):7.1f}, success "
+          f"{np.mean([x[1] for x in results]):4.0%}, {np.mean([x[2] for x in results]):5.1f} steps "
+          f"[{ends}]{extra}")
+    return np.mean([x[2] for x in results])
+
+
+def reset_contacts(raw, body):
+    """(touching, deepest penetration in mm, contact force N, other geoms the arm touches)."""
+    m, d = raw.model, raw.data
+    idx = raw._contacts_with(body)
+    pen = max((-d.contact.dist[i] * 1e3 for i in idx), default=0.0)
+    others = set()
+    for i in range(d.ncon):
+        g1, g2 = int(d.contact.geom1[i]), int(d.contact.geom2[i])
+        for ga, gb in ((g1, g2), (g2, g1)):
+            if raw._arm_geom[ga] and not raw._arm_geom[gb] and m.geom_bodyid[gb] != body:
+                others.add(m.geom(gb).name or f"geom {gb} (body {m.body(m.geom_bodyid[gb]).name})")
+    return idx.size > 0, pen, raw._contact_force(body), others
 
 
 def controller_check(raw):
@@ -124,24 +162,45 @@ def main(names):
         print(f"controller : zero-action drift {drift:.2f} mm/2s, speed {v:.3f} m/s "
               f"(commanded {v_cmd:.3f}), IK residual {ik:.3f} mm{flag}")
 
-        touching = []
+        touching, pens, forces, others, radii = [], [], [], set(), []
         for s in range(10):
             env.reset(seed=s)
-            touching.append(raw._touching(body_fn(raw)))
+            body = body_fn(raw)
+            t_, pen, f, oth = reset_contacts(raw, body)
+            touching.append(t_)
+            pens.append(pen)
+            forces.append(f)
+            others |= oth
+            if name == "TacArm-peg" and t_:
+                radii.append(np.linalg.norm(raw._tip_pos()[:2] - raw._cyl_pos()[:2]) - raw.CYL_R)
         if name != "TacArm-hill":
-            print(f"reset      : starts touching in {np.mean(touching):.0%} of episodes")
+            flag = "   <-- sensor starts inside the object" if max(pens) > 3.0 else ""
+            print(f"reset      : starts touching in {np.mean(touching):.0%} of episodes, "
+                  f"penetration up to {max(pens):.1f} mm, force {np.mean(forces):.2f} N{flag}")
+        if others:
+            print(f"             the arm/sensor also touches: {', '.join(sorted(others))}"
+                  "   <-- e.g. PUSH_Z too low for your sensor")
+        if radii:
+            r = 1e3 * float(np.mean(radii))
+            flag = "" if abs(r - 1e3 * raw.TIP_R) < 3.0 else f"   <-- set TIP_R = {r / 1e3:.3f}"
+            print(f"             sensor radius measured at PUSH_Z: {r:.1f} mm "
+                  f"(TIP_R = {1e3 * raw.TIP_R:.1f} mm){flag}")
+
+        zero = [rollout(env, zero_policy, 300 + s) for s in range(5)]
+        n0 = summarise("zero action", zero)
+        if n0 < 10 and name != "TacArm-hill":
+            print("             <-- episodes end with the arm holding still: the reset leaves the "
+                  "object unstable (geometry constants / XML don't match)")
 
         t = time.time()
         rand = [rollout(env, None, 100 + s) for s in range(5)]
         steps = sum(x[2] for x in rand)
-        print(f"random     : return {np.mean([x[0] for x in rand]):7.1f}, success "
-              f"{np.mean([x[1] for x in rand]):.0%}   ({steps / (time.time() - t):.0f} steps/s)")
+        summarise("random", rand, f"   ({steps / (time.time() - t):.0f} steps/s)")
         env.close()
 
         env = gym.make(name, **script_kw)
         res = [rollout(env, policy, 200 + s) for s in range(10)]
-        print(f"scripted   : return {np.mean([x[0] for x in res]):7.1f}, success "
-              f"{np.mean([x[1] for x in res]):.0%}" + (f"   (env kwargs {script_kw})" if script_kw else ""))
+        summarise("scripted", res, f"   (env kwargs {script_kw})" if script_kw else "")
         env.close()
 
 
