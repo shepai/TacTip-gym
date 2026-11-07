@@ -1,3 +1,4 @@
 
 *.pyc
 /src/my_package.egg-info
+/datasets

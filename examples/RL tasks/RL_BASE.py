@@ -5,6 +5,8 @@ Training / evaluation helpers for the tactip arm tasks (Stable-Baselines3).
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS,
         obs_modes={"vision": True, "tactile": True, "privileged": False})   # pick the inputs
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, obs_format="dict")  # one key per input (fusion)
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, obs_modes={"vision": True, "tactile": True},
+        encoders="encoders/vt.pt")       # pretrained encoders + MLP (see train_encoders.py)
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, algo="SAC")         # more sample-efficient
     evaluate(ENV_NAME, MODEL_NAME)                                 # success rate, no viewer
     visualise(ENV_NAME, MODEL_NAME)                                # MuJoCo viewer
@@ -89,14 +91,20 @@ def default_algo_kwargs(algo, n_envs):
 
 
 # ----------------------------------------------------------------------------- envs
-def policy_for(obs_space):
+ENCODED_KEYS = ("tactile", "vision")      # normalised by their own encoders, not VecNormalize
+
+
+def policy_for(obs_space, own_encoders=False):
     """MlpPolicy for a flat vector. For a dict: MultiInputPolicy (SB3 runs a CNN on image keys
     and an MLP on the rest, then concatenates the features), with images kept out of
-    VecNormalize. Returns (policy name, keys to normalise or None, has images)."""
+    VecNormalize; with own_encoders, tactile and vision are also left to the encoders.
+    Returns (policy name, keys to normalise or None, has images)."""
     if isinstance(obs_space, spaces.Dict):
         image_keys = [k for k, sp in obs_space.spaces.items()
                       if sp.dtype == np.uint8 and len(sp.shape) == 3]
-        return "MultiInputPolicy", [k for k in obs_space.spaces if k not in image_keys], bool(image_keys)
+        skip = set(image_keys) | (set(ENCODED_KEYS) if own_encoders else set())
+        keys = [k for k in obs_space.spaces if k not in skip]
+        return "MultiInputPolicy", keys, bool(image_keys) or (own_encoders and "vision" in obs_space.spaces)
     return "MlpPolicy", None, False
 
 
@@ -194,15 +202,7 @@ class TrainingVideoCallback(BaseCallback):
         self.render_env = gym.make(self.env_name, **self.env_kwargs)
         raw = self.render_env.unwrapped
         self.renderer = mujoco.Renderer(raw.model, height=480, width=640)
-        self.cam = mujoco.MjvCamera()
-        core = mujoco.mj_name2id(raw.model, mujoco.mjtObj.mjOBJ_BODY, "core")
-        if core >= 0:                                       # follow the sensor
-            self.cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
-            self.cam.trackbodyid = core
-        else:
-            mujoco.mjv_defaultFreeCamera(raw.model, self.cam)
-            self.cam.lookat[:] = [0.4, 0.0, 0.05]
-        self.cam.distance, self.cam.azimuth, self.cam.elevation = 0.5, 135, -25
+        self.cam = _tracking_camera(raw)
 
     def _on_step(self):
         progress = 100 * self.num_timesteps / self.total_timesteps
@@ -224,6 +224,7 @@ class TrainingVideoCallback(BaseCallback):
         n_frames = max(1, round(self.video_seconds * fps))
         frames, successes, episodes = [], 0, 0
         for _ in range(n_frames):
+            _sync_terrain(raw, self.renderer)
             self.renderer.update_scene(raw.data, camera=self.cam)
             frames.append(self.renderer.render().copy())
             action, _ = self.model.predict(self._normalise(obs), deterministic=True)
@@ -250,7 +251,7 @@ class TrainingVideoCallback(BaseCallback):
 def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_video=True,
         video_every_percent=20, video_seconds=7, obs_modes=None, privileged=None,
         obs_format="flat", algo="PPO", seed=0, env_kwargs=None, algo_kwargs=None,
-        checkpoint_every=500_000):
+        checkpoint_every=500_000, encoders=None, freeze_encoders=True, callbacks=None):
     """
     obs_modes  : {"vision": bool, "tactile": bool, "privileged": bool}; missing keys = False.
                  Proprioception is always included. Default: privileged only.
@@ -259,8 +260,14 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     obs_format : "flat" (one long vector, MlpPolicy) or "dict" (one key per input,
                  MultiInputPolicy: CNN on the camera image, MLP on the rest)
     env_kwargs : extra constructor args, e.g. {"spawn_yaw": 0.5} for TacArm-shape
+    encoders   : path to a checkpoint from train_encoders.py -> VisuoTactilePolicy: pretrained
+                 tactile / vision encoders, then the MLP heads (implies obs_format="dict").
+                 "scratch" = the same networks without pretraining (baseline).
+    freeze_encoders : keep the pretrained encoder weights fixed during RL (default True)
+    callbacks  : extra SB3 callbacks (e.g. logging task-specific info, see quadruped_walk.py)
     """
     print_device_info()
+    extra_callbacks = callbacks
     algo = algo.upper()
     n_envs = n_envs or (8 if algo == "PPO" else 4)
     n_envs = max(1, min(n_envs, os.cpu_count() or 1))
@@ -274,19 +281,32 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
         env_kwargs.setdefault("obs_modes", dict(obs_modes))
     elif privileged is not None:
         env_kwargs.setdefault("privileged", bool(privileged))
+    if encoders is not None and obs_format != "dict":
+        obs_format = "dict"                    # the encoders need each input under its own key
     if obs_format != "flat":
         env_kwargs.setdefault("obs_format", obs_format)
     kw = default_algo_kwargs(algo, n_envs)
     kw.update(algo_kwargs or {})
 
     env = make_vec(env_name, n_envs, seed=seed, env_kwargs=env_kwargs)
-    policy, norm_keys, has_images = policy_for(env.observation_space)
+    policy, norm_keys, has_images = policy_for(env.observation_space, own_encoders=encoders is not None)
+    if encoders is not None:
+        import vt_encoders
+        path = None if encoders == "scratch" else encoders
+        if algo == "PPO":
+            policy = vt_encoders.VisuoTactilePolicy
+            extra = vt_encoders.ppo_policy_kwargs(path, freeze_encoders)
+        else:
+            extra = vt_encoders.sac_policy_kwargs(path, freeze_encoders)
+        kw["policy_kwargs"] = {**kw.get("policy_kwargs", {}), **extra}
     env = VecNormalize(env, norm_obs=True, norm_reward=(algo == "PPO"),
                        clip_obs=10.0, gamma=kw.get("gamma", 0.99), norm_obs_keys=norm_keys)
     modes = env.get_attr("obs_modes")[0]
     print(f"{env_name}: inputs {[k for k, on in modes.items() if on] or ['proprioception only']}, "
           f"obs {_describe(env.observation_space)}, act {env.action_space.shape}, "
-          f"{n_envs} envs, {algo}, {policy}")
+          f"{n_envs} envs, {algo}, {getattr(policy, '__name__', policy)}"
+          + (f", encoders {encoders} ({'frozen' if freeze_encoders and encoders != 'scratch' else 'trained'})"
+             if encoders is not None else ""))
 
     if algo == "SAC" and "buffer_size" not in (algo_kwargs or {}):
         # a replay buffer stores every observation twice; camera inputs make that huge
@@ -303,10 +323,12 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     model.set_logger(configure(log_dir, ["stdout", "csv"]))
 
     config = dict(env_name=env_name, algo=algo, env_kwargs=env_kwargs,
-                  total_timesteps=total_timesteps, n_envs=n_envs, seed=seed)
+                  total_timesteps=total_timesteps, n_envs=n_envs, seed=seed,
+                  encoders=encoders, freeze_encoders=freeze_encoders)
     callbacks = [CheckpointCallback(save_freq=max(checkpoint_every // n_envs, 1),
                                     save_path=os.path.join(log_dir, "checkpoints"),
                                     name_prefix=model_name, save_vecnormalize=True)]
+    callbacks += list(extra_callbacks or [])
     if record_video:
         callbacks.append(TrainingVideoCallback(
             env_name=env_id(env_name),
@@ -374,7 +396,7 @@ def visualise(env_name, model_name, record_dir=None, video_name="visualisation.m
 
     if record_dir is not None:
         renderer = mujoco.Renderer(raw.model, height=480, width=640)
-        cam = _tracking_camera(raw.model)
+        cam = _tracking_camera(raw)
 
     episode, R = 0, 0.0
     try:
@@ -385,6 +407,7 @@ def visualise(env_name, model_name, record_dir=None, video_name="visualisation.m
                 obs, r, terminated, truncated, info = env.step(action)
                 R += r
                 if renderer is not None:
+                    _sync_terrain(raw, renderer)
                     renderer.update_scene(raw.data, camera=cam)
                     frames.append(renderer.render().copy())
                 if terminated or truncated:
@@ -392,6 +415,7 @@ def visualise(env_name, model_name, record_dir=None, video_name="visualisation.m
                     print(f"episode {episode}: return {R:.1f}, success {info.get('is_success')}")
                     R = 0.0
                     obs, info = env.reset()
+                _sync_terrain(raw, viewer)
                 viewer.sync()
                 time.sleep(max(0.0, dt - (time.time() - t)))
     finally:
@@ -406,14 +430,23 @@ def visualise(env_name, model_name, record_dir=None, video_name="visualisation.m
         print(f"Saved visualisation video: {path}")
 
 
-def _tracking_camera(model):
+def _tracking_camera(raw):
+    """Follow the env's TRACK_BODY (the quadruped's trunk), else the arm's sensor ("core")."""
+    model = raw.model
     cam = mujoco.MjvCamera()
-    core = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "core")
-    if core >= 0:
+    body = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, getattr(raw, "TRACK_BODY", "core"))
+    if body >= 0:
         cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
-        cam.trackbodyid = core
+        cam.trackbodyid = body
     else:
         mujoco.mjv_defaultFreeCamera(model, cam)
         cam.lookat[:] = [0.4, 0.0, 0.05]
-    cam.distance, cam.azimuth, cam.elevation = 0.5, 135, -25
+    cam.distance = getattr(raw, "TRACK_DISTANCE", 0.5)
+    cam.azimuth, cam.elevation = 135, getattr(raw, "TRACK_ELEVATION", -25)
     return cam
+
+
+def _sync_terrain(raw, renderer):
+    """Envs that regenerate their terrain on reset (TacQuad) re-upload it to a renderer."""
+    if hasattr(raw, "sync_renderer"):
+        raw.sync_renderer(renderer)
