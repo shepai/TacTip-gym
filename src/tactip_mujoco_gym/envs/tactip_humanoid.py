@@ -49,7 +49,7 @@ import numpy as np
 from gymnasium import spaces
 
 from tactip_mujoco_gym.envs.base import TactileGymEnv
-from tactip_mujoco_gym.sensor_tools import attach_sensor, extract_sensor, sensor_info
+from tactip_mujoco_gym.sensor_tools import attach_sensor, extract_sensor, sensor_info, set_coef
 
 SIDES = ("left", "right")
 
@@ -478,7 +478,7 @@ class TacHumanoidPick(TactileGymEnv):
         for name in ("soft", "rigid"):
             for j in spec.body(name).joints:
                 j.limited = mujoco.mjtLimited.mjLIMITED_FALSE
-                j.damping = 0.0
+                set_coef(j, "damping", 0.0)
                 j.armature = 0.0
                 j.frictionloss = 0.0
 
@@ -487,10 +487,12 @@ class TacHumanoidPick(TactileGymEnv):
             spec.delete(j)
         # (explicitly unlimited: the robot file's default range +-3.14 would otherwise reach
         # these joints, and this scene reads it in degrees)
-        free = dict(damping=0, armature=0, limited=mujoco.mjtLimited.mjLIMITED_FALSE)
-        base.add_joint(name="base_x", type=mujoco.mjtJoint.mjJNT_SLIDE, axis=[1, 0, 0], **free)
-        base.add_joint(name="base_y", type=mujoco.mjtJoint.mjJNT_SLIDE, axis=[0, 1, 0], **free)
-        base.add_joint(name="base_yaw", type=mujoco.mjtJoint.mjJNT_HINGE, axis=[0, 0, 1], **free)
+        free = dict(armature=0, limited=mujoco.mjtLimited.mjLIMITED_FALSE)
+        for name, jtype, axis in (("base_x", mujoco.mjtJoint.mjJNT_SLIDE, [1, 0, 0]),
+                                  ("base_y", mujoco.mjtJoint.mjJNT_SLIDE, [0, 1, 0]),
+                                  ("base_yaw", mujoco.mjtJoint.mjJNT_HINGE, [0, 0, 1])):
+            j = base.add_joint(name=name, type=jtype, axis=axis, **free)
+            set_coef(j, "damping", 0.0)          # (a number before MuJoCo 3.7, an array since)
         for j, kv in (("base_x", 2e4), ("base_y", 2e4), ("base_yaw", 4e3)):
             a = spec.add_actuator(name=f"{j}_vel", target=j, trntype=mujoco.mjtTrn.mjTRN_JOINT)
             a.gaintype = mujoco.mjtGain.mjGAIN_FIXED

@@ -385,6 +385,27 @@ def quat_between(a, b):
     return q / np.linalg.norm(q)
 
 
+# MuJoCo 3.7 turned mjsJoint / mjsTendon `stiffness` and `damping` into arrays (linear
+# coefficient first, then higher-order polynomial terms); earlier versions use plain numbers.
+# These work with both.
+def set_coef(obj, name, value):
+    """Set a spec joint's / tendon's stiffness or damping to a linear value (no higher-order
+    terms)."""
+    cur = getattr(obj, name)
+    if np.ndim(cur):
+        arr = np.zeros(np.shape(cur))
+        arr.flat[0] = value
+        setattr(obj, name, arr)
+    else:
+        setattr(obj, name, float(value))
+
+
+def scale_coef(obj, name, k):
+    """Multiply a spec joint's / tendon's stiffness or damping (every term) by k."""
+    cur = getattr(obj, name)
+    setattr(obj, name, np.asarray(cur, dtype=float) * k if np.ndim(cur) else float(cur) * k)
+
+
 def attach_sensor(spec, parent, sensor, prefix, pos=(0, 0, 0), quat=None, axis=None,
                   axis_to=None, tip_at=None, stiffness_scale=1.0, exclude_parent=True):
     """Attach a prefixed copy of a standalone sensor to body `parent` of `spec`.
@@ -422,13 +443,13 @@ def attach_sensor(spec, parent, sensor, prefix, pos=(0, 0, 0), quat=None, axis=N
         k = float(stiffness_scale)
         for b in bodies:
             for j in b.joints:
-                j.stiffness *= k
-                j.damping *= k
+                scale_coef(j, "stiffness", k)
+                scale_coef(j, "damping", k)
                 j.armature *= k
         for t in spec.tendons:
             if t.name.startswith(prefix):
-                t.stiffness *= k
-                t.damping *= k
+                scale_coef(t, "stiffness", k)
+                scale_coef(t, "damping", k)
     if exclude_parent:
         for b in bodies:
             spec.add_exclude(bodyname1=parent.name, bodyname2=b.name)
