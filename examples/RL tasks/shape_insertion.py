@@ -1,4 +1,4 @@
-from RL_BASE import run, evaluate, visualise
+from tactip_mujoco_gym.RL_BASE import run, evaluate, visualise
 
 ENV_NAME = "TacArm-shape"
 # Which inputs the policy gets (proprioception is always included):

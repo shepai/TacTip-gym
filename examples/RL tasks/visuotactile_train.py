@@ -15,7 +15,7 @@ Useful comparisons, all with the same OBS_MODES:
     ENCODERS = "scratch"                              same networks, no pretraining
     ENCODERS = None                                   SB3's default CombinedExtractor
 """
-from RL_BASE import evaluate, run, visualise
+from tactip_mujoco_gym.RL_BASE import evaluate, run, visualise
 
 ENV_NAME = "TacArm-peg"
 OBS_MODES = {"vision": True, "tactile": True, "privileged": False}

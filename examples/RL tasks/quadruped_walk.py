@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from stable_baselines3.common.callbacks import BaseCallback
 
-from RL_BASE import evaluate, load_policy, run, visualise, TerrainLogger, evaluate_grounds
+from tactip_mujoco_gym.RL_BASE import evaluate, load_policy, run, visualise, TerrainLogger, evaluate_grounds
 
 ENV_NAME = "TacQuad-walk"
 FEET = "tactip"                        # "tactip" | "proxy" | "rigid"
@@ -57,7 +57,6 @@ GROUNDS = {                            # evaluation grounds (every tile the same
     "bouncy": ({"friction": 0.8, "softness": 0.6, "dampratio": 0.3}, 0.0),
     "rough":  (None, 1.0),             # level-1 mix: rough tiles, any feel
 }
-
 
 
 if __name__ == "__main__":             # required: training uses one subprocess per env

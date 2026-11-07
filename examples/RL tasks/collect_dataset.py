@@ -62,7 +62,7 @@ def contact_body(raw):
 
 
 def scripted_teacher(env_name):
-    from check_envs import edge_policy, incline_policy, peg_policy, shape_policy
+    from tactip_mujoco_gym.check_envs import edge_policy, incline_policy, peg_policy, shape_policy
     policy = {"TacArm-peg": peg_policy, "TacArm-shape": shape_policy,
               "TacArm-hill": incline_policy, "TacArm-edge": edge_policy}[env_name]
     return lambda raw, obs: np.asarray(policy(raw), dtype=np.float32)
@@ -70,7 +70,7 @@ def scripted_teacher(env_name):
 
 def sb3_teacher(env_name, model_name, model_dir):
     """A policy trained by RL_BASE.run on privileged-only, flat observations."""
-    from RL_BASE import load_policy
+    from tactip_mujoco_gym.RL_BASE import load_policy
     model, env, normalise, _ = load_policy(env_name, model_name, model_dir)
     raw = env.unwrapped
     only_privileged = raw.obs_modes == {"vision": False, "tactile": False, "privileged": True}
