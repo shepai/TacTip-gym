@@ -2,3 +2,4 @@
 *.pyc
 /src/my_package.egg-info
 /datasets
+/src/tactip_gym.egg-info
