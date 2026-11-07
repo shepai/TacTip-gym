@@ -48,7 +48,7 @@ class Demo:
             kwargs["command"] = (0.5, 0.0, 0.0)
         self.model_policy = None
         if args.model:                           # trained policy: rebuild its env and normaliser
-            from RL_BASE import load_policy
+            from tactip_mujoco_gym.RL_BASE import load_policy
             model, env, normalise, _ = load_policy("TacQuad-walk", args.model, env_kwargs={
                 "terrain_level": args.level})
             self.model_policy = lambda obs: model.predict(normalise(obs), deterministic=True)[0]

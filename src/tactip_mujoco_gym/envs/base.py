@@ -57,6 +57,7 @@ class TactileGymEnv(gym.Env):
     VISION_HEIGHT    = 64        # (>= 36 if you use SB3's default CNN in "dict" format)
     VISION_MODE      = "rgb"     # "rgb", "gray" or "depth"
     VISION_MAX_DEPTH = 1.0       # metres; depth is divided by this in "flat" format
+    OBS_MODE_NAMES = OBS_MODES   # a task can add its own inputs (TacHumanoid adds "object")
     VISION_SHADOWS   = False     # shadow + reflection passes: most of the render time, little
     VISION_ANTIALIAS = False     # information at 64 px. Together ~6x faster with software GL.
 
@@ -155,12 +156,12 @@ class TactileGymEnv(gym.Env):
         return False
 
     # ------------------------------------------------------------------ observation modes
-    @staticmethod
-    def _clean_obs_modes(modes):
-        unknown = set(modes) - set(OBS_MODES)
+    @classmethod
+    def _clean_obs_modes(cls, modes):
+        unknown = set(modes) - set(cls.OBS_MODE_NAMES)
         if unknown:
             raise ValueError(f"Unknown observation mode(s) {sorted(unknown)}; "
-                             f"choose from {list(OBS_MODES)}")
+                             f"choose from {list(cls.OBS_MODE_NAMES)}")
         return {k: bool(v) for k, v in modes.items()}
 
     @classmethod
@@ -170,12 +171,15 @@ class TactileGymEnv(gym.Env):
             if privileged is not None:
                 import warnings
                 warnings.warn("Both obs_modes and privileged were given; using obs_modes.", stacklevel=3)
-            modes = {k: False for k in OBS_MODES}
+            modes = {k: False for k in cls.OBS_MODE_NAMES}
             modes.update(cls._clean_obs_modes(obs_modes))
             return modes
+        modes = {k: False for k in cls.OBS_MODE_NAMES}
         if privileged is not None:              # earlier API: privileged XOR tactile
-            return {"vision": False, "tactile": not privileged, "privileged": bool(privileged)}
-        return dict(DEFAULT_OBS_MODES)
+            modes.update(tactile=not privileged, privileged=bool(privileged))
+        else:
+            modes.update(DEFAULT_OBS_MODES)
+        return modes
 
     def set_obs_modes(self, obs_modes=None, **flags):
         """Choose which inputs make up the observation (proprioception is always included).
