@@ -1,0 +1,1337 @@
+<mujoco model="tactip">
+  <compiler angle="radian" />
+  <option timestep="0.001" tolerance="1e-06" integrator="implicit" />
+  <default>
+    <default class="z1">
+      <joint damping="1" frictionloss="1" />
+      <general forcerange="-30 30" biastype="affine" gainprm="1000" biasprm="0 -1000 -100" />
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2" />
+      </default>
+      <default class="collision">
+        <geom type="cylinder" group="3" />
+      </default>
+    </default>
+  </default>
+  <worldbody>
+    <body name="tactip" childclass="z1">
+      <inertial pos="0 0 0" quat="0.998779 0.0457735 -0.00663717 0.0173548" mass="0.001" diaginertia="1e-07 1e-07 1e-07" />
+      <body name="sensor_root" pos="0.07 0 0" quat="0.707107 0 -0.707107 0">
+        <site name="ee_site" pos="0 0 -0.02" />
+        <body name="flexible_structure" quat="0 0.707107 0.707107 0">
+          <inertial pos="0 0 0" mass="0.1" diaginertia="0.0005 0.0005 0.0005" />
+          <camera name="sensor_cam" quat="0 1 0 0" pos="0 0 -0.002" fovy="120" />
+          <light name="sensor_light" pos="0 0 -0.1" diffuse="0.8 0.8 0.8" specular="0.2 0.2 0.2" type="directional" />
+          <body name="cylinder_mount" pos="0 0 -0.02">
+            <geom size="0.04 0.02" type="cylinder" rgba="1 1 1 1" mass="0.05" />
+          </body>
+          <body name="node_0" pos="0.035 0 0">
+            <joint name="j_c0_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c0_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c0_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.007 0 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c0" size="0.002" />
+          </body>
+          <body name="node_1" pos="0.0337021 0.00944289 0">
+            <joint name="j_c1_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c1_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c1_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00674042 -0.00188858 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c1" size="0.002" />
+          </body>
+          <body name="node_2" pos="0.0299047 0.0181854 0">
+            <joint name="j_c2_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c2_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c2_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00598094 -0.00363709 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c2" size="0.002" />
+          </body>
+          <body name="node_3" pos="0.0238894 0.0255793 0">
+            <joint name="j_c3_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c3_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c3_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00477787 -0.00511585 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c3" size="0.002" />
+          </body>
+          <body name="node_4" pos="0.0161023 0.031076 0">
+            <joint name="j_c4_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c4_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c4_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00322046 -0.0062152 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c4" size="0.002" />
+          </body>
+          <body name="node_5" pos="0.00712096 0.0342679 0">
+            <joint name="j_c5_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c5_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c5_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00142419 -0.00685359 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c5" size="0.002" />
+          </body>
+          <body name="node_6" pos="-0.00238848 0.0349184 0">
+            <joint name="j_c6_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c6_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c6_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.000477697 -0.00698368 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c6" size="0.002" />
+          </body>
+          <body name="node_7" pos="-0.0117208 0.0329791 0">
+            <joint name="j_c7_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c7_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c7_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00234416 -0.00659583 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c7" size="0.002" />
+          </body>
+          <body name="node_8" pos="-0.0201838 0.0285939 0">
+            <joint name="j_c8_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c8_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c8_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00403676 -0.00571879 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c8" size="0.002" />
+          </body>
+          <body name="node_9" pos="-0.0271499 0.0220881 0">
+            <joint name="j_c9_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c9_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c9_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00542998 -0.00441762 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c9" size="0.002" />
+          </body>
+          <body name="node_10" pos="-0.0321024 0.013944 0">
+            <joint name="j_c10_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c10_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c10_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00642048 -0.00278881 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c10" size="0.002" />
+          </body>
+          <body name="node_11" pos="-0.034674 0.00476583 0">
+            <joint name="j_c11_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c11_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c11_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.0069348 -0.000953167 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c11" size="0.002" />
+          </body>
+          <body name="node_12" pos="-0.034674 -0.00476583 0">
+            <joint name="j_c12_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c12_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c12_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.0069348 0.000953167 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c12" size="0.002" />
+          </body>
+          <body name="node_13" pos="-0.0321024 -0.013944 0">
+            <joint name="j_c13_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c13_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c13_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00642048 0.00278881 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c13" size="0.002" />
+          </body>
+          <body name="node_14" pos="-0.0271499 -0.0220881 0">
+            <joint name="j_c14_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c14_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c14_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00542998 0.00441762 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c14" size="0.002" />
+          </body>
+          <body name="node_15" pos="-0.0201838 -0.0285939 0">
+            <joint name="j_c15_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c15_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c15_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00403676 0.00571879 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c15" size="0.002" />
+          </body>
+          <body name="node_16" pos="-0.0117208 -0.0329791 0">
+            <joint name="j_c16_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c16_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c16_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00234416 0.00659583 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c16" size="0.002" />
+          </body>
+          <body name="node_17" pos="-0.00238848 -0.0349184 0">
+            <joint name="j_c17_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c17_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c17_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.000477697 0.00698368 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c17" size="0.002" />
+          </body>
+          <body name="node_18" pos="0.00712096 -0.0342679 0">
+            <joint name="j_c18_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c18_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c18_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00142419 0.00685359 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c18" size="0.002" />
+          </body>
+          <body name="node_19" pos="0.0161023 -0.031076 0">
+            <joint name="j_c19_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c19_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c19_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00322046 0.0062152 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c19" size="0.002" />
+          </body>
+          <body name="node_20" pos="0.0238894 -0.0255793 0">
+            <joint name="j_c20_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c20_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c20_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00477787 0.00511585 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c20" size="0.002" />
+          </body>
+          <body name="node_21" pos="0.0299047 -0.0181854 0">
+            <joint name="j_c21_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c21_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c21_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00598094 0.00363709 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c21" size="0.002" />
+          </body>
+          <body name="node_22" pos="0.0337021 -0.00944289 0">
+            <joint name="j_c22_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c22_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c22_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00674042 0.00188858 0" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c22" size="0.002" />
+          </body>
+          <body name="node_23" pos="0.0274993 0 0.0216515">
+            <joint name="j_c23_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c23_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c23_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00549986 0 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c23" size="0.002" />
+          </body>
+          <body name="node_24" pos="0.0261534 0.00849776 0.0216515">
+            <joint name="j_c24_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c24_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c24_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00523068 -0.00169955 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c24" size="0.002" />
+          </body>
+          <body name="node_25" pos="0.0222474 0.0161637 0.0216515">
+            <joint name="j_c25_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c25_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c25_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00444948 -0.00323274 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c25" size="0.002" />
+          </body>
+          <body name="node_26" pos="0.0161637 0.0222474 0.0216515">
+            <joint name="j_c26_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c26_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c26_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00323274 -0.00444948 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c26" size="0.002" />
+          </body>
+          <body name="node_27" pos="0.00849776 0.0261534 0.0216515">
+            <joint name="j_c27_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c27_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c27_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00169955 -0.00523068 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c27" size="0.002" />
+          </body>
+          <body name="node_28" pos="0 0.0274993 0.0216515">
+            <joint name="j_c28_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c28_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c28_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0 -0.00549986 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c28" size="0.002" />
+          </body>
+          <body name="node_29" pos="-0.00849776 0.0261534 0.0216515">
+            <joint name="j_c29_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c29_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c29_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00169955 -0.00523068 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c29" size="0.002" />
+          </body>
+          <body name="node_30" pos="-0.0161637 0.0222474 0.0216515">
+            <joint name="j_c30_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c30_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c30_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00323274 -0.00444948 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c30" size="0.002" />
+          </body>
+          <body name="node_31" pos="-0.0222474 0.0161637 0.0216515">
+            <joint name="j_c31_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c31_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c31_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00444948 -0.00323274 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c31" size="0.002" />
+          </body>
+          <body name="node_32" pos="-0.0261534 0.00849776 0.0216515">
+            <joint name="j_c32_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c32_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c32_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00523068 -0.00169955 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c32" size="0.002" />
+          </body>
+          <body name="node_33" pos="-0.0274993 0 0.0216515">
+            <joint name="j_c33_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c33_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c33_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00549986 0 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c33" size="0.002" />
+          </body>
+          <body name="node_34" pos="-0.0261534 -0.00849776 0.0216515">
+            <joint name="j_c34_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c34_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c34_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00523068 0.00169955 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c34" size="0.002" />
+          </body>
+          <body name="node_35" pos="-0.0222474 -0.0161637 0.0216515">
+            <joint name="j_c35_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c35_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c35_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00444948 0.00323274 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c35" size="0.002" />
+          </body>
+          <body name="node_36" pos="-0.0161637 -0.0222474 0.0216515">
+            <joint name="j_c36_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c36_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c36_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00323274 0.00444948 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c36" size="0.002" />
+          </body>
+          <body name="node_37" pos="-0.00849776 -0.0261534 0.0216515">
+            <joint name="j_c37_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c37_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c37_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00169955 0.00523068 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c37" size="0.002" />
+          </body>
+          <body name="node_38" pos="0 -0.0274993 0.0216515">
+            <joint name="j_c38_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c38_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c38_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0 0.00549986 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c38" size="0.002" />
+          </body>
+          <body name="node_39" pos="0.00849776 -0.0261534 0.0216515">
+            <joint name="j_c39_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c39_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c39_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00169955 0.00523068 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c39" size="0.002" />
+          </body>
+          <body name="node_40" pos="0.0161637 -0.0222474 0.0216515">
+            <joint name="j_c40_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c40_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c40_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00323274 0.00444948 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c40" size="0.002" />
+          </body>
+          <body name="node_41" pos="0.0222474 -0.0161637 0.0216515">
+            <joint name="j_c41_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c41_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c41_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00444948 0.00323274 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c41" size="0.002" />
+          </body>
+          <body name="node_42" pos="0.0261534 -0.00849776 0.0216515">
+            <joint name="j_c42_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c42_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c42_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00523068 0.00169955 -0.0043303" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c42" size="0.002" />
+          </body>
+          <body name="node_43" pos="0.0189419 0 0.0294314">
+            <joint name="j_c43_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c43_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c43_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00378837 0 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c43" size="0.002" />
+          </body>
+          <body name="node_44" pos="0.0175 0.00724874 0.0294314">
+            <joint name="j_c44_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c44_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c44_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.0035 -0.00144975 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c44" size="0.002" />
+          </body>
+          <body name="node_45" pos="0.0133939 0.0133939 0.0294314">
+            <joint name="j_c45_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c45_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c45_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00267878 -0.00267878 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c45" size="0.002" />
+          </body>
+          <body name="node_46" pos="0.00724874 0.0175 0.0294314">
+            <joint name="j_c46_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c46_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c46_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00144975 -0.0035 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c46" size="0.002" />
+          </body>
+          <body name="node_47" pos="0 0.0189419 0.0294314">
+            <joint name="j_c47_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c47_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c47_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0 -0.00378837 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c47" size="0.002" />
+          </body>
+          <body name="node_48" pos="-0.00724874 0.0175 0.0294314">
+            <joint name="j_c48_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c48_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c48_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00144975 -0.0035 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c48" size="0.002" />
+          </body>
+          <body name="node_49" pos="-0.0133939 0.0133939 0.0294314">
+            <joint name="j_c49_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c49_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c49_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00267878 -0.00267878 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c49" size="0.002" />
+          </body>
+          <body name="node_50" pos="-0.0175 0.00724874 0.0294314">
+            <joint name="j_c50_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c50_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c50_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.0035 -0.00144975 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c50" size="0.002" />
+          </body>
+          <body name="node_51" pos="-0.0189419 0 0.0294314">
+            <joint name="j_c51_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c51_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c51_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00378837 0 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c51" size="0.002" />
+          </body>
+          <body name="node_52" pos="-0.0175 -0.00724874 0.0294314">
+            <joint name="j_c52_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c52_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c52_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.0035 0.00144975 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c52" size="0.002" />
+          </body>
+          <body name="node_53" pos="-0.0133939 -0.0133939 0.0294314">
+            <joint name="j_c53_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c53_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c53_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00267878 0.00267878 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c53" size="0.002" />
+          </body>
+          <body name="node_54" pos="-0.00724874 -0.0175 0.0294314">
+            <joint name="j_c54_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c54_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c54_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00144975 0.0035 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c54" size="0.002" />
+          </body>
+          <body name="node_55" pos="0 -0.0189419 0.0294314">
+            <joint name="j_c55_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c55_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c55_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0 0.00378837 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c55" size="0.002" />
+          </body>
+          <body name="node_56" pos="0.00724874 -0.0175 0.0294314">
+            <joint name="j_c56_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c56_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c56_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00144975 0.0035 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c56" size="0.002" />
+          </body>
+          <body name="node_57" pos="0.0133939 -0.0133939 0.0294314">
+            <joint name="j_c57_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c57_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c57_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00267878 0.00267878 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c57" size="0.002" />
+          </body>
+          <body name="node_58" pos="0.0175 -0.00724874 0.0294314">
+            <joint name="j_c58_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c58_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c58_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.0035 0.00144975 -0.00588627" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c58" size="0.002" />
+          </body>
+          <body name="node_59" pos="0.00965648 0 0.0336415">
+            <joint name="j_c59_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c59_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c59_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.0019313 0 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c59" size="0.002" />
+          </body>
+          <body name="node_60" pos="0.00812355 0.00522069 0.0336415">
+            <joint name="j_c60_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c60_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c60_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00162471 -0.00104414 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c60" size="0.002" />
+          </body>
+          <body name="node_61" pos="0.00401145 0.00878384 0.0336415">
+            <joint name="j_c61_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c61_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c61_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.000802289 -0.00175677 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c61" size="0.002" />
+          </body>
+          <body name="node_62" pos="-0.00137426 0.00955819 0.0336415">
+            <joint name="j_c62_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c62_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c62_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.000274852 -0.00191164 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c62" size="0.002" />
+          </body>
+          <body name="node_63" pos="-0.00632365 0.00729788 0.0336415">
+            <joint name="j_c63_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c63_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c63_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00126473 -0.00145958 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c63" size="0.002" />
+          </body>
+          <body name="node_64" pos="-0.00926532 0.00272054 0.0336415">
+            <joint name="j_c64_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c64_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c64_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00185306 -0.000544109 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c64" size="0.002" />
+          </body>
+          <body name="node_65" pos="-0.00926532 -0.00272054 0.0336415">
+            <joint name="j_c65_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c65_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c65_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00185306 0.000544109 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c65" size="0.002" />
+          </body>
+          <body name="node_66" pos="-0.00632365 -0.00729788 0.0336415">
+            <joint name="j_c66_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c66_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c66_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.00126473 0.00145958 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c66" size="0.002" />
+          </body>
+          <body name="node_67" pos="-0.00137426 -0.00955819 0.0336415">
+            <joint name="j_c67_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c67_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c67_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0.000274852 0.00191164 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c67" size="0.002" />
+          </body>
+          <body name="node_68" pos="0.00401145 -0.00878384 0.0336415">
+            <joint name="j_c68_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c68_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c68_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.000802289 0.00175677 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c68" size="0.002" />
+          </body>
+          <body name="node_69" pos="0.00812355 -0.00522069 0.0336415">
+            <joint name="j_c69_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c69_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c69_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="-0.00162471 0.00104414 -0.00672831" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c69" size="0.002" />
+          </body>
+          <body name="node_70" pos="0 0 0.035">
+            <joint name="j_c70_x" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="1 0 0" limited="true" />
+            <joint name="j_c70_y" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" axis="0 1 0" limited="true" />
+            <joint name="j_c70_z" type="slide" stiffness="150" range="-0.02 0.02" armature="0.001" damping="3" limited="true" />
+            <geom size="0.001" group="1" rgba="1 1 1 0" mass="0.001" />
+            <geom size="0.002" pos="0 0 -0.007" contype="0" conaffinity="0" group="2" rgba="1 1 1 1" mass="0" />
+            <site name="s_c70" size="0.002" />
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <contact>
+    <exclude body1="tactip" body2="flexible_structure" />
+    <exclude body1="tactip" body2="cylinder_mount" />
+  </contact>
+  <tendon>
+    <spatial name="t_h_0_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c0" />
+      <site site="s_c1" />
+    </spatial>
+    <spatial name="t_h_0_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c1" />
+      <site site="s_c2" />
+    </spatial>
+    <spatial name="t_h_0_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c2" />
+      <site site="s_c3" />
+    </spatial>
+    <spatial name="t_h_0_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c3" />
+      <site site="s_c4" />
+    </spatial>
+    <spatial name="t_h_0_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c4" />
+      <site site="s_c5" />
+    </spatial>
+    <spatial name="t_h_0_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c5" />
+      <site site="s_c6" />
+    </spatial>
+    <spatial name="t_h_0_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c6" />
+      <site site="s_c7" />
+    </spatial>
+    <spatial name="t_h_0_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c7" />
+      <site site="s_c8" />
+    </spatial>
+    <spatial name="t_h_0_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c8" />
+      <site site="s_c9" />
+    </spatial>
+    <spatial name="t_h_0_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c9" />
+      <site site="s_c10" />
+    </spatial>
+    <spatial name="t_h_0_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c10" />
+      <site site="s_c11" />
+    </spatial>
+    <spatial name="t_h_0_11" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c11" />
+      <site site="s_c12" />
+    </spatial>
+    <spatial name="t_h_0_12" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c12" />
+      <site site="s_c13" />
+    </spatial>
+    <spatial name="t_h_0_13" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c13" />
+      <site site="s_c14" />
+    </spatial>
+    <spatial name="t_h_0_14" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c14" />
+      <site site="s_c15" />
+    </spatial>
+    <spatial name="t_h_0_15" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c15" />
+      <site site="s_c16" />
+    </spatial>
+    <spatial name="t_h_0_16" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c16" />
+      <site site="s_c17" />
+    </spatial>
+    <spatial name="t_h_0_17" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c17" />
+      <site site="s_c18" />
+    </spatial>
+    <spatial name="t_h_0_18" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c18" />
+      <site site="s_c19" />
+    </spatial>
+    <spatial name="t_h_0_19" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c19" />
+      <site site="s_c20" />
+    </spatial>
+    <spatial name="t_h_0_20" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c20" />
+      <site site="s_c21" />
+    </spatial>
+    <spatial name="t_h_0_21" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c21" />
+      <site site="s_c22" />
+    </spatial>
+    <spatial name="t_h_0_22" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00953167">
+      <site site="s_c22" />
+      <site site="s_c0" />
+    </spatial>
+    <spatial name="t_h_1_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c23" />
+      <site site="s_c24" />
+    </spatial>
+    <spatial name="t_h_1_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c24" />
+      <site site="s_c25" />
+    </spatial>
+    <spatial name="t_h_1_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c25" />
+      <site site="s_c26" />
+    </spatial>
+    <spatial name="t_h_1_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c26" />
+      <site site="s_c27" />
+    </spatial>
+    <spatial name="t_h_1_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c27" />
+      <site site="s_c28" />
+    </spatial>
+    <spatial name="t_h_1_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c28" />
+      <site site="s_c29" />
+    </spatial>
+    <spatial name="t_h_1_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c29" />
+      <site site="s_c30" />
+    </spatial>
+    <spatial name="t_h_1_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c30" />
+      <site site="s_c31" />
+    </spatial>
+    <spatial name="t_h_1_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c31" />
+      <site site="s_c32" />
+    </spatial>
+    <spatial name="t_h_1_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c32" />
+      <site site="s_c33" />
+    </spatial>
+    <spatial name="t_h_1_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c33" />
+      <site site="s_c34" />
+    </spatial>
+    <spatial name="t_h_1_11" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c34" />
+      <site site="s_c35" />
+    </spatial>
+    <spatial name="t_h_1_12" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c35" />
+      <site site="s_c36" />
+    </spatial>
+    <spatial name="t_h_1_13" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c36" />
+      <site site="s_c37" />
+    </spatial>
+    <spatial name="t_h_1_14" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c37" />
+      <site site="s_c38" />
+    </spatial>
+    <spatial name="t_h_1_15" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c38" />
+      <site site="s_c39" />
+    </spatial>
+    <spatial name="t_h_1_16" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c39" />
+      <site site="s_c40" />
+    </spatial>
+    <spatial name="t_h_1_17" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c40" />
+      <site site="s_c41" />
+    </spatial>
+    <spatial name="t_h_1_18" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c41" />
+      <site site="s_c42" />
+    </spatial>
+    <spatial name="t_h_1_19" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00860368">
+      <site site="s_c42" />
+      <site site="s_c23" />
+    </spatial>
+    <spatial name="t_h_2_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c43" />
+      <site site="s_c44" />
+    </spatial>
+    <spatial name="t_h_2_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c44" />
+      <site site="s_c45" />
+    </spatial>
+    <spatial name="t_h_2_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c45" />
+      <site site="s_c46" />
+    </spatial>
+    <spatial name="t_h_2_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c46" />
+      <site site="s_c47" />
+    </spatial>
+    <spatial name="t_h_2_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c47" />
+      <site site="s_c48" />
+    </spatial>
+    <spatial name="t_h_2_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c48" />
+      <site site="s_c49" />
+    </spatial>
+    <spatial name="t_h_2_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c49" />
+      <site site="s_c50" />
+    </spatial>
+    <spatial name="t_h_2_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c50" />
+      <site site="s_c51" />
+    </spatial>
+    <spatial name="t_h_2_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c51" />
+      <site site="s_c52" />
+    </spatial>
+    <spatial name="t_h_2_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c52" />
+      <site site="s_c53" />
+    </spatial>
+    <spatial name="t_h_2_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c53" />
+      <site site="s_c54" />
+    </spatial>
+    <spatial name="t_h_2_11" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c54" />
+      <site site="s_c55" />
+    </spatial>
+    <spatial name="t_h_2_12" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c55" />
+      <site site="s_c56" />
+    </spatial>
+    <spatial name="t_h_2_13" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c56" />
+      <site site="s_c57" />
+    </spatial>
+    <spatial name="t_h_2_14" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c57" />
+      <site site="s_c58" />
+    </spatial>
+    <spatial name="t_h_2_15" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00739075">
+      <site site="s_c58" />
+      <site site="s_c43" />
+    </spatial>
+    <spatial name="t_h_3_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c59" />
+      <site site="s_c60" />
+    </spatial>
+    <spatial name="t_h_3_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c60" />
+      <site site="s_c61" />
+    </spatial>
+    <spatial name="t_h_3_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c61" />
+      <site site="s_c62" />
+    </spatial>
+    <spatial name="t_h_3_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c62" />
+      <site site="s_c63" />
+    </spatial>
+    <spatial name="t_h_3_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c63" />
+      <site site="s_c64" />
+    </spatial>
+    <spatial name="t_h_3_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c64" />
+      <site site="s_c65" />
+    </spatial>
+    <spatial name="t_h_3_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c65" />
+      <site site="s_c66" />
+    </spatial>
+    <spatial name="t_h_3_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c66" />
+      <site site="s_c67" />
+    </spatial>
+    <spatial name="t_h_3_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c67" />
+      <site site="s_c68" />
+    </spatial>
+    <spatial name="t_h_3_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c68" />
+      <site site="s_c69" />
+    </spatial>
+    <spatial name="t_h_3_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" damping="2" springlength="0.00544109">
+      <site site="s_c69" />
+      <site site="s_c59" />
+    </spatial>
+    <spatial name="t_v_0_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0229139">
+      <site site="s_c0" />
+      <site site="s_c23" />
+    </spatial>
+    <spatial name="t_v_0_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0244219">
+      <site site="s_c1" />
+      <site site="s_c23" />
+    </spatial>
+    <spatial name="t_v_0_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0240148">
+      <site site="s_c2" />
+      <site site="s_c24" />
+    </spatial>
+    <spatial name="t_v_0_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0236672">
+      <site site="s_c3" />
+      <site site="s_c25" />
+    </spatial>
+    <spatial name="t_v_0_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0233824">
+      <site site="s_c4" />
+      <site site="s_c26" />
+    </spatial>
+    <spatial name="t_v_0_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0231631">
+      <site site="s_c5" />
+      <site site="s_c27" />
+    </spatial>
+    <spatial name="t_v_0_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0230116">
+      <site site="s_c6" />
+      <site site="s_c28" />
+    </spatial>
+    <spatial name="t_v_0_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0229296">
+      <site site="s_c7" />
+      <site site="s_c29" />
+    </spatial>
+    <spatial name="t_v_0_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0247246">
+      <site site="s_c8" />
+      <site site="s_c29" />
+    </spatial>
+    <spatial name="t_v_0_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0242798">
+      <site site="s_c9" />
+      <site site="s_c30" />
+    </spatial>
+    <spatial name="t_v_0_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0238921">
+      <site site="s_c10" />
+      <site site="s_c31" />
+    </spatial>
+    <spatial name="t_v_0_11" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0235651">
+      <site site="s_c11" />
+      <site site="s_c32" />
+    </spatial>
+    <spatial name="t_v_0_12" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0233019">
+      <site site="s_c12" />
+      <site site="s_c33" />
+    </spatial>
+    <spatial name="t_v_0_13" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.023105">
+      <site site="s_c13" />
+      <site site="s_c34" />
+    </spatial>
+    <spatial name="t_v_0_14" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0229765">
+      <site site="s_c14" />
+      <site site="s_c35" />
+    </spatial>
+    <spatial name="t_v_0_15" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0229178">
+      <site site="s_c15" />
+      <site site="s_c36" />
+    </spatial>
+    <spatial name="t_v_0_16" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0245702">
+      <site site="s_c16" />
+      <site site="s_c36" />
+    </spatial>
+    <spatial name="t_v_0_17" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0241441">
+      <site site="s_c17" />
+      <site site="s_c37" />
+    </spatial>
+    <spatial name="t_v_0_18" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0237762">
+      <site site="s_c18" />
+      <site site="s_c38" />
+    </spatial>
+    <spatial name="t_v_0_19" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0234701">
+      <site site="s_c19" />
+      <site site="s_c39" />
+    </spatial>
+    <spatial name="t_v_0_20" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0232287">
+      <site site="s_c20" />
+      <site site="s_c40" />
+    </spatial>
+    <spatial name="t_v_0_21" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0230545">
+      <site site="s_c21" />
+      <site site="s_c41" />
+    </spatial>
+    <spatial name="t_v_0_22" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0229491">
+      <site site="s_c22" />
+      <site site="s_c42" />
+    </spatial>
+    <spatial name="t_v_1_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0115653">
+      <site site="s_c23" />
+      <site site="s_c43" />
+    </spatial>
+    <spatial name="t_v_1_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0135921">
+      <site site="s_c24" />
+      <site site="s_c43" />
+    </spatial>
+    <spatial name="t_v_1_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0127492">
+      <site site="s_c25" />
+      <site site="s_c44" />
+    </spatial>
+    <spatial name="t_v_1_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0121071">
+      <site site="s_c26" />
+      <site site="s_c45" />
+    </spatial>
+    <spatial name="t_v_1_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0117033">
+      <site site="s_c27" />
+      <site site="s_c46" />
+    </spatial>
+    <spatial name="t_v_1_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0115653">
+      <site site="s_c28" />
+      <site site="s_c47" />
+    </spatial>
+    <spatial name="t_v_1_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0135921">
+      <site site="s_c29" />
+      <site site="s_c47" />
+    </spatial>
+    <spatial name="t_v_1_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0127492">
+      <site site="s_c30" />
+      <site site="s_c48" />
+    </spatial>
+    <spatial name="t_v_1_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0121071">
+      <site site="s_c31" />
+      <site site="s_c49" />
+    </spatial>
+    <spatial name="t_v_1_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0117033">
+      <site site="s_c32" />
+      <site site="s_c50" />
+    </spatial>
+    <spatial name="t_v_1_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0115653">
+      <site site="s_c33" />
+      <site site="s_c51" />
+    </spatial>
+    <spatial name="t_v_1_11" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0135921">
+      <site site="s_c34" />
+      <site site="s_c51" />
+    </spatial>
+    <spatial name="t_v_1_12" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0127492">
+      <site site="s_c35" />
+      <site site="s_c52" />
+    </spatial>
+    <spatial name="t_v_1_13" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0121071">
+      <site site="s_c36" />
+      <site site="s_c53" />
+    </spatial>
+    <spatial name="t_v_1_14" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0117033">
+      <site site="s_c37" />
+      <site site="s_c54" />
+    </spatial>
+    <spatial name="t_v_1_15" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0115653">
+      <site site="s_c38" />
+      <site site="s_c55" />
+    </spatial>
+    <spatial name="t_v_1_16" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0135921">
+      <site site="s_c39" />
+      <site site="s_c55" />
+    </spatial>
+    <spatial name="t_v_1_17" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0127492">
+      <site site="s_c40" />
+      <site site="s_c56" />
+    </spatial>
+    <spatial name="t_v_1_18" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0121071">
+      <site site="s_c41" />
+      <site site="s_c57" />
+    </spatial>
+    <spatial name="t_v_1_19" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0117033">
+      <site site="s_c42" />
+      <site site="s_c58" />
+    </spatial>
+    <spatial name="t_v_2_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0101953">
+      <site site="s_c43" />
+      <site site="s_c59" />
+    </spatial>
+    <spatial name="t_v_2_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.01148">
+      <site site="s_c44" />
+      <site site="s_c59" />
+    </spatial>
+    <spatial name="t_v_2_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0105974">
+      <site site="s_c45" />
+      <site site="s_c60" />
+    </spatial>
+    <spatial name="t_v_2_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0102067">
+      <site site="s_c46" />
+      <site site="s_c61" />
+    </spatial>
+    <spatial name="t_v_2_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0117048">
+      <site site="s_c47" />
+      <site site="s_c61" />
+    </spatial>
+    <spatial name="t_v_2_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0107381">
+      <site site="s_c48" />
+      <site site="s_c62" />
+    </spatial>
+    <spatial name="t_v_2_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0102409">
+      <site site="s_c49" />
+      <site site="s_c63" />
+    </spatial>
+    <spatial name="t_v_2_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0119431">
+      <site site="s_c50" />
+      <site site="s_c63" />
+    </spatial>
+    <spatial name="t_v_2_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0108978">
+      <site site="s_c51" />
+      <site site="s_c64" />
+    </spatial>
+    <spatial name="t_v_2_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0102976">
+      <site site="s_c52" />
+      <site site="s_c65" />
+    </spatial>
+    <spatial name="t_v_2_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0121939">
+      <site site="s_c53" />
+      <site site="s_c65" />
+    </spatial>
+    <spatial name="t_v_2_11" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0110754">
+      <site site="s_c54" />
+      <site site="s_c66" />
+    </spatial>
+    <spatial name="t_v_2_12" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0103763">
+      <site site="s_c55" />
+      <site site="s_c67" />
+    </spatial>
+    <spatial name="t_v_2_13" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0124561">
+      <site site="s_c56" />
+      <site site="s_c67" />
+    </spatial>
+    <spatial name="t_v_2_14" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0112698">
+      <site site="s_c57" />
+      <site site="s_c68" />
+    </spatial>
+    <spatial name="t_v_2_15" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.0104765">
+      <site site="s_c58" />
+      <site site="s_c69" />
+    </spatial>
+    <spatial name="t_v_3_0" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c59" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_1" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c60" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_2" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c61" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_3" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c62" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_4" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c63" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_5" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c64" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_6" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c65" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_7" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c66" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_8" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c67" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_9" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c68" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_v_3_10" solreflimit="0.008" solimplimit="0.95 0.99" width="0.0015" springlength="0.00975156">
+      <site site="s_c69" />
+      <site site="s_c70" />
+    </spatial>
+    <spatial name="t_spoke_0_3" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0278881">
+      <site site="s_c0" />
+      <site site="s_c3" />
+    </spatial>
+    <spatial name="t_spoke_0_6" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0511585">
+      <site site="s_c0" />
+      <site site="s_c6" />
+    </spatial>
+    <spatial name="t_spoke_0_9" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0659583">
+      <site site="s_c0" />
+      <site site="s_c9" />
+    </spatial>
+    <spatial name="t_spoke_0_12" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0698368">
+      <site site="s_c0" />
+      <site site="s_c12" />
+    </spatial>
+    <spatial name="t_spoke_0_15" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.062152">
+      <site site="s_c0" />
+      <site site="s_c15" />
+    </spatial>
+    <spatial name="t_spoke_0_18" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0441762">
+      <site site="s_c0" />
+      <site site="s_c18" />
+    </spatial>
+    <spatial name="t_spoke_0_21" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0188858">
+      <site site="s_c0" />
+      <site site="s_c21" />
+    </spatial>
+    <spatial name="t_spoke_1_0" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0229139">
+      <site site="s_c0" />
+      <site site="s_c23" />
+    </spatial>
+    <spatial name="t_spoke_1_3" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0363117">
+      <site site="s_c0" />
+      <site site="s_c26" />
+    </spatial>
+    <spatial name="t_spoke_1_6" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0551801">
+      <site site="s_c0" />
+      <site site="s_c29" />
+    </spatial>
+    <spatial name="t_spoke_1_9" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0654274">
+      <site site="s_c0" />
+      <site site="s_c32" />
+    </spatial>
+    <spatial name="t_spoke_1_12" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0633034">
+      <site site="s_c0" />
+      <site site="s_c35" />
+    </spatial>
+    <spatial name="t_spoke_1_15" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0494975">
+      <site site="s_c0" />
+      <site site="s_c38" />
+    </spatial>
+    <spatial name="t_spoke_1_18" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0298778">
+      <site site="s_c0" />
+      <site site="s_c41" />
+    </spatial>
+    <spatial name="t_spoke_2_0" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0335271">
+      <site site="s_c0" />
+      <site site="s_c43" />
+    </spatial>
+    <spatial name="t_spoke_2_3" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0440748">
+      <site site="s_c0" />
+      <site site="s_c46" />
+    </spatial>
+    <spatial name="t_spoke_2_6" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0582029">
+      <site site="s_c0" />
+      <site site="s_c49" />
+    </spatial>
+    <spatial name="t_spoke_2_9" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0606218">
+      <site site="s_c0" />
+      <site site="s_c52" />
+    </spatial>
+    <spatial name="t_spoke_2_12" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0494975">
+      <site site="s_c0" />
+      <site site="s_c55" />
+    </spatial>
+    <spatial name="t_spoke_2_15" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.035">
+      <site site="s_c0" />
+      <site site="s_c58" />
+    </spatial>
+    <spatial name="t_spoke_3_0" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0421194">
+      <site site="s_c0" />
+      <site site="s_c59" />
+    </spatial>
+    <spatial name="t_spoke_3_3" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0504599">
+      <site site="s_c0" />
+      <site site="s_c62" />
+    </spatial>
+    <spatial name="t_spoke_3_6" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0556648">
+      <site site="s_c0" />
+      <site site="s_c65" />
+    </spatial>
+    <spatial name="t_spoke_3_9" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0465747">
+      <site site="s_c0" />
+      <site site="s_c68" />
+    </spatial>
+    <spatial name="t_spoke_4_0" solreflimit="0.005" width="0.0005" stiffness="1500" damping="15" rgba="0 1 0 0" springlength="0.0494975">
+      <site site="s_c0" />
+      <site site="s_c70" />
+    </spatial>
+  </tendon>
+  <equality>
+    <joint joint1="j_c0_x" />
+    <joint joint1="j_c0_y" />
+    <joint joint1="j_c0_z" />
+    <joint joint1="j_c1_x" />
+    <joint joint1="j_c1_y" />
+    <joint joint1="j_c1_z" />
+    <joint joint1="j_c2_x" />
+    <joint joint1="j_c2_y" />
+    <joint joint1="j_c2_z" />
+    <joint joint1="j_c3_x" />
+    <joint joint1="j_c3_y" />
+    <joint joint1="j_c3_z" />
+    <joint joint1="j_c4_x" />
+    <joint joint1="j_c4_y" />
+    <joint joint1="j_c4_z" />
+    <joint joint1="j_c5_x" />
+    <joint joint1="j_c5_y" />
+    <joint joint1="j_c5_z" />
+    <joint joint1="j_c6_x" />
+    <joint joint1="j_c6_y" />
+    <joint joint1="j_c6_z" />
+    <joint joint1="j_c7_x" />
+    <joint joint1="j_c7_y" />
+    <joint joint1="j_c7_z" />
+    <joint joint1="j_c8_x" />
+    <joint joint1="j_c8_y" />
+    <joint joint1="j_c8_z" />
+    <joint joint1="j_c9_x" />
+    <joint joint1="j_c9_y" />
+    <joint joint1="j_c9_z" />
+    <joint joint1="j_c10_x" />
+    <joint joint1="j_c10_y" />
+    <joint joint1="j_c10_z" />
+    <joint joint1="j_c11_x" />
+    <joint joint1="j_c11_y" />
+    <joint joint1="j_c11_z" />
+    <joint joint1="j_c12_x" />
+    <joint joint1="j_c12_y" />
+    <joint joint1="j_c12_z" />
+    <joint joint1="j_c13_x" />
+    <joint joint1="j_c13_y" />
+    <joint joint1="j_c13_z" />
+    <joint joint1="j_c14_x" />
+    <joint joint1="j_c14_y" />
+    <joint joint1="j_c14_z" />
+    <joint joint1="j_c15_x" />
+    <joint joint1="j_c15_y" />
+    <joint joint1="j_c15_z" />
+    <joint joint1="j_c16_x" />
+    <joint joint1="j_c16_y" />
+    <joint joint1="j_c16_z" />
+    <joint joint1="j_c17_x" />
+    <joint joint1="j_c17_y" />
+    <joint joint1="j_c17_z" />
+    <joint joint1="j_c18_x" />
+    <joint joint1="j_c18_y" />
+    <joint joint1="j_c18_z" />
+    <joint joint1="j_c19_x" />
+    <joint joint1="j_c19_y" />
+    <joint joint1="j_c19_z" />
+    <joint joint1="j_c20_x" />
+    <joint joint1="j_c20_y" />
+    <joint joint1="j_c20_z" />
+    <joint joint1="j_c21_x" />
+    <joint joint1="j_c21_y" />
+    <joint joint1="j_c21_z" />
+    <joint joint1="j_c22_x" />
+    <joint joint1="j_c22_y" />
+    <joint joint1="j_c22_z" />
+  </equality>
+</mujoco>

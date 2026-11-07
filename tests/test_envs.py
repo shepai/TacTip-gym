@@ -1,5 +1,6 @@
 """The tasks themselves (skipped when the robot meshes / models are not in assets/)."""
 import os
+import warnings
 
 import numpy as np
 import pytest
@@ -9,6 +10,14 @@ gym = pytest.importorskip("gymnasium")
 
 import tactip_mujoco_gym  # noqa: E402,F401
 from conftest import ROOT, needs_arm, robot_available  # noqa: E402
+
+def _no_attach_notices(capfd, caught):
+    """MuJoCo reports option conflicts both from C (straight to the console, in every worker
+    process) and as Python warnings: neither should appear."""
+    out, err = capfd.readouterr()
+    assert "Attach conflict" not in out + err
+    assert not [w for w in caught if "Attach conflict" in str(w.message)]
+
 
 PRIVILEGED = {"TacArm-edge": (9, 13), "TacArm-peg": (8, 12), "TacArm-shape": (8, 17),
               "TacArm-hill": (8, 15)}
@@ -43,9 +52,12 @@ def test_arm_every_input():
 
 
 @needs_arm
-def test_attached_tactip_matches_the_builtin_one():
+def test_attached_tactip_matches_the_builtin_one(capfd):
     a = gym.make("TacArm-peg", obs_modes=["tactile"]).unwrapped
-    b = gym.make("TacArm-peg", obs_modes=["tactile"], sensor_xml="tactip").unwrapped
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        b = gym.make("TacArm-peg", obs_modes=["tactile"], sensor_xml="tactip").unwrapped
+    _no_attach_notices(capfd, caught)
     assert b.sensor_mounts[0].prefix == "sensor_" and a.n_markers == b.n_markers
     # same marker rest shape in the sensor frame, and the same tip position for the arm
     np.testing.assert_allclose(a._nodes_rest, b._nodes_rest, atol=2e-4)
@@ -75,11 +87,14 @@ def test_custom_sensor_on_the_arm():
     env.close()
 
 
-def test_quadruped():
+def test_quadruped(capfd):
     from tactip_mujoco_gym.envs.tactip_quadruped import TacQuadruped
     if not robot_available(TacQuadruped):
         pytest.skip("go2.xml / meshes missing")
-    env = gym.make("TacQuad-walk", obs_modes=["tactile"], feet="tactip")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        env = gym.make("TacQuad-walk", obs_modes=["tactile"], feet="tactip")
+    _no_attach_notices(capfd, caught)
     raw = env.unwrapped
     assert [m.name for m in raw.sensor_mounts] == ["FL", "FR", "RL", "RR"]
     obs, _ = env.reset(seed=0)
@@ -92,11 +107,14 @@ def test_quadruped():
         proxy.set_obs_modes(["tactile"])
 
 
-def test_humanoid():
+def test_humanoid(capfd):
     from tactip_mujoco_gym.envs.tactip_humanoid import TacHumanoidPick
     if not robot_available(TacHumanoidPick):
         pytest.skip("RB-Y1 model missing")
-    env = gym.make("TacHumanoid-pick", obs_modes=["object", "tactile"])
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        env = gym.make("TacHumanoid-pick", obs_modes=["object", "tactile"])
+    _no_attach_notices(capfd, caught)
     raw = env.unwrapped
     assert [m.name for m in raw.sensor_mounts] == ["left", "right"]
     env.reset(seed=0)

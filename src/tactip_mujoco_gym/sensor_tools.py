@@ -57,6 +57,33 @@ MARKER_PREFIX = "s_c"
 _ATTACH_NOTICES = ("Attach conflict when attaching", "Attaching a spec with an empty prefix")
 
 
+_OPTION_FIELDS = ("timestep", "impratio", "tolerance", "ls_tolerance", "noslip_tolerance",
+                  "ccd_tolerance", "density", "viscosity", "o_margin", "integrator", "cone",
+                  "jacobian", "solver", "iterations", "ls_iterations", "noslip_iterations",
+                  "ccd_iterations", "disableflags", "enableflags", "disableactuator",
+                  "sdf_initpoints", "sdf_iterations", "gravity", "wind", "magnetic", "o_solref",
+                  "o_solimp", "o_friction")
+
+
+def match_options(target, source):
+    """Copy `source`'s simulation options (timestep, integrator, ...) into `target`. Called
+    on a sensor spec before it is attached to a robot: the robot's options win anyway, but
+    MuJoCo prints an "Attach conflict" warning (from C, in every process) for each one that
+    differs. Fields this MuJoCo version doesn't have are skipped."""
+    for name in _OPTION_FIELDS:
+        try:
+            value = getattr(source.option, name)
+        except AttributeError:
+            continue
+        try:
+            setattr(target.option, name, np.array(value) if np.ndim(value) else value)
+        except (AttributeError, TypeError, ValueError):
+            try:
+                getattr(target.option, name)[:] = value
+            except Exception:
+                pass
+
+
 def compile_spec(spec):
     """spec.compile() without MuJoCo's expected attach notices (every other warning shows)."""
     with warnings.catch_warnings():
@@ -124,7 +151,7 @@ def extract_sensor(scene_xml, root_body="auto", out_xml=None, keep_cameras=("sen
     spec.modelname = "tactip"
     spec.compiler.degree = src.compiler.degree
     spec.compiler.autolimits = src.compiler.autolimits
-    spec.option.timestep = src.option.timestep
+    match_options(spec, src)                             # (no "Attach conflict" to report)
     root = spec.worldbody.add_frame().attach_body(src.body(root_body), "", "")
     root.pos = [0, 0, 0]
     root.quat = [1, 0, 0, 0]
@@ -497,6 +524,7 @@ def attach_sensor(spec, parent, sensor, prefix, pos=(0, 0, 0), quat=None, axis=N
         else:
             ax = sensor_info(child)["axis"] if axis is None else np.asarray(axis, float)
             quat = quat_between(ax, axis_to)
+    match_options(child, spec)          # the robot's timestep etc. (no "Attach conflict" warning)
     frame = parent.add_frame(pos=list(pos), quat=list(quat))
     root = frame.attach_body(root_src, prefix, "")
 

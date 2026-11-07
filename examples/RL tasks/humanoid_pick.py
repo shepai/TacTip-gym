@@ -32,7 +32,8 @@ side), pick/squash, pick/fail_* and every reward term (reward/...), averaged per
 """
 import multiprocessing
 import os
-from concurrent.futures import ProcessPoolExecutor
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import gymnasium as gym
 import numpy as np
@@ -48,7 +49,7 @@ OBS_MODES = {"object": True, "tactile": True}
 OBS_FORMAT = "flat"                    # "dict" for vision (CNN on the camera image)
 ENV_KWARGS = {"action_mode": "bimanual", "sensor_stiffness": 10.0}
 STEPS = 20_000_000
-N_ENVS = 16
+N_ENVS = 4
 DEMOS = 600                            # scripted episodes for the warm start (0 = pure RL)
 DEMO_LEVELS = (0.0, 0.5)               # difficulty range of the demos
 DEMO_NOISE = 0.3                       # action noise while recording (the labels stay clean), so
@@ -98,13 +99,15 @@ class PickLogger(BaseCallback):
 # ----------------------------------------------------------------------------- warm start
 def _demo_worker(args):
     """Run the scripted picker; keep the successful episodes (obs, action, reward). With
-    noise, the executed action is perturbed but the recorded one is the picker's own."""
+    noise, the executed action is perturbed but the recorded one is the picker's own.
+    One env for the whole batch (building the humanoid takes far longer than a reset); each
+    episode's difficulty is set through reset(options={"level": ...})."""
     env_kwargs, seeds, levels, noise = args
     from tactip_mujoco_gym.envs.tactip_humanoid import ScriptedPicker
     out = []
+    env = gym.make(env_id(ENV_NAME), **env_kwargs, level=float(levels[0]))
     for seed, level in zip(seeds, levels, strict=True):
-        env = gym.make(env_id(ENV_NAME), **env_kwargs, level=level)
-        obs, _ = env.reset(seed=int(seed))
+        obs, _ = env.reset(seed=int(seed), options={"level": float(level)})
         rng = np.random.default_rng(int(seed))
         picker = ScriptedPicker(env)
         obs_l, A, R = [], [], []
@@ -117,10 +120,10 @@ def _demo_worker(args):
             R.append(r)
             if term or trunc:
                 break
-        env.close()
         if info["is_success"]:
             out.append((obs_l, np.array(A), np.array(R, dtype=np.float32)))
-    return out
+    env.close()
+    return out, len(seeds)
 
 
 def _stack(obs_list):
@@ -130,8 +133,10 @@ def _stack(obs_list):
 
 
 def collect_demos(env_kwargs, episodes, levels=DEMO_LEVELS, noise=DEMO_NOISE, workers=None,
-                  seed=12345, cache=True):
-    """Successful scripted episodes as a list of (obs list, actions, rewards)."""
+                  seed=12345, cache=True, batch=10):
+    """Successful scripted episodes as a list of (obs list, actions, rewards), cached in
+    demos/ (delete the file to collect again). Run it before training starts (see __main__):
+    the demo workers and the training workers then never compete for CPU and memory."""
     modes = "+".join(k for k, on in env_kwargs.get("obs_modes", {}).items() if on) or "blind"
     path = os.path.join("demos", f"{ENV_NAME}_{modes}_{env_kwargs.get('obs_format', 'flat')}_"
                                  f"{env_kwargs.get('action_mode', 'bimanual')}_{episodes}_noise{noise}.npz")
@@ -143,13 +148,22 @@ def collect_demos(env_kwargs, episodes, levels=DEMO_LEVELS, noise=DEMO_NOISE, wo
     seeds = rng.integers(0, 2**31, episodes)
     lv = rng.uniform(*levels, episodes)
     workers = workers or max(1, min(os.cpu_count() or 1, 16))
-    chunks = [(env_kwargs, seeds[i::workers], lv[i::workers], noise) for i in range(workers)]
-    print(f"[warm start] running the scripted picker for {episodes} episodes on {workers} processes ...")
-    demos = []
+    chunks = [(env_kwargs, seeds[i:i + batch], lv[i:i + batch], noise)
+              for i in range(0, episodes, batch)]
+    print(f"[warm start] running the scripted picker for {episodes} episodes on {workers} "
+          f"processes (about {episodes * 1000 // (150 * workers) // 60 + 1} min; progress every "
+          f"{batch} episodes) ...", flush=True)
+    parts, done, won, t0 = [None] * len(chunks), 0, 0, time.time()
     # "spawn": forking a process that already runs torch threads can hang the children
     with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context("spawn")) as pool:
-        for part in pool.map(_demo_worker, chunks):
-            demos.extend(part)
+        futures = {pool.submit(_demo_worker, c): i for i, c in enumerate(chunks)}
+        for fut in as_completed(futures):
+            part, n = fut.result()
+            parts[futures[fut]] = part
+            done, won = done + n, won + len(part)
+            print(f"[warm start] {done}/{episodes} episodes, {won} succeeded "
+                  f"({time.time() - t0:.0f} s)", flush=True)
+    demos = [d for part in parts for d in part]             # in seed order, whatever finished first
     print(f"[warm start] {len(demos)} of {episodes} scripted episodes succeeded "
           f"({sum(len(d[1]) for d in demos):,} steps)")
     if cache:
@@ -336,6 +350,9 @@ if __name__ == "__main__":             # required: training and the demos use su
     env_kwargs = {**ENV_KWARGS, "obs_modes": OBS_MODES, "obs_format": OBS_FORMAT}
     callbacks = [PickLogger()]
     if DEMOS:
+        # collect (or load) the demos now, before run() starts N_ENVS training processes;
+        # the warm start then loads them from the demos/ cache
+        collect_demos(env_kwargs, DEMOS)
         callbacks.insert(0, ScriptedWarmStart(env_kwargs, episodes=DEMOS))
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, n_envs=N_ENVS, obs_modes=OBS_MODES,
         obs_format=OBS_FORMAT, env_kwargs=ENV_KWARGS, algo_kwargs=PPO_KWARGS,
