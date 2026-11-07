@@ -47,7 +47,7 @@ import numpy as np
 from gymnasium import spaces
 
 from tactip_mujoco_gym.envs.base import TactileGymEnv
-from tactip_mujoco_gym.sensor_tools import attach_sensor, mount_pose, sensor_info
+from tactip_mujoco_gym.sensor_tools import attach_sensor, compile_spec, mount_pose, sensor_info
 from tactip_mujoco_gym.sensors import Mount, resolve_sensor_model
 
 LEGS = ("FL", "FR", "RL", "RR")
@@ -169,7 +169,7 @@ class TacQuadruped(TactileGymEnv):
 
         self.sensor_xml = sensor_xml
         spec = self._build_spec(sensor_xml, robot_xml)
-        self.model = spec.compile()
+        self.model = compile_spec(spec)
         self.data = mujoco.MjData(self.model)
         self._index_model(sensors)
 
@@ -813,7 +813,7 @@ def robot_spec(feet="tactip", sensor_stiffness=10.0, sensor_xml=None, robot_xml=
     mat.textures = tex
     spec.worldbody.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE, size=[0, 0, 0.05],
                             material="floor_grid")
-    m = spec.compile()
+    m = compile_spec(spec)
     d = mujoco.MjData(m)
     q = [m.joint(f"{leg}_{j}_joint").qposadr[0] for leg in LEGS for j in JOINTS]
     d.qpos[q] = TacQuadruped.DEFAULT_POSE
@@ -888,7 +888,7 @@ def _main():
         print_snippet(args.sensor)
         return
     spec = robot_spec(args.feet, args.stiffness, args.sensor, args.robot)
-    m = spec.compile()
+    m = compile_spec(spec)
     print(f"{TacQuadruped.find_robot(args.robot)} + {args.feet} feet: {m.nbody} bodies, "
           f"{m.njnt} joints, {sum(m.site(i).name[3:].startswith('s_c') for i in range(m.nsite))} "
           "TacTip markers; keyframe 'stand' holds the standing pose")

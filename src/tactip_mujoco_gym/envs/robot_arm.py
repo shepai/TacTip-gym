@@ -203,7 +203,7 @@ class RobotArmEnv(TaxelMixin):
         self._sensor_root = None
         if sensor_xml is None and self.sensor_stiffness == 1.0:
             return mujoco.MjModel.from_xml_path(path)
-        from tactip_mujoco_gym.sensor_tools import (attach_sensor, child_bodies,
+        from tactip_mujoco_gym.sensor_tools import (attach_sensor, child_bodies, compile_spec,
                                                     scene_without_bodies, sensor_info)
         from tactip_mujoco_gym.sensors import resolve_sensor_model
         xml, _ = scene_without_bodies(path, child_bodies(path, self.SENSOR_PARENT))
@@ -214,17 +214,14 @@ class RobotArmEnv(TaxelMixin):
         root = attach_sensor(spec, spec.body(self.SENSOR_LINK), sensor, prefix=self.SENSOR_PREFIX,
                              tip_at=tip, axis_to=axis, stiffness_scale=self.sensor_stiffness)
         self._sensor_root = root.name
-        return spec.compile()
+        return compile_spec(spec)
 
     def _builtin_tip(self):
         """Tip point and direction of the scene's own TacTip, in SENSOR_LINK's frame."""
         src = str(files("tactip_mujoco_gym").joinpath(*self.SENSOR_SOURCE))
         if src not in _BUILTIN_TIP:
-            import warnings
             from tactip_mujoco_gym.sensor_tools import extract_sensor, sensor_info
-            with warnings.catch_warnings():         # MjSpec attach notices about a throwaway
-                warnings.simplefilter("ignore")     # copy only measured for its tip
-                info = sensor_info(extract_sensor(src, "auto"))
+            info = sensor_info(extract_sensor(src, "auto"))
             _BUILTIN_TIP[src] = (info["tip"].copy(), info["axis"].copy())
         tip, axis = _BUILTIN_TIP[src]
         return tip.copy(), axis.copy()

@@ -42,11 +42,27 @@ the references between them (FL_core, FL_pin0_slide, FL_s_c0, ...).
 """
 import argparse
 import os
+import warnings
 
 import mujoco
 import numpy as np
 
 MARKER_PREFIX = "s_c"
+
+# Notices MuJoCo prints whenever a sensor is attached to a robot, all expected here:
+#   "Attach conflict ... keeping parent value"  the robot's simulation options (timestep,
+#       integrator, tolerance) win over the sensor file's, which is what we want
+#   "Attaching a spec with an empty prefix"     the arm's own TacTip and the RB-Y1 are attached
+#       without a name prefix; this only matters for MjSpec.to_xml, which save_spec handles
+_ATTACH_NOTICES = ("Attach conflict when attaching", "Attaching a spec with an empty prefix")
+
+
+def compile_spec(spec):
+    """spec.compile() without MuJoCo's expected attach notices (every other warning shows)."""
+    with warnings.catch_warnings():
+        for msg in _ATTACH_NOTICES:
+            warnings.filterwarnings("ignore", message=msg, category=UserWarning)
+        return spec.compile()
 
 
 # ----------------------------------------------------------------------------- extract
@@ -63,7 +79,7 @@ def locate_sensor(scene_xml, marker_prefix=MARKER_PREFIX):
                         everything attached to L
         ("subtree", B)  no actuated link above them: the sensor is the whole tree B (a
                         top-level body) that holds the markers"""
-    m = mujoco.MjSpec.from_file(str(scene_xml)).compile()
+    m = compile_spec(mujoco.MjSpec.from_file(str(scene_xml)))
     markers = [i for i in range(m.nsite) if m.site(i).name.startswith(marker_prefix)]
     if not markers:
         prefixes = sorted({m.site(i).name.rstrip("0123456789") for i in range(m.nsite)})[:20]
@@ -135,7 +151,7 @@ def extract_sensor(scene_xml, root_body="auto", out_xml=None, keep_cameras=("sen
     if out_xml is not None:
         save_spec(spec, out_xml)
         spec = mujoco.MjSpec.from_file(str(out_xml))     # re-read: paths now resolve from there
-    spec.compile()                                       # fail here, not later, if it is broken
+    compile_spec(spec)                                   # fail here, not later, if it is broken
     return spec
 
 
@@ -171,7 +187,7 @@ def _strip_link(spec, root, name="tactip"):
 def describe(scene_xml, marker_prefix=MARKER_PREFIX):
     """Print where the sensor is and what extract will keep."""
     mode, body, info = locate_sensor(scene_xml, marker_prefix)
-    m = mujoco.MjSpec.from_file(str(scene_xml)).compile()
+    m = compile_spec(mujoco.MjSpec.from_file(str(scene_xml)))
     print(f"{info['n_markers']} '{marker_prefix}*' markers on {info['marker_bodies']} bodies; "
           f"they all hang under {info['common_parent']!r}")
     print("path from world: " + " > ".join(reversed(info["path"])))
@@ -281,7 +297,7 @@ def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis
     A sensor without TacTip markers needs a "sensor_tip" site (or `axis`) so it can be
     mounted: <site name="sensor_tip" pos="0 0 0.03" zaxis="0 0 1"/>."""
     spec = _as_spec(sensor)
-    m = spec.compile()
+    m = compile_spec(spec)
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
     root = spec.worldbody.first_body()

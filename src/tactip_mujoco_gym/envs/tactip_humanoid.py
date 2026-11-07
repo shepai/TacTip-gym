@@ -51,7 +51,7 @@ import numpy as np
 from gymnasium import spaces
 
 from tactip_mujoco_gym.envs.base import TactileGymEnv
-from tactip_mujoco_gym.sensor_tools import attach_sensor, sensor_info, set_coef
+from tactip_mujoco_gym.sensor_tools import attach_sensor, compile_spec, sensor_info, set_coef
 from tactip_mujoco_gym.sensors import Mount, resolve_sensor_model
 
 SIDES = ("left", "right")
@@ -399,7 +399,7 @@ class TacHumanoidPick(TactileGymEnv):
         self.sensor_xml = sensor_xml
 
         spec = self._build_spec(sensor_xml, robot_xml)
-        self.model = spec.compile()
+        self.model = compile_spec(spec)
         self.data = mujoco.MjData(self.model)
         self._ik_data = mujoco.MjData(self.model)
         self._index_model(sensors)
