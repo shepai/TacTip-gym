@@ -49,8 +49,8 @@ OBS_MODES = {"object": True, "tactile": True}
 OBS_FORMAT = "flat"                    # "dict" for vision (CNN on the camera image)
 ENV_KWARGS = {"action_mode": "bimanual", "sensor_stiffness": 10.0}
 STEPS = 20_000_000
-N_ENVS = 4
-DEMOS = 600                            # scripted episodes for the warm start (0 = pure RL)
+N_ENVS = 8
+DEMOS = 0                            # scripted episodes for the warm start (0 = pure RL)
 DEMO_LEVELS = (0.0, 0.5)               # difficulty range of the demos
 DEMO_NOISE = 0.3                       # action noise while recording (the labels stay clean), so
                                        # the demos also show how to recover from small mistakes
