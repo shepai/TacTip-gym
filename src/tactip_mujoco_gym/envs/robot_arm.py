@@ -220,8 +220,11 @@ class RobotArmEnv(TaxelMixin):
         """Tip point and direction of the scene's own TacTip, in SENSOR_LINK's frame."""
         src = str(files("tactip_mujoco_gym").joinpath(*self.SENSOR_SOURCE))
         if src not in _BUILTIN_TIP:
+            import warnings
             from tactip_mujoco_gym.sensor_tools import extract_sensor, sensor_info
-            info = sensor_info(extract_sensor(src, "auto"))
+            with warnings.catch_warnings():         # MjSpec attach notices about a throwaway
+                warnings.simplefilter("ignore")     # copy only measured for its tip
+                info = sensor_info(extract_sensor(src, "auto"))
             _BUILTIN_TIP[src] = (info["tip"].copy(), info["axis"].copy())
         tip, axis = _BUILTIN_TIP[src]
         return tip.copy(), axis.copy()

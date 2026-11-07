@@ -30,13 +30,15 @@ def test_arm_every_input():
     env = gym.make("TacArm-peg", obs_modes=["privileged", "tactile", "tactile_image", "vision", "events"],
                    obs_format="dict")
     raw = env.unwrapped
-    sp = env.observation_space.spaces
-    assert list(sp) == ["proprio", "privileged", "tactile", "tactile_image", "vision", "events"]
+    sp = env.observation_space.spaces             # (gymnasium.spaces.Dict sorts its keys)
+    assert set(sp) == {"proprio", "privileged", "tactile", "tactile_image", "vision", "events"}
     assert sp["tactile"].shape == (6 * raw.n_markers,) and raw.n_markers == 71
     assert sp["vision"].shape == (64, 64, 3) and sp["tactile_image"].shape == (64, 64, 3)
     assert sp["events"].shape == (raw.n_taxels,)
-    env.reset(seed=0)
-    env.step(env.action_space.sample())
+    obs, _ = env.reset(seed=0)                    # the observation itself keeps the pipeline order
+    assert list(obs) == ["proprio", "privileged", "tactile", "tactile_image", "vision", "events"]
+    obs, *_ = env.step(env.action_space.sample())
+    assert all(obs[k].shape == sp[k].shape for k in sp)
     env.close()
 
 

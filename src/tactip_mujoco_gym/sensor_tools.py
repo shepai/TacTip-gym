@@ -331,7 +331,7 @@ def _info_without_dome(m, d, rid, origin, R, markers, tip_site, axis, has_site, 
             "surface, with its z axis pointing outward, e.g. "
             f'<site name="{TIP_SITE}" pos="0 0 0.03" zaxis="0 0 1"/> (or pass axis=...).')
     axis = np.asarray(axis, float) / np.linalg.norm(axis)
-    pts = (_collision_points(m, d, axis=R @ axis) - origin) @ R
+    pts = (_collision_points(m, d, axis=R @ axis, exact_cylinders=True) - origin) @ R
     if tip_site < 0:                                    # furthest point along the axis line
         tip = (pts @ axis).max() * axis
     along = (pts - tip) @ axis
@@ -355,9 +355,11 @@ def _sphere_centre(P):
     return sol[:3]
 
 
-def _collision_points(m, d, axis=None):
+def _collision_points(m, d, axis=None, exact_cylinders=False):
     """Extreme points of every colliding geom (world frame): exact for spheres and capsules
-    (along `axis` and perpendicular to it), bounding-box corners for other shapes."""
+    (along `axis` and perpendicular to it), and for cylinders with exact_cylinders (both rims;
+    off by default so the TacTip's measured geometry is unchanged), bounding-box corners for
+    other shapes."""
     pts = []
     signs = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], float)
     if axis is not None:
@@ -375,6 +377,13 @@ def _collision_points(m, d, axis=None):
         elif axis is not None and t == mujoco.mjtGeom.mjGEOM_CAPSULE:
             for e in (-1, 1):
                 pts.append(d.geom_xpos[g] + e * m.geom_size[g, 1] * R[:, 2] + m.geom_size[g, 0] * dirs)
+        elif axis is not None and exact_cylinders and t == mujoco.mjtGeom.mjGEOM_CYLINDER:
+            z, r, h = R[:, 2], m.geom_size[g, 0], m.geom_size[g, 1]
+            perp = dirs - np.outer(dirs @ z, z)             # each direction, across the cylinder
+            n = np.linalg.norm(perp, axis=1, keepdims=True)
+            rim = np.where(n > 1e-9, r * perp / np.maximum(n, 1e-12), 0.0)
+            for e in (-1, 1):                               # both end faces
+                pts.append(d.geom_xpos[g] + e * h * z + rim)
         else:
             c, h = m.geom_aabb[g, :3], m.geom_aabb[g, 3:]
             pts.append(d.geom_xpos[g] + (c + signs * h) @ R.T)
