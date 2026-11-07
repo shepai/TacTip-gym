@@ -105,7 +105,7 @@ def main():
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
-    from vt_encoders import DEFAULT_CONFIG, build_encoders
+    from tactip_mujoco_gym.vt_encoders import DEFAULT_CONFIG, build_encoders
 
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)

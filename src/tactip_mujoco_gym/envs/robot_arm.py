@@ -7,11 +7,25 @@ Tactip arm tasks.
     TacArm-edge   Edge            start touching the top edge of a block, follow it round (CCW)
 
 Every task accepts:
-    obs_modes={"vision": bool, "tactile": bool, "privileged": bool}   (see base.py; default:
-              privileged only; missing keys count as False)
+    obs_modes={"vision": bool, "tactile": bool, "privileged": bool, ...} or a list of names
+              (see base.py; default: privileged only; missing keys count as False). Inputs:
+              privileged, tactile, tactile_image, vision, events, plus any added by `sensors`
     obs_format="flat" | "dict"     one long vector (default) or one key per input
-    events=True/False              append tx_* taxel events
+    sensors={key: spec}            change / add / remove readouts (see base.py, sensors/)
+    sensor_xml=None                sensor hardware on the arm: None = the TacTip written into
+                                   the scene; a registered name ("tactip"), a standalone MJCF
+                                   file or an MjSpec swaps it (see sensors/models.py)
+    sensor_stiffness=1.0           scales the sensor's joint / tendon stiffness and damping
+    overrides={"TIP_R": 0.03}      set class constants on this instance
+    events=True/False              append tx_* taxel events (= "events" in obs_modes)
     privileged=True/False          earlier shortcut: privileged only / tactile only
+
+Swapping the sensor: the built-in TacTip (every body under SENSOR_PARENT, with its tendons,
+equalities and contact excludes) is cut out of the scene and the chosen sensor is attached to
+SENSOR_LINK, turned and moved so its tip is where the TacTip's tip was. The arm's ee_site
+(the point the controller moves) and hand camera stay where they are. Constants that depend
+on the sensor's shape (TIP_R, PUSH_Z, Incline.TIP_H) may need `overrides`; check_envs.py
+reports them for a new sensor.
 
 Control (shared by all tasks)
 -----------------------------
@@ -31,10 +45,16 @@ state (no hidden stage counters). Paying for progress rather than proximity matt
 static closeness reward, doing nothing out-scored noisy attempts and PPO learned to sit still.
 Success adds R_SUCCESS and ends the episode; unrecoverable failure adds R_FAIL and ends it.
 """
-from .base import TactileGymEnv, TaxelMixin  # noqa: F401
+from importlib.resources import files
+
+from .base import OBS_FORMATS, TactileGymEnv, TaxelMixin  # noqa: F401
 import gymnasium as gym
 import numpy as np
 import mujoco
+
+from tactip_mujoco_gym.sensors import Mount
+
+_BUILTIN_TIP = {}             # scene file -> (tip, axis) of its TacTip, in SENSOR_LINK's frame
 
 
 def _tol(d, sigma):
@@ -86,10 +106,19 @@ class RobotArmEnv(TaxelMixin):
     CAMERA_HEIGHT = 480
     VISION_CAMERA = CAMERA_NAME      # camera used for the "vision" observation (size: see base.py)
 
+    # ---- sensor hardware ----
+    SENSOR_PARENT = "sensor_root"    # body in the scene XML that holds the built-in TacTip
+    SENSOR_LINK   = "link06"         # arm link a swapped-in sensor is attached to
+    SENSOR_PREFIX = "sensor_"        # element-name prefix of a swapped-in sensor
+    SENSOR_SOURCE = ("assets", "tactip_arm.xml")   # scene the built-in TacTip's tip is read from
+
     def __init__(self, xml_subpath=("assets", "tactip_arm.xml"), action_dim=3,
                  obs_modes=None, privileged=None, obs_format="flat", events=False,
-                 render_mode=None, max_steps=None):
-        super().__init__(list(xml_subpath), 1, action_dim)     # obs space is sized below
+                 render_mode=None, max_steps=None, sensors=None, sensor_xml=None,
+                 sensor_stiffness=1.0, overrides=None):
+        self._apply_overrides(overrides)
+        model = self._build_model(xml_subpath, sensor_xml, sensor_stiffness)
+        super().__init__(list(xml_subpath), 1, action_dim, model=model)   # obs space: below
         self.render_mode = render_mode
         # get_camera() keeps its own renderer: self._renderer belongs to the base class
         # (in-sensor camera), and sharing it mixed up image sizes between the two
@@ -146,20 +175,66 @@ class RobotArmEnv(TaxelMixin):
 
         self._setup_task()
 
+        # readouts, bound to the mounted sensor
+        self.sensor_mounts = [self._arm_mount()]
+        self._setup_sensors(sensors)
+
         # marker rest shape: arm at home, sensor in free space
         mujoco.mj_resetData(m, self.data)
         self._place_arm(self.HOME_TIP, settle=300)
-        self._capture_marker_rest()
+        self._calibrate_sensors()
 
         modes = self.resolve_obs_modes(obs_modes, privileged)
-        self.obs_format = obs_format
         if events:
-            self.obs_modes = modes
-            self.set_event(True)            # also builds the observation space
+            modes["events"] = True
+        if obs_format not in OBS_FORMATS:
+            raise ValueError(f"obs_format must be one of {OBS_FORMATS}, not {obs_format!r}")
+        self.obs_format = obs_format
+        self.set_obs_modes(modes)           # validates the selection, builds the space
+
+    # ------------------------------------------------------------------ sensor hardware
+    def _build_model(self, xml_subpath, sensor_xml, sensor_stiffness):
+        """The scene as written (sensor_xml None, stiffness 1), or with its TacTip swapped
+        for `sensor_xml` / rescaled (see the module docstring)."""
+        path = str(files("tactip_mujoco_gym").joinpath(*xml_subpath))
+        self.sensor_xml = sensor_xml
+        self.sensor_stiffness = float(sensor_stiffness)
+        self.sensor_info = None
+        self._sensor_root = None
+        if sensor_xml is None and self.sensor_stiffness == 1.0:
+            return mujoco.MjModel.from_xml_path(path)
+        from tactip_mujoco_gym.sensor_tools import (attach_sensor, child_bodies,
+                                                    scene_without_bodies, sensor_info)
+        from tactip_mujoco_gym.sensors import resolve_sensor_model
+        xml, _ = scene_without_bodies(path, child_bodies(path, self.SENSOR_PARENT))
+        spec = mujoco.MjSpec.from_string(xml)
+        tip, axis = self._builtin_tip()
+        sensor = resolve_sensor_model(sensor_xml)
+        self.sensor_info = sensor_info(sensor)
+        root = attach_sensor(spec, spec.body(self.SENSOR_LINK), sensor, prefix=self.SENSOR_PREFIX,
+                             tip_at=tip, axis_to=axis, stiffness_scale=self.sensor_stiffness)
+        self._sensor_root = root.name
+        return spec.compile()
+
+    def _builtin_tip(self):
+        """Tip point and direction of the scene's own TacTip, in SENSOR_LINK's frame."""
+        src = str(files("tactip_mujoco_gym").joinpath(*self.SENSOR_SOURCE))
+        if src not in _BUILTIN_TIP:
+            from tactip_mujoco_gym.sensor_tools import extract_sensor, sensor_info
+            info = sensor_info(extract_sensor(src, "auto"))
+            _BUILTIN_TIP[src] = (info["tip"].copy(), info["axis"].copy())
+        tip, axis = _BUILTIN_TIP[src]
+        return tip.copy(), axis.copy()
+
+    def _arm_mount(self):
+        m = self.model
+        if self._sensor_root is not None:
+            body, prefix = m.body(self._sensor_root).id, self.SENSOR_PREFIX
         else:
-            self.set_obs_modes(modes)       # validates the selection, builds the space
-        if obs_format != "flat":
-            self.set_obs_format(obs_format)
+            body = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, self.SENSOR_PARENT)
+            body = int(m.site_bodyid[self._ee_site]) if body < 0 else body
+            prefix = ""
+        return Mount("tip", prefix, int(body), ("site", int(self._ee_site)))
 
     # ------------------------------------------------------------------ task hooks
     def _setup_task(self):
@@ -274,8 +349,7 @@ class RobotArmEnv(TaxelMixin):
         self._potentials = {}
         self._fail_reason = ""
         self._reset_task(options or {})
-        self._reset_marker_history()
-        self._reset_taxels()
+        self._reset_sensors()
         return self._get_obs(), self._info()
 
     def step(self, action):
@@ -285,7 +359,7 @@ class RobotArmEnv(TaxelMixin):
         self._apply_action(self._cmd_vel)
         self._drive_arm(self.FRAME_SKIP)
         self._post_physics()
-        self._update_marker_history()
+        self._step_sensors()
         self.step_count += 1
 
         status = self._status()
@@ -311,7 +385,9 @@ class RobotArmEnv(TaxelMixin):
         return "fail"
 
     def _obs_parts(self):
-        """The selected inputs, in a fixed order. Proprioception is always included."""
+        """The selected inputs, in a fixed order: proprioception (always), the task's
+        privileged state, then the sensor readouts (tactile, tactile_image, vision, events,
+        then any added ones)."""
         tip = self._tip_pos()
         parts = {"proprio": np.concatenate([
             tip,
@@ -320,12 +396,7 @@ class RobotArmEnv(TaxelMixin):
         ])}
         if self.obs_modes["privileged"]:
             parts["privileged"] = self._privileged_obs()
-        if self.obs_modes["tactile"]:
-            parts["tactile"] = self._tactile_obs()
-        if self.obs_modes["vision"]:
-            parts["vision"] = self.get_vision()
-        if self.events:
-            parts["events"] = self._event_obs()
+        parts.update(self._sensor_obs())
         return parts
 
     def _get_obs(self):
@@ -383,12 +454,7 @@ class RobotArmEnv(TaxelMixin):
             k = per if c < chunks - 1 else n_steps - done
             q_ref = q_prev + (c + 1) / chunks * (self._q_cmd - q_prev)
             d.ctrl[self._arm_act] = self._servo_ctrl(q_ref, qd_ref)
-            if self.events:
-                for _ in range(k):
-                    mujoco.mj_step(m, d)
-                    self._sample_taxels()
-            else:
-                mujoco.mj_step(m, d, k)
+            self._mj_step(k)                # (per physics step while taxel events are on)
             done += k
 
     def _ik(self, target, q_init, iters, quat=None):

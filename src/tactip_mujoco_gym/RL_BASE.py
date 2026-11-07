@@ -1,9 +1,12 @@
 """
-Training / evaluation helpers for the tactip arm tasks (Stable-Baselines3).
+Training / evaluation helpers for every task (Stable-Baselines3). Config files drive these
+through experiment.py (python -m tactip_mujoco_gym train <config>).
 
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS)                     # privileged obs, PPO
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS,
         obs_modes={"vision": True, "tactile": True, "privileged": False})   # pick the inputs
+    run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, obs_modes=["tactile"],
+        env_kwargs={"sensor_xml": "my_sensor.xml", "sensors": {"tactile": {"clip": 10}}})
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, obs_format="dict")  # one key per input (fusion)
     run(ENV_NAME, MODEL_NAME, LOG_NAME, STEPS, obs_modes={"vision": True, "tactile": True},
         encoders="encoders/vt.pt")       # pretrained encoders + MLP (see train_encoders.py)
@@ -39,6 +42,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNorm
 import cv2
 
 import tactip_mujoco_gym  # noqa: F401  (registers the environments)
+from tactip_mujoco_gym.experiment import modes_dict
+from tactip_mujoco_gym.sensors import Sensor
 
 ALGOS = {"PPO": PPO, "SAC": SAC}
 
@@ -91,21 +96,48 @@ def default_algo_kwargs(algo, n_envs):
 
 
 # ----------------------------------------------------------------------------- envs
-ENCODED_KEYS = ("tactile", "vision")      # normalised by their own encoders, not VecNormalize
+ENCODED_KEYS = ("tactile", "vision")      # default: normalised by their own encoders, not
+                                          # VecNormalize (envs report theirs: obs_modalities)
 
 
-def policy_for(obs_space, own_encoders=False):
+def policy_for(obs_space, own_encoders=False, encoded_keys=None):
     """MlpPolicy for a flat vector. For a dict: MultiInputPolicy (SB3 runs a CNN on image keys
     and an MLP on the rest, then concatenates the features), with images kept out of
-    VecNormalize; with own_encoders, tactile and vision are also left to the encoders.
+    VecNormalize; with own_encoders, the encoded inputs (encoded_keys, default tactile and
+    vision) are also left to the encoders.
     Returns (policy name, keys to normalise or None, has images)."""
     if isinstance(obs_space, spaces.Dict):
+        encoded = dict.fromkeys(ENCODED_KEYS, "") if encoded_keys is None else dict(encoded_keys)
         image_keys = [k for k, sp in obs_space.spaces.items()
                       if sp.dtype == np.uint8 and len(sp.shape) == 3]
-        skip = set(image_keys) | (set(ENCODED_KEYS) if own_encoders else set())
+        skip = set(image_keys) | (set(encoded) if own_encoders else set())
         keys = [k for k in obs_space.spaces if k not in skip]
-        return "MultiInputPolicy", keys, bool(image_keys) or (own_encoders and "vision" in obs_space.spaces)
+        cnn = [k for k in obs_space.spaces if k in image_keys
+               or (own_encoders and (encoded.get(k) == "cnn" or (k == "vision" and k in encoded)))]
+        return "MultiInputPolicy", keys, bool(cnn)
     return "MlpPolicy", None, False
+
+
+def jsonable(value):
+    """env_kwargs as plain JSON (readout instances become their spec dicts), so the saved
+    <model>.json rebuilds the same environment."""
+    if isinstance(value, Sensor):
+        return value.spec()
+    if isinstance(value, type) and issubclass(value, Sensor):
+        from tactip_mujoco_gym.sensors import sensor_type_name
+        return sensor_type_name(value)
+    if isinstance(value, dict):
+        return {str(k): jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [jsonable(v) for v in value]
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, (np.floating, np.integer, np.bool_)):
+        return value.item()
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    raise TypeError(f"{value!r} can't be saved in the model's .json config; pass a file path, "
+                    "registered name or spec dict instead")
 
 
 def _obs_bytes(obs_space):
@@ -259,13 +291,23 @@ class TerrainLogger(BaseCallback):
         return True
 
 
-def evaluate_grounds(model_name, n_episodes=5, command=(0.6, 0.0, 0.0), seconds=10.0):
+GROUNDS = {                            # TacQuad-walk evaluation grounds (every tile the same)
+    "hard":   ({"friction": 1.0, "softness": 0.0, "dampratio": 1.0}, 0.0),
+    "ice":    ({"friction": 0.15, "softness": 0.0, "dampratio": 1.0}, 0.0),
+    "soft":   ({"friction": 0.8, "softness": 1.0, "dampratio": 1.0}, 0.0),
+    "bouncy": ({"friction": 0.8, "softness": 0.6, "dampratio": 0.3}, 0.0),
+    "rough":  (None, 1.0),             # level-1 mix: rough tiles, any feel
+}
+
+
+def evaluate_grounds(model_name, n_episodes=5, command=(0.6, 0.0, 0.0), seconds=10.0,
+                     grounds=None, env_name="TacQuad-walk", model_dir="models"):
     """Walk straight on each ground: how often it stays up and how well it holds the speed."""
-    model, env, normalise, _ = load_policy(ENV_NAME, model_name, env_kwargs={
+    model, env, normalise, _ = load_policy(env_name, model_name, model_dir, env_kwargs={
         "command": command, "terrain_level": 0.0, "max_steps": int(seconds * 50)})
     raw = env.unwrapped
     print(f"\n{model_name}, command {command}:")
-    for name, (feel, level) in GROUNDS.items():
+    for name, (feel, level) in (grounds or GROUNDS).items():
         raw.set_terrain_level(level)
         up, speed, slip = [], [], []
         for ep in range(n_episodes):
@@ -315,7 +357,7 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
 
     env_kwargs = dict(env_kwargs or {})
     if obs_modes is not None:
-        env_kwargs.setdefault("obs_modes", dict(obs_modes))
+        env_kwargs.setdefault("obs_modes", modes_dict(obs_modes))
     elif privileged is not None:
         env_kwargs.setdefault("privileged", bool(privileged))
     if encoders is not None and obs_format != "dict":
@@ -325,21 +367,30 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     kw = default_algo_kwargs(algo, n_envs)
     kw.update(algo_kwargs or {})
 
+    config = dict(env_name=env_name, algo=algo, env_kwargs=jsonable(env_kwargs),
+                  total_timesteps=total_timesteps, n_envs=n_envs, seed=seed,
+                  encoders=encoders, freeze_encoders=freeze_encoders)
+    json.dumps(config)                      # fail now, not after hours of training
+
     env = make_vec(env_name, n_envs, seed=seed, env_kwargs=env_kwargs)
-    policy, norm_keys, has_images = policy_for(env.observation_space, own_encoders=encoders is not None)
+    encoded = env.get_attr("obs_modalities")[0] if encoders is not None else None
+    policy, norm_keys, has_images = policy_for(env.observation_space, own_encoders=encoders is not None,
+                                               encoded_keys=encoded)
     if encoders is not None:
-        import vt_encoders
+        from tactip_mujoco_gym import vt_encoders
         path = None if encoders == "scratch" else encoders
         if algo == "PPO":
             policy = vt_encoders.VisuoTactilePolicy
-            extra = vt_encoders.ppo_policy_kwargs(path, freeze_encoders)
+            extra = vt_encoders.ppo_policy_kwargs(path, freeze_encoders, encoder_keys=encoded)
         else:
-            extra = vt_encoders.sac_policy_kwargs(path, freeze_encoders)
+            extra = vt_encoders.sac_policy_kwargs(path, freeze_encoders, encoder_keys=encoded)
         kw["policy_kwargs"] = {**kw.get("policy_kwargs", {}), **extra}
     env = VecNormalize(env, norm_obs=True, norm_reward=(algo == "PPO"),
                        clip_obs=10.0, gamma=kw.get("gamma", 0.99), norm_obs_keys=norm_keys)
     modes = env.get_attr("obs_modes")[0]
-    print(f"{env_name}: inputs {[k for k, on in modes.items() if on] or ['proprioception only']}, "
+    hw = env_kwargs.get("sensor_xml")
+    print(f"{env_name}: sensor {hw if hw is not None else 'default'}, "
+          f"inputs {[k for k, on in modes.items() if on] or ['proprioception only']}, "
           f"obs {_describe(env.observation_space)}, act {env.action_space.shape}, "
           f"{n_envs} envs, {algo}, {getattr(policy, '__name__', policy)}"
           + (f", encoders {encoders} ({'frozen' if freeze_encoders and encoders != 'scratch' else 'trained'})"
@@ -359,9 +410,6 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     model = ALGOS[algo](policy, env, verbose=1, seed=seed, device=device, **kw)
     model.set_logger(configure(log_dir, ["stdout", "csv"]))
 
-    config = dict(env_name=env_name, algo=algo, env_kwargs=env_kwargs,
-                  total_timesteps=total_timesteps, n_envs=n_envs, seed=seed,
-                  encoders=encoders, freeze_encoders=freeze_encoders)
     callbacks = [CheckpointCallback(save_freq=max(checkpoint_every // n_envs, 1),
                                     save_path=os.path.join(log_dir, "checkpoints"),
                                     name_prefix=model_name, save_vecnormalize=True)]

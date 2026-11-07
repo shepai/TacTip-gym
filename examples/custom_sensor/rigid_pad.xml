@@ -1,0 +1,22 @@
+<!-- A stand-alone sensor model: a rigid round pad (no markers, no soft skin).
+
+     Anything in a file like this can be mounted on every robot with sensor_xml=<this file>:
+     the arm's fingertip, each of the quadruped's feet, both humanoid palms. The root body
+     comes first in <worldbody>; every element is renamed with the mount's prefix when it is
+     attached (sensor_, FL_, left_, ...).
+
+     "sensor_tip" says where the sensing surface is: its position is the tip, its z axis
+     points out of the surface. The robot turns the sensor so this axis points the way the
+     TacTip's tip did, and moves it so the two tips coincide. (A TacTip-style sensor with
+     s_c* marker sites doesn't need it: the tip is found from the markers.) -->
+<mujoco model="rigid_pad">
+  <worldbody>
+    <body name="pad">
+      <geom name="pad_mount" type="cylinder" size="0.02 0.01" pos="0 0 0.01" mass="0.02"
+            rgba="0.25 0.25 0.25 1"/>
+      <geom name="pad_surface" type="cylinder" size="0.02 0.002" pos="0 0 0.022" mass="0.005"
+            friction="1 0.005 0.0001" rgba="0.9 0.5 0.2 1"/>
+      <site name="sensor_tip" pos="0 0 0.024" zaxis="0 0 1" size="0.002" rgba="1 0 0 1"/>
+    </body>
+  </worldbody>
+</mujoco>

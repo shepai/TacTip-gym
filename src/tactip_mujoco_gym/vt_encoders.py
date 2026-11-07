@@ -8,7 +8,10 @@ Visuo-tactile encoders, and the policy that uses them.
                            (exactly what SB3 hands a policy for a uint8 image observation).
     VisuoTactileExtractor  SB3 features extractor for dict observations: tactile -> TactileEncoder,
                            vision -> VisionEncoder, everything else (proprio, privileged, events)
-                           passed straight through; the results are concatenated.
+                           passed straight through; the results are concatenated. Which keys
+                           get which encoder is `encoder_keys` ({key: "mlp" | "cnn"}): RL_BASE
+                           takes it from the env (env.obs_modalities), so a readout you add
+                           (e.g. "tactile_image", or your own sensor) gets an encoder too.
     VisuoTactilePolicy     PPO policy = VisuoTactileExtractor + MLP actor and critic heads.
 
 Pretrained weights come from train_encoders.py. Pass encoder_path=None for the same networks
@@ -29,6 +32,7 @@ from gymnasium import spaces
 from stable_baselines3.common.policies import MultiInputActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
+DEFAULT_ENCODER_KEYS = {"tactile": "mlp", "vision": "cnn"}
 DEFAULT_CONFIG = dict(
     latent_dim=64,              # size of each encoder's output
     tactile_hidden=256,
@@ -109,7 +113,7 @@ class VisuoTactileExtractor(BaseFeaturesExtractor):
     the policy (net_arch) sit on top of this."""
 
     def __init__(self, observation_space: spaces.Dict, encoder_path=None, encoder_config=None,
-                 freeze=True):
+                 freeze=True, encoder_keys=None):
         if not isinstance(observation_space, spaces.Dict):
             raise TypeError("VisuoTactileExtractor needs dict observations (obs_format='dict')")
         ckpt = None
@@ -121,18 +125,22 @@ class VisuoTactileExtractor(BaseFeaturesExtractor):
         cfg = dict(DEFAULT_CONFIG)
         cfg.update((ckpt or {}).get("config") or encoder_config or {})
 
+        kinds = dict(DEFAULT_ENCODER_KEYS if encoder_keys is None else encoder_keys)
         modules, dims, channels_last = {}, {}, {}
         for key, sp in observation_space.spaces.items():
-            if key == "tactile":
-                modules[key], _ = build_encoders(cfg, tactile_dim=sp.shape[0])
+            kind = kinds.get(key)
+            if kind == "mlp":
+                enc, _ = build_encoders(cfg, tactile_dim=int(np.prod(sp.shape)))
+                modules[key] = enc if len(sp.shape) == 1 else nn.Sequential(nn.Flatten(), enc)
                 dims[key] = cfg["latent_dim"]
-            elif key == "vision":
+            elif kind == "cnn":
                 chw, channels_last[key] = image_space_chw(sp)
                 _, modules[key] = build_encoders(cfg, vision_shape=chw)
                 dims[key] = cfg["latent_dim"]
             else:
                 modules[key] = nn.Flatten()
                 dims[key] = int(np.prod(sp.shape))
+        self._encoded = [k for k in modules if kinds.get(k) in ("mlp", "cnn")]
 
         super().__init__(observation_space, features_dim=int(sum(dims.values())))
         self.encoders = nn.ModuleDict(modules)
@@ -146,11 +154,17 @@ class VisuoTactileExtractor(BaseFeaturesExtractor):
         Safe to call more than once; VisuoTactilePolicy calls it after SB3's weight init."""
         if self._ckpt is None:
             return
-        for key in ("tactile", "vision"):
-            if key not in self.encoders:
-                continue
+        for key in self._encoded:
             if key not in self._ckpt:
-                raise KeyError(f"the encoder checkpoint has no '{key}' encoder")
+                if self._freeze:
+                    raise KeyError(f"the encoder checkpoint has no '{key}' encoder (set "
+                                   "freeze_encoders=False to train that one from scratch)")
+                warned = self.__dict__.setdefault("_warned", set())
+                if key not in warned:
+                    warned.add(key)
+                    print(f"[vt_encoders] no pretrained '{key}' encoder in the checkpoint: "
+                          "it is trained from scratch")
+                continue
             try:
                 self.encoders[key].load_state_dict(self._ckpt[key])
             except RuntimeError as err:
@@ -179,12 +193,13 @@ class VisuoTactilePolicy(MultiInputActorCriticPolicy):
     """
 
     def __init__(self, observation_space, action_space, lr_schedule, encoder_path=None,
-                 encoder_config=None, freeze_encoders=True, **kwargs):
+                 encoder_config=None, freeze_encoders=True, encoder_keys=None, **kwargs):
         kwargs.setdefault("features_extractor_class", VisuoTactileExtractor)
         fe_kwargs = dict(kwargs.pop("features_extractor_kwargs", None) or {})
         fe_kwargs.setdefault("encoder_path", encoder_path)
         fe_kwargs.setdefault("encoder_config", encoder_config)
         fe_kwargs.setdefault("freeze", freeze_encoders)
+        fe_kwargs.setdefault("encoder_keys", encoder_keys)
         kwargs["features_extractor_kwargs"] = fe_kwargs
         kwargs.setdefault("net_arch", dict(pi=[256, 256], vf=[256, 256]))
         super().__init__(observation_space, action_space, lr_schedule, **kwargs)
@@ -195,16 +210,18 @@ class VisuoTactilePolicy(MultiInputActorCriticPolicy):
                 fe.load_pretrained()
 
 
-def ppo_policy_kwargs(encoder_path=None, freeze=True):
-    """policy_kwargs for PPO(VisuoTactilePolicy, ...). encoder_path=None: train from scratch."""
+def ppo_policy_kwargs(encoder_path=None, freeze=True, encoder_keys=None):
+    """policy_kwargs for PPO(VisuoTactilePolicy, ...). encoder_path=None: train from scratch.
+    encoder_keys: {observation key: "mlp" | "cnn"} (default: tactile -> mlp, vision -> cnn)."""
     config = load_checkpoint(encoder_path)["config"] if encoder_path else None
     return dict(encoder_path=encoder_path, encoder_config=config,
-                freeze_encoders=bool(freeze and encoder_path))
+                freeze_encoders=bool(freeze and encoder_path), encoder_keys=encoder_keys)
 
 
-def sac_policy_kwargs(encoder_path=None, freeze=True):
+def sac_policy_kwargs(encoder_path=None, freeze=True, encoder_keys=None):
     """policy_kwargs for SAC("MultiInputPolicy", ...): SAC does not re-initialise extractors."""
     config = load_checkpoint(encoder_path)["config"] if encoder_path else None
     return dict(features_extractor_class=VisuoTactileExtractor,
                 features_extractor_kwargs=dict(encoder_path=encoder_path, encoder_config=config,
-                                               freeze=bool(freeze and encoder_path)))
+                                               freeze=bool(freeze and encoder_path),
+                                               encoder_keys=encoder_keys))

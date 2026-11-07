@@ -35,8 +35,8 @@ def main():
             # reset if episode ends
             if terminated:
                 obs, info = env.reset()
-            img = obs["image"]
-            cv2.imshow("sensor_cam", img)
+            img = env.unwrapped.get_tactile_image()          # camera inside the TacTip
+            cv2.imshow("sensor_cam", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
             cv2.waitKey(1)
             # small sleep so it doesn't max CPU
             time.sleep(env.unwrapped.model.opt.timestep)

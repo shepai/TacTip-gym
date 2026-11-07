@@ -1,0 +1,38 @@
+# One task, the same reward and controller, different sensing: which inputs let a policy
+# push the peg into its hole? Proprioception (tip position, command lag, velocity command)
+# is always included.
+#
+#   python -m tactip_mujoco_gym train configs/peg_sensing.yaml --dry-run    # see the runs
+#   python -m tactip_mujoco_gym train configs/peg_sensing.yaml --variant tactile
+#   python -m tactip_mujoco_gym evaluate configs/peg_sensing.yaml
+name: peg
+description: TacArm-peg with each sensing modality
+env: TacArm-peg
+env_kwargs:
+  start_touching: true
+train:
+  algo: PPO
+  steps: 3000000
+evaluate:
+  episodes: 50
+
+variants:
+  privileged:                      # upper bound: true object / goal state
+    obs_modes: [privileged]
+  tactile:                         # TacTip marker displacements
+    obs_modes: [tactile]
+  tactile_image:                   # what the camera inside the TacTip sees (visual tactile)
+    obs_modes: [tactile_image]
+    obs_format: dict               # images go to a CNN
+  vision:                          # hand camera only
+    obs_modes: [vision]
+    obs_format: dict
+  visuotactile:                    # late fusion: CNN on the camera, MLP on the markers
+    obs_modes: [tactile, vision]
+    obs_format: dict
+  visuotactile_pretrained:         # encoders from train_encoders.py, kept frozen
+    obs_modes: [tactile, vision]
+    obs_format: dict
+    policy:
+      encoders: encoders/peg_vt.pt
+      freeze_encoders: true

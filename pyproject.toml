@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "my-package"
-version = "0.1.0"
-description = "My awesome package"
+name = "tactip-gym"
+version = "0.2.0"
+description = "MuJoCo soft-body TacTip simulator and Gymnasium benchmark for tactile, visual and visuo-tactile sensing"
 readme = "README.md"
 authors = [
     {name = "Dexter Shepherd"}
@@ -24,13 +24,30 @@ train = [
     "opencv-python",               # training videos, viewing camera images
     "tqdm",                        # progress bar in run()
     "rich",
+    "pyyaml",                      # YAML experiment configs (JSON works without it)
+]
+test = [
+    "pytest",
 ]
 legacy = [
     "dm_control",             # only for env.physics on the old base class
 ]
+
+[project.scripts]
+tactip-gym = "tactip_mujoco_gym.__main__:main"
+
+# Readouts from other packages: add an entry point in their pyproject.toml, e.g.
+# [project.entry-points."tactip_mujoco_gym.sensors"]
+# my_sensor = "my_package.sensors:MySensor"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+tactip_mujoco_gym = ["assets/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

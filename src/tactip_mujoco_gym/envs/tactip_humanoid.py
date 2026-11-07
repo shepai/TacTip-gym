@@ -34,7 +34,9 @@ Observation inputs (obs_modes), as in the other tasks; proprioception is always 
     privileged  "object" plus what touch has to work out: stiffness, mass, friction, how
                 squashed it is and the grip force on each hand
     tactile     both TacTips' markers: displacement from rest and change since last step (mm)
+    tactile_image  the cameras inside the two TacTips, stacked along the channels
     vision      "headcam" on the head, looking down at the table
+    + any readout added with sensors={...}; the hands are env.sensor_mounts (left, right)
 
 Episode: 20 s at 50 Hz. Success: the object, after being lifted, rests within 5 cm of the
 target with both hands off it for 0.2 s. Fail: it falls off the table, or a soft object is
@@ -49,7 +51,8 @@ import numpy as np
 from gymnasium import spaces
 
 from tactip_mujoco_gym.envs.base import TactileGymEnv
-from tactip_mujoco_gym.sensor_tools import attach_sensor, extract_sensor, sensor_info, set_coef
+from tactip_mujoco_gym.sensor_tools import attach_sensor, sensor_info, set_coef
+from tactip_mujoco_gym.sensors import Mount, resolve_sensor_model
 
 SIDES = ("left", "right")
 
@@ -278,7 +281,8 @@ class TacHumanoidPick(TactileGymEnv):
                                   # squeeze gently, stiff enough to carry 1 kg
     TRACK_BODY, TRACK_DISTANCE, TRACK_ELEVATION = "link_torso_5", 1.3, -35
     VISION_CAMERA = "headcam"
-    OBS_MODE_NAMES = ("vision", "tactile", "privileged", "object")
+    OBS_MODE_NAMES = ("vision", "tactile", "privileged", "object")    # (legacy)
+    TASK_INPUTS = ("object", "privileged")
 
     TIMESTEP   = 0.002
     FRAME_SKIP = 10               # 50 Hz policy
@@ -361,18 +365,25 @@ class TacHumanoidPick(TactileGymEnv):
 
     def __init__(self, objects=None, level=None, curriculum=True, action_mode="bimanual",
                  sensor_stiffness=10.0, obs_modes=None, privileged=None, obs_format="flat",
-                 render_mode=None, max_steps=None, sensor_xml=None, robot_xml=None):
+                 render_mode=None, max_steps=None, sensor_xml=None, robot_xml=None,
+                 sensors=None, overrides=None):
         """
         objects           names from OBJECT_NAMES to draw from (default: all ten)
         level             0..1 fixes the difficulty (mass, friction, softness, target
                           distance, start distance); None starts at 0 with a curriculum
         action_mode       "bimanual" (7) or "independent" (9)
+        sensor_xml        the sensor used as each hand: None / "tactip" (default), a
+                          registered name or a standalone MJCF file (see sensors/models.py)
         sensor_stiffness  scales the TacTips' skin (see sensor_tools.attach_sensor)
+        sensors           change / add readouts (see envs/base.py)
+        overrides         {"CONSTANT": value} for this instance, e.g. {"GRIP_FORCE": 1.0}
 
         reset(options=...) accepts "object" (a name), "stiffness" (N/m per pad), "mass",
         "friction", "yaw", "level".
         """
         gym.Env.__init__(self)
+        self._apply_overrides(overrides)
+        self._init_sensor_state()
         if action_mode not in ("bimanual", "independent"):
             raise ValueError("action_mode must be 'bimanual' or 'independent'")
         self.object_names = tuple(objects) if objects else OBJECT_NAMES
@@ -385,23 +396,23 @@ class TacHumanoidPick(TactileGymEnv):
         self.level = 0.0 if level is None else float(np.clip(level, 0, 1))
         self.render_mode = render_mode
         self.xml_path = None
+        self.sensor_xml = sensor_xml
 
         spec = self._build_spec(sensor_xml, robot_xml)
         self.model = spec.compile()
         self.data = mujoco.MjData(self.model)
         self._ik_data = mujoco.MjData(self.model)
-        self._index_model()
+        self._index_model(sensors)
 
         self._physics = self._renderer = self._view_renderer = self._vision_renderer = None
         self.step_count = 0
         self.dt = self.TIMESTEP * self.FRAME_SKIP
         self.max_steps = max_steps or int(round(self.EPISODE_SECONDS / self.dt))
-        self.events = False
         n_act = 7 if action_mode == "bimanual" else 9
         self.action_space = spaces.Box(-1.0, 1.0, shape=(n_act,), dtype=np.float32)
         self._last_outcome = None
         self.obs_format = "flat"
-        self.obs_modes = {k: False for k in self.OBS_MODE_NAMES}
+        self.obs_modes = {k: False for k in self.input_names}
         self.reset(seed=0)
         self.set_obs_format(obs_format)
         self.set_obs_modes(self.resolve_obs_modes(obs_modes, privileged))
@@ -414,17 +425,15 @@ class TacHumanoidPick(TactileGymEnv):
         found = sorted(files("tactip_mujoco_gym").joinpath("assets").rglob(cls.ROBOT_FILE))
         if not found:
             raise FileNotFoundError(
-                f"No {cls.ROBOT_FILE} under {_asset('assets')}. Download RB-Y1 with "
-                "`python tools/fetch_menagerie.py rby1`, or pass robot_xml=...")
+                f"No {cls.ROBOT_FILE} under {_asset('assets')}. Copy the RB-Y1 (MuJoCo "
+                "Menagerie's rbyrobotics_rby1 folder) into assets/rby1/, or pass robot_xml=...")
         return str(found[0])
 
     def _sensor_spec(self, sensor_xml):
-        path = sensor_xml or _asset(*self.SENSOR_XML)
-        if os.path.exists(path):
-            return mujoco.MjSpec.from_file(path)
-        src = _asset(*self.SENSOR_SOURCE)
-        print(f"[TacHumanoid] {path} not found: using the sensor in {src}")
-        return extract_sensor(src, self.SENSOR_ROOT)
+        """The sensor hardware: sensor_xml (name / file / MjSpec), else the TacTip
+        (SENSOR_XML if it exists, else extracted from SENSOR_SOURCE)."""
+        return resolve_sensor_model(sensor_xml, source=self.SENSOR_SOURCE, root=self.SENSOR_ROOT,
+                                    standalone=self.SENSOR_XML)
 
     def _scene_xml(self, robot_path):
         """Robot, floor, table, target marker and every object (parked), as one MJCF."""
@@ -536,7 +545,7 @@ class TacHumanoidPick(TactileGymEnv):
         # objects: hidden contact class for the parked ones is set at runtime
         return spec
 
-    def _index_model(self):
+    def _index_model(self, sensors=None):
         m = self.model
         jid = lambda n: m.joint(n).id                                   # noqa: E731
         self._base_q = np.array([m.jnt_qposadr[jid(n)] for n in ("base_x", "base_y", "base_yaw")])
@@ -619,23 +628,13 @@ class TacHumanoidPick(TactileGymEnv):
         self._geom_obj = np.full(m.ngeom, -1)                 # set per episode
         self._shape_onehot = {n: np.eye(len(OBJECT_NAMES))[i] for i, n in enumerate(OBJECT_NAMES)}
 
-        # TacTip markers, one frame per hand
-        ids, owner, frames = [], [], []
-        for k, s in enumerate(SIDES):
-            mk = [i for i in range(m.nsite) if m.site(i).name.startswith(f"{s}_{self.MARKER_PREFIX}")]
-            ids += mk
-            owner += [k] * len(mk)
-            site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, f"{s}_{self.SENSOR_SITE}")
-            frames.append(("site", site) if site >= 0 else ("body", m.body(f"{s}_{self.hand_info['root']}").id))
-        self._marker_ids = np.array(ids, dtype=int)
-        self._marker_owner = np.array(owner, dtype=int)
-        self._hand_frames = frames
-        self.n_markers = len(ids)
+        # sensor readouts, one mount per hand (readings in each hand's sensor frame)
+        roots = [int(m.body(f"{s}_{self.hand_info['root']}").id) for s in SIDES]
+        self.sensor_mounts = [Mount(s, f"{s}_", b, ("body", b)) for s, b in zip(SIDES, roots, strict=True)]
+        self._setup_sensors(sensors)
         d = mujoco.MjData(m)
         mujoco.mj_forward(m, d)
-        self._nodes_rest = self._nodes(d)
-        self._nodes_last = self._nodes_rest.copy()
-        self._nodes_delta = np.zeros_like(self._nodes_rest)
+        self._calibrate_sensors(d)
 
     def _geom_corners_local(self, g):
         m = self.model
@@ -646,26 +645,12 @@ class TacHumanoidPick(TactileGymEnv):
         return m.geom_pos[g] + (c + signs * h) @ R.reshape(3, 3).T
 
     # ================================================================ tactip read-out
-    def _nodes(self, d=None):
-        d = self.data if d is None else d
-        pos, mat = [], []
-        for kind, i in self._hand_frames:
-            if kind == "site":
-                pos.append(d.site_xpos[i])
-                mat.append(d.site_xmat[i].reshape(3, 3))
-            else:
-                pos.append(d.xpos[i])
-                mat.append(d.xmat[i].reshape(3, 3))
-        c = np.array(pos)[self._marker_owner]
-        R = np.array(mat)[self._marker_owner]
-        return np.einsum("ni,nij->nj", d.site_xpos[self._marker_ids] - c, R).astype(np.float32)
-
-    def get_nodes(self):
-        return self._nodes()
-
     def get_hand_nodes(self):
         """Marker displacement from rest per hand (left, right), (2, markers, 3) in metres."""
-        return (self._nodes() - self._nodes_rest).reshape(2, -1, 3)
+        s = self._markers()
+        if s is None:
+            return np.zeros((2, 0, 3), dtype=np.float32)
+        return np.asarray(s.displacement(self)).reshape(2, -1, 3)
 
     # ================================================================ robot frame
     def _base_pose(self, d=None):
@@ -928,10 +913,7 @@ class TacHumanoidPick(TactileGymEnv):
             parts["privileged"] = np.concatenate([
                 [logk - 3.0, self._props["mass"], self._props["friction"], strain],
                 self._hand_force / 10.0])
-        if self.obs_modes["tactile"]:
-            parts["tactile"] = self._tactile_obs()
-        if self.obs_modes["vision"]:
-            parts["vision"] = self.get_vision()
+        parts.update(self._sensor_obs())
         return parts
 
     def _get_obs(self):
@@ -1038,7 +1020,7 @@ class TacHumanoidPick(TactileGymEnv):
         self._phi = self._potential()
         self._ep_terms = {}
         self._fail_reason = ""
-        self._reset_marker_history()
+        self._reset_sensors()
         return self._get_obs(), self._info()
 
     # ================================================================ control
@@ -1090,7 +1072,7 @@ class TacHumanoidPick(TactileGymEnv):
         wheel_r, track = 0.1, 0.53
         wheels = np.array([(fwd - turn * track / 2) / wheel_r, (fwd + turn * track / 2) / wheel_r])
 
-        m, d = self.model, self.data
+        d = self.data
         q_old = self._q_cmd
         n_sub = self.FRAME_SKIP // self.CTRL_CHUNKS
         for c in range(self.CTRL_CHUNKS):
@@ -1099,7 +1081,7 @@ class TacHumanoidPick(TactileGymEnv):
                 d.ctrl[self._arm_act[s]] = q_old[s] + w * (q_new[s] - q_old[s])
             d.ctrl[self._base_act] = base_ctrl
             d.ctrl[self._wheels] = np.clip(wheels, -3.14, 3.14)
-            mujoco.mj_step(m, d, n_sub)
+            self._mj_step(n_sub)
         self._q_cmd = q_new
 
     # ================================================================ step
@@ -1109,7 +1091,7 @@ class TacHumanoidPick(TactileGymEnv):
         self._park_all()
         mujoco.mj_forward(self.model, self.data)
         self.step_count += 1
-        self._update_marker_history()
+        self._step_sensors()
 
         self._hand_force, self._table_force = self._contacts()
         self._obj = self._object_state()

@@ -1,0 +1,16 @@
+# Bimanual pick-and-place with TacTip palms: sees the object vs sees + feels it.
+# (Plain PPO. humanoid_pick.py adds the scripted-demo warm start, which helps a lot.)
+name: humanoid
+env: TacHumanoid-pick
+env_kwargs:
+  action_mode: bimanual
+  sensor_stiffness: 10.0
+train:
+  steps: 20000000
+  n_envs: 16
+variants:
+  object: {obs_modes: [object]}
+  object_tactile: {obs_modes: [object, tactile]}
+  vision_tactile:
+    obs_modes: [vision, tactile]
+    obs_format: dict

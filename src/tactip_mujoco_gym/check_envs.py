@@ -3,6 +3,8 @@ Sanity checks for the tactip arm environments - run this on YOUR model before tr
 
     python check_envs.py                 # all tasks
     python check_envs.py TacArm-peg      # one task
+    python check_envs.py TacArm-peg --sensor-xml my_sensor.xml     # with your sensor
+    python check_envs.py TacArm-peg --env-kwargs '{"overrides": {"TIP_R": 0.02}}'
 
 It reports, per task:
   * controller: tip drift with zero action, achieved vs commanded speed, IK residual
@@ -151,11 +153,12 @@ def controller_check(raw):
         raw.WS_LO, raw.WS_HI = lo, hi
 
 
-def main(names):
+def main(names, extra=None):
+    extra = dict(extra or {})
     for name in names:
         policy, body_fn, script_kw = TASKS[name]
-        print(f"\n=== {name}")
-        env = gym.make(name)
+        print(f"\n=== {name}" + (f"  {extra}" if extra else ""))
+        env = gym.make(name, **extra)
         raw = env.unwrapped
         drift, v, v_cmd, ik = controller_check(raw)
         flag = "" if drift < 1.0 and abs(v - v_cmd) < 0.15 * v_cmd else "   <-- check controller"
@@ -198,11 +201,24 @@ def main(names):
         summarise("random", rand, f"   ({steps / (time.time() - t):.0f} steps/s)")
         env.close()
 
-        env = gym.make(name, **script_kw)
+        env = gym.make(name, **{**extra, **script_kw})
         res = [rollout(env, policy, 200 + s) for s in range(10)]
         summarise("scripted", res, f"   (env kwargs {script_kw})" if script_kw else "")
         env.close()
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or list(TASKS))
+    import argparse
+    import json
+    ap = argparse.ArgumentParser(description="Sanity checks for the arm tasks.")
+    ap.add_argument("tasks", nargs="*", help=f"default: all of {list(TASKS)}")
+    ap.add_argument("--sensor-xml", default=None, help="sensor hardware (name or MJCF file)")
+    ap.add_argument("--sensor-stiffness", type=float, default=None)
+    ap.add_argument("--env-kwargs", default="{}", help="other env arguments as JSON")
+    a = ap.parse_args(sys.argv[1:])
+    kw = json.loads(a.env_kwargs)
+    if a.sensor_xml is not None:
+        kw["sensor_xml"] = a.sensor_xml
+    if a.sensor_stiffness is not None:
+        kw["sensor_stiffness"] = a.sensor_stiffness
+    main(a.tasks or list(TASKS), kw)

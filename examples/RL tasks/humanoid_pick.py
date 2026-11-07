@@ -41,7 +41,7 @@ from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.utils import obs_as_tensor
 from stable_baselines3.common.vec_env import VecNormalize
 
-from RL_BASE import env_id, evaluate, load_policy, run, visualise
+from tactip_mujoco_gym.RL_BASE import env_id, evaluate, load_policy, run, visualise
 
 ENV_NAME = "TacHumanoid-pick"
 OBS_MODES = {"object": True, "tactile": True}

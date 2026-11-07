@@ -64,5 +64,5 @@ if __name__ == "__main__":             # required: training uses one subprocess 
         env_kwargs=ENV_KWARGS, algo_kwargs=PPO_KWARGS, callbacks=[TerrainLogger()],
         record_video=True, video_seconds=10, checkpoint_every=2_000_000)
     evaluate(ENV_NAME, MODEL_NAME, n_episodes=20)
-    evaluate_grounds(MODEL_NAME)
+    evaluate_grounds(MODEL_NAME, grounds=GROUNDS)
     visualise(ENV_NAME, MODEL_NAME)

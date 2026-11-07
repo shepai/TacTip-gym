@@ -1,0 +1,8 @@
+# A single run: edge following by touch alone, with a gentler marker clip.
+name: edge_tactile
+env: TacArm-edge
+obs_modes: [tactile]
+sensors:
+  tactile: {clip: 10.0}            # tweak the default readout (tactip_markers)
+train:
+  steps: 2000000

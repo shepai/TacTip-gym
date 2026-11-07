@@ -1,0 +1,38 @@
+# Does feeling the ground help the Go2 walk on changing terrain? (see quadruped_walk.py)
+# proxy feet are ~6x faster than TacTip feet: use them to tune the reward and PPO first.
+name: quad
+env: TacQuad-walk
+env_kwargs:
+  sensor_stiffness: 10.0
+train:
+  steps: 30000000
+  n_envs: 16
+  checkpoint_every: 2000000
+  video_seconds: 10
+  algo_kwargs:                     # locomotion settings (legged_gym style)
+    learning_rate: 0.0003
+    n_steps: 1024
+    batch_size: 4096
+    n_epochs: 5
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    ent_coef: 0.003
+    vf_coef: 1.0
+    max_grad_norm: 1.0
+    target_kl: 0.02
+evaluate:
+  episodes: 20
+variants:
+  proxy_privileged:                # teacher: knows the ground
+    env_kwargs: {feet: proxy}
+    obs_modes: [privileged]
+  proxy_blind:                     # joints + IMU only
+    env_kwargs: {feet: proxy}
+    obs_modes: []
+  tactip_blind:                    # same, on the soft TacTip feet
+    env_kwargs: {feet: tactip}
+    obs_modes: []
+  tactip_tactile:                  # + touch: the gap to tactip_blind is the value of touch
+    env_kwargs: {feet: tactip}
+    obs_modes: [tactile]

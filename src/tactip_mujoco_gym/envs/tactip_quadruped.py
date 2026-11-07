@@ -20,7 +20,9 @@ Observation inputs (obs_modes), as in the arm tasks; proprioception is always in
     privileged  base linear velocity, base height, foot contact forces, friction and softness
                 under each foot, foot heights, a grid of terrain heights around the robot
     tactile     marker displacements of all four TacTips (mm) and their change since last step
+    tactile_image  the cameras inside the four TacTips, stacked along the channels
     vision      the head camera (VISION_CAMERA = "headcam")
+    + any readout added with sensors={...}; the four feet are env.sensor_mounts (FL, FR, RL, RR)
 
 Action: 12 joint targets, a in [-1, 1] -> standing pose + ACTION_SCALE * a, PD at KP / KD.
 Task:   follow a velocity command (forward, sideways, turn), resampled every few seconds;
@@ -45,7 +47,8 @@ import numpy as np
 from gymnasium import spaces
 
 from tactip_mujoco_gym.envs.base import TactileGymEnv
-from tactip_mujoco_gym.sensor_tools import attach_sensor, extract_sensor, mount_pose, sensor_info
+from tactip_mujoco_gym.sensor_tools import attach_sensor, mount_pose, sensor_info
+from tactip_mujoco_gym.sensors import Mount, resolve_sensor_model
 
 LEGS = ("FL", "FR", "RL", "RR")
 JOINTS = ("hip", "thigh", "calf")
@@ -129,11 +132,14 @@ class TacQuadruped(TactileGymEnv):
 
     def __init__(self, feet="tactip", sensor_stiffness=10.0, terrain_level=None, curriculum=True,
                  command=None, obs_modes=None, privileged=None, obs_format="flat",
-                 render_mode=None, max_steps=None, sensor_xml=None, robot_xml=None):
+                 render_mode=None, max_steps=None, sensor_xml=None, robot_xml=None,
+                 sensors=None, overrides=None):
         """
-        feet              "tactip" (four TacTips), "proxy" (a sphere matching the TacTip's
-                          size: same legs, ~3x faster, no tactile input) or "rigid" (the Go2's
-                          own feet)
+        feet              "tactip" (the sensor on every foot), "proxy" (a sphere matching
+                          the sensor's size: same legs, ~3x faster, no tactile input) or
+                          "rigid" (the Go2's own feet)
+        sensor_xml        the sensor on the feet: None / "tactip" (default), a registered
+                          name or a standalone MJCF file (see sensors/models.py)
         sensor_stiffness  multiplies the TacTip's joint / tendon stiffness, damping and armature
                           (see sensor_tools.attach_sensor). A skin tuned for finger pressure
                           bottoms out under a 15 kg robot; check_quadruped.py reports how much
@@ -141,12 +147,16 @@ class TacQuadruped(TactileGymEnv):
         terrain_level     0..1 fixes the terrain difficulty; None starts at 0 and, with
                           curriculum=True, adapts per environment instance
         command           None = random commands; (vx, vy, yaw_rate) = always this one
+        sensors           change / add readouts (see envs/base.py)
+        overrides         {"CONSTANT": value} for this instance, e.g. {"KP": 25.0}
 
         reset(options=...) accepts "terrain_level" (0..1, this episode on) and "feel", a dict
         with friction / softness (0..1) / dampratio applied to every tile, e.g. ice:
             env.reset(options={"feel": {"friction": 0.15}})
         """
         gym.Env.__init__(self)
+        self._apply_overrides(overrides)
+        self._init_sensor_state()
         if feet not in ("tactip", "proxy", "rigid"):
             raise ValueError(f"feet must be 'tactip', 'proxy' or 'rigid', not {feet!r}")
         self.feet = feet
@@ -157,39 +167,32 @@ class TacQuadruped(TactileGymEnv):
         self.render_mode = render_mode
         self.xml_path = None
 
+        self.sensor_xml = sensor_xml
         spec = self._build_spec(sensor_xml, robot_xml)
         self.model = spec.compile()
         self.data = mujoco.MjData(self.model)
-        self._index_model()
+        self._index_model(sensors)
 
         # base-class state (renderers, observation selection)
         self._physics = self._renderer = self._view_renderer = self._vision_renderer = None
         self.step_count = 0
         self.dt = self.TIMESTEP * self.FRAME_SKIP
         self.max_steps = max_steps or int(round(self.EPISODE_SECONDS / self.dt))
-        self.events = False
         self.action_space = spaces.Box(-1.0, 1.0, shape=(12,), dtype=np.float32)
         self._terrain_version = 0
         self._last_outcome = None
         self.obs_format = "flat"
-        self.obs_modes = {"vision": False, "tactile": False, "privileged": False}
+        self.obs_modes = {k: False for k in self.input_names}
         self.reset(seed=0)                       # state for the first observation
         self.set_obs_format(obs_format)
         self.set_obs_modes(self.resolve_obs_modes(obs_modes, privileged))   # checks availability
 
     # ================================================================ model building
     def _sensor_spec(self, sensor_xml):
-        path = sensor_xml or _asset(*self.SENSOR_XML)
-        try:
-            return mujoco.MjSpec.from_file(path)
-        except ValueError:
-            src = _asset(*self.SENSOR_SOURCE)
-            import os
-            if sensor_xml is not None or not os.path.exists(src):
-                raise
-            print(f"[TacQuadruped] {path} not found: using the sensor in {src} "
-                  f"(run `python -m tactip_mujoco_gym.sensor_tools extract ...` to make the file)")
-            return extract_sensor(src, self.SENSOR_ROOT)
+        """The sensor hardware: sensor_xml (name / file / MjSpec), else the TacTip
+        (SENSOR_XML if it exists, else extracted from SENSOR_SOURCE)."""
+        return resolve_sensor_model(sensor_xml, source=self.SENSOR_SOURCE, root=self.SENSOR_ROOT,
+                                    standalone=self.SENSOR_XML)
 
     @classmethod
     def find_robot(cls, robot_xml=None):
@@ -205,7 +208,7 @@ class TacQuadruped(TactileGymEnv):
             return str(found[0])
         raise FileNotFoundError(
             f"No go2.xml under {_asset('assets')}. Put the Go2 folder there (go2.xml plus its "
-            "assets/ mesh folder), run `python tools/fetch_go2.py`, or pass robot_xml=...")
+            "assets/ mesh folder; MuJoCo Menagerie's unitree_go2), or pass robot_xml=...")
 
     def _build_spec(self, sensor_xml=None, robot_xml=None, terrain=True):
         path = self.find_robot(robot_xml)
@@ -213,7 +216,7 @@ class TacQuadruped(TactileGymEnv):
             spec = mujoco.MjSpec.from_file(path)
         except ValueError as e:
             raise FileNotFoundError(f"Can't load the robot model {path} ({e}). Download the "
-                                    "Unitree Go2 with `python tools/fetch_go2.py`.") from None
+                                    "Unitree Go2 from MuJoCo Menagerie (unitree_go2) into assets/.") from None
         self.robot_xml = path
         # a scene.xml brings its own floor / boxes: the env supplies the ground
         for g in list(spec.worldbody.geoms):
@@ -325,7 +328,7 @@ class TacQuadruped(TactileGymEnv):
         return {leg: d.xmat[m.body(f"{leg}_calf").id].reshape(3, 3).T @ np.array([0.0, 0, -1])
                 for leg in LEGS}
 
-    def _index_model(self):
+    def _index_model(self, sensors=None):
         m = self.model
         self._base = m.body(self.trunk_name).id
         self.TRACK_BODY = self.trunk_name
@@ -381,28 +384,17 @@ class TacQuadruped(TactileGymEnv):
         self._is_shin = in_robot & (self._geom_foot < 0) & ~self._is_trunk   # thighs, calves, hips
         self._foot_geoms = [np.flatnonzero(self._geom_foot == k) for k in range(4)]
 
-        # TacTip markers, one frame per foot
-        self.n_markers = 0
-        self._marker_ids = np.zeros(0, dtype=int)
+        # sensor readouts, one mount per foot (readings in each foot's sensor frame)
+        self.sensor_mounts = []
         if self.feet == "tactip":
-            ids, owner, frames = [], [], []
-            for k, leg in enumerate(LEGS):
-                pre = f"{leg}_{self.MARKER_PREFIX}"
-                mk = [i for i in range(m.nsite) if m.site(i).name.startswith(pre)]
-                ids += mk
-                owner += [k] * len(mk)
-                site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, f"{leg}_{self.SENSOR_SITE}")
-                frames.append(("site", site) if site >= 0 else ("body", int(self._foot_body[k])))
-            self._marker_ids = np.array(ids, dtype=int)
-            self._marker_owner = np.array(owner, dtype=int)
-            self._foot_frames = frames
-            self.n_markers = len(ids)
-            self.markers_per_foot = self.n_markers // 4
-            d = mujoco.MjData(m)                    # model rest pose = undeformed skin
-            mujoco.mj_forward(m, d)
-            self._nodes_rest = self._nodes(d)
-            self._nodes_last = self._nodes_rest.copy()
-            self._nodes_delta = np.zeros_like(self._nodes_rest)
+            self.sensor_mounts = [Mount(leg, f"{leg}_", int(self._foot_body[k]),
+                                        ("body", int(self._foot_body[k])))
+                                  for k, leg in enumerate(LEGS)]
+        self._setup_sensors(sensors)
+        d = mujoco.MjData(m)                        # model rest pose = undeformed skin
+        mujoco.mj_forward(m, d)
+        self._calibrate_sensors(d)
+        self.markers_per_foot = self.n_markers // 4
 
         # standing height: base height above the lowest foot point in the standing pose
         d = mujoco.MjData(m)
@@ -553,37 +545,12 @@ class TacQuadruped(TactileGymEnv):
             pass
 
     # ================================================================ tactip read-out
-    def _nodes(self, d=None):
-        """Marker positions in their own foot's sensor frame, (n_markers, 3)."""
-        d = self.data if d is None else d
-        pos, mat = [], []
-        for kind, i in self._foot_frames:
-            if kind == "site":
-                pos.append(d.site_xpos[i])
-                mat.append(d.site_xmat[i].reshape(3, 3))
-            else:
-                pos.append(d.xpos[i])
-                mat.append(d.xmat[i].reshape(3, 3))
-        c = np.array(pos)[self._marker_owner]
-        R = np.array(mat)[self._marker_owner]
-        p = d.site_xpos[self._marker_ids]
-        return np.einsum("ni,nij->nj", p - c, R).astype(np.float32)
-
-    def get_nodes(self):
-        return self._nodes()
-
     def get_foot_nodes(self):
         """Marker displacement from rest per foot, (4, markers_per_foot, 3) in metres."""
-        disp = self._nodes() - self._nodes_rest
-        return disp.reshape(4, -1, 3)
-
-    def _update_marker_history(self):
-        if self.n_markers:
-            super()._update_marker_history()
-
-    def _reset_marker_history(self):
-        if self.n_markers:
-            super()._reset_marker_history()
+        s = self._markers()
+        if s is None:
+            return np.zeros((4, 0, 3), dtype=np.float32)
+        return np.asarray(s.displacement(self)).reshape(4, -1, 3)
 
     # ================================================================ state helpers
     def _base_state(self):
@@ -654,10 +621,7 @@ class TacQuadruped(TactileGymEnv):
                 self._tile_friction[tiles], self._tile_softness[tiles],
                 np.clip(foot_h, -0.1, 0.3) * 5.0,
                 np.clip(scan.ravel(), -1, 1)])
-        if self.obs_modes["tactile"]:
-            parts["tactile"] = self._tactile_obs()
-        if self.obs_modes["vision"]:
-            parts["vision"] = self.get_vision()
+        parts.update(self._sensor_obs())
         return parts
 
     def _get_obs(self):
@@ -717,7 +681,7 @@ class TacQuadruped(TactileGymEnv):
         self._ep_terms = {k: 0.0 for k in self.REWARD_WEIGHTS}
         self._fail_reason = ""
         self._sample_command()
-        self._reset_marker_history()
+        self._reset_sensors()
         return self._get_obs(), self._info()
 
     def step(self, action):
@@ -725,9 +689,9 @@ class TacQuadruped(TactileGymEnv):
         a = np.clip(np.asarray(action, dtype=np.float64).ravel(), -1.0, 1.0)
         target = self.DEFAULT_POSE + self.ACTION_SCALE * a
         d.ctrl[self._act] = np.clip(target, self._ctrl_lo, self._ctrl_hi)
-        mujoco.mj_step(m, d, self.FRAME_SKIP)
+        self._mj_step(self.FRAME_SKIP)
         self.step_count += 1
-        self._update_marker_history()
+        self._step_sensors()
 
         self._foot_force, shin, trunk = self._contacts()
         R, lin, ang, grav = self._base_state()
@@ -824,14 +788,13 @@ class TacQuadruped(TactileGymEnv):
         self._view_renderer.update_scene(self.data, camera=self._view_cam)
         return self._view_renderer.render().copy()
 
-    def get_vision(self):
-        new = self._vision_renderer is None
-        if not new:
-            self.sync_renderer(self._vision_renderer)
-        img = super().get_vision()
-        if new:                                  # a new renderer uploads the current terrain
-            self._vision_renderer._tacquad_terrain = self._terrain_version
-        return img
+    def _sync_renderer(self, renderer, new):
+        """Before a camera readout renders: a new renderer already has the current terrain,
+        an older one gets it re-uploaded if it changed."""
+        if new:
+            renderer._tacquad_terrain = self._terrain_version
+        else:
+            self.sync_renderer(renderer)
 
 
 # ==================================================================== view / save the robot

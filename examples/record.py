@@ -44,7 +44,7 @@ def main():
             # -----------------------------
             # 2. tactile camera (right)
             # -----------------------------
-            tactile_img = obs["image"]
+            tactile_img = env.unwrapped.get_tactile_image()   # camera inside the TacTip
 
             # ensure correct format
             if tactile_img.dtype != np.uint8:

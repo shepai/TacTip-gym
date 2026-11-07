@@ -1,0 +1,24 @@
+# Same task and inputs, different sensor hardware on the arm.
+#   builtin   the TacTip written into the scene (the default)
+#   attached  the stand-alone TacTip attached in code: should match "builtin" - a check
+#             that sensor swapping works on your machine before you try your own sensor
+#   stiffer   the same TacTip with a 3x stiffer skin
+#   custom    your own sensor: a standalone MJCF file (see examples/custom_sensor/)
+name: peg_hw
+env: TacArm-peg
+obs_modes: [tactile]
+train:
+  steps: 3000000
+variants:
+  builtin: {}
+  attached:
+    sensor_xml: tactip
+  stiffer:
+    sensor_stiffness: 3.0
+  custom:                          # run from the repo root so `examples` is importable
+    sensor_xml: ../examples/custom_sensor/rigid_pad.xml
+    sensors:                       # "module:Class" also works in SubprocVecEnv workers
+      contact: examples.custom_sensor.pad_contact:PadContact
+    obs_modes: [contact]
+    overrides:
+      TIP_R: 0.02                  # the pad's radius (check_envs.py measures it)

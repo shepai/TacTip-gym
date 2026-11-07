@@ -261,15 +261,25 @@ def _prune_assets(spec):
 
 
 # ----------------------------------------------------------------------------- inspect
+TIP_SITE = "sensor_tip"       # optional site marking the tip: position = tip, z axis = outward
+TIP_DEPTH = 0.01              # m behind the tip that counts as "the tip end" for `radius`
+                              # (sensors without markers)
+
+
 def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis=None):
     """Geometry of a standalone sensor at rest, in its root body's frame:
-        axis    tip direction: from the centre of a sphere fitted to the markers (the dome)
-                through their centroid; or the `axis` given
-        centre  that dome centre
-        tip     the furthest point of the collision geometry along the axis, on the axis line
+        axis    tip direction: the z axis of a "sensor_tip" site if the sensor has one, else
+                from the centre of a sphere fitted to the markers (the dome) through their
+                centroid; or the `axis` given
+        centre  that dome centre (the tip itself for a sensor with a "sensor_tip" site)
+        tip     the "sensor_tip" site, else the furthest point of the collision geometry along
+                the axis, on the axis line
         reach   distance from the root origin to the tip along the axis (m)
         radius  sideways extent of the tip end (dome + skin) from the axis (m)
-        n_markers, mass, timestep, has_site (whether sensor_site exists), root"""
+        n_markers, mass, timestep, has_site (whether sensor_site exists), root
+
+    A sensor without TacTip markers needs a "sensor_tip" site (or `axis`) so it can be
+    mounted: <site name="sensor_tip" pos="0 0 0.03" zaxis="0 0 1"/>."""
     spec = _as_spec(sensor)
     m = spec.compile()
     d = mujoco.MjData(m)
@@ -278,12 +288,11 @@ def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis
     rid = m.body(root.name).id
     origin, R = d.xpos[rid], d.xmat[rid].reshape(3, 3)
     markers = [i for i in range(m.nsite) if m.site(i).name.startswith(marker_prefix)]
-    if not markers:
-        raise ValueError(
-            f"no '{marker_prefix}*' marker sites in the sensor (root body {root.name!r}): it was "
-            "probably extracted from a body that doesn't hold the markers. Re-run "
-            "`python -m tactip_mujoco_gym.sensor_tools extract <arm scene> --out <file>` "
-            "without --body; `... sensor_tools tree <arm scene>` shows where they are.")
+    tip_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, TIP_SITE)
+    has_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, sensor_site) >= 0
+    if tip_site >= 0 or not markers:
+        return _info_without_dome(m, d, rid, origin, R, markers, tip_site, axis, has_site,
+                                  root.name, marker_prefix)
     P = (d.site_xpos[markers] - origin) @ R            # markers in the root frame
     centroid = P.mean(axis=0)
     centre = _sphere_centre(P)
@@ -303,10 +312,38 @@ def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis
     near = pts[along >= start]
     lateral = near - centre - np.outer((near - centre) @ axis, axis)
     radius = float(np.linalg.norm(lateral, axis=1).max())
-    has_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, sensor_site) >= 0
     return dict(axis=axis, centre=centre, tip=tip, reach=float(tip @ axis), radius=radius,
                 n_markers=len(markers), mass=float(m.body_subtreemass[rid]),
                 timestep=float(m.opt.timestep), has_site=has_site, root=root.name)
+
+
+def _info_without_dome(m, d, rid, origin, R, markers, tip_site, axis, has_site, root_name,
+                       marker_prefix):
+    """sensor_info for a sensor with a "sensor_tip" site, or without markers."""
+    if tip_site >= 0:
+        tip = (d.site_xpos[tip_site] - origin) @ R
+        if axis is None:
+            axis = R.T @ d.site_xmat[tip_site].reshape(3, 3)[:, 2]
+    elif axis is None:
+        raise ValueError(
+            f"the sensor (root body {root_name!r}) has no '{marker_prefix}*' marker sites to "
+            f"find its tip from. Add a site named '{TIP_SITE}' at the centre of the sensing "
+            "surface, with its z axis pointing outward, e.g. "
+            f'<site name="{TIP_SITE}" pos="0 0 0.03" zaxis="0 0 1"/> (or pass axis=...).')
+    axis = np.asarray(axis, float) / np.linalg.norm(axis)
+    pts = (_collision_points(m, d, axis=R @ axis) - origin) @ R
+    if tip_site < 0:                                    # furthest point along the axis line
+        tip = (pts @ axis).max() * axis
+    along = (pts - tip) @ axis
+    near = pts[along >= -TIP_DEPTH]
+    if len(near) == 0:
+        near = pts
+    lateral = near - tip - np.outer((near - tip) @ axis, axis)
+    radius = float(np.linalg.norm(lateral, axis=1).max())
+    return dict(axis=axis, centre=np.asarray(tip, float).copy(), tip=np.asarray(tip, float),
+                reach=float(np.asarray(tip) @ axis), radius=radius, n_markers=len(markers),
+                mass=float(m.body_subtreemass[rid]), timestep=float(m.opt.timestep),
+                has_site=has_site, root=root_name)
 
 
 def _sphere_centre(P):
@@ -454,6 +491,146 @@ def attach_sensor(spec, parent, sensor, prefix, pos=(0, 0, 0), quat=None, axis=N
         for b in bodies:
             spec.add_exclude(bodyname1=parent.name, bodyname2=b.name)
     return root
+
+
+# ----------------------------------------------------------------------------- scene surgery
+# Used to swap the sensor on robots whose scene XML has the TacTip written in (the arm): the
+# built-in sensor is cut out of the scene as plain XML (with everything that refers to it),
+# then a different sensor is attached with attach_sensor().
+
+# attribute -> kind of element it names ("*" = any kind)
+_REF_KIND = {
+    "body": "body", "body1": "body", "body2": "body",
+    "joint": "joint", "joint1": "joint", "joint2": "joint", "jointinparent": "joint",
+    "site": "site", "site1": "site", "site2": "site", "sidesite": "site", "cranksite": "site",
+    "slidersite": "site", "refsite": "site",
+    "geom": "geom", "geom1": "geom", "geom2": "geom",
+    "tendon": "tendon", "tendon1": "tendon", "tendon2": "tendon",
+    "actuator": "actuator", "camera": "camera",
+    "objname": "*", "refname": "*",
+}
+_DEF_KIND = {"body": "body", "joint": "joint", "freejoint": "joint", "geom": "geom",
+             "site": "site", "camera": "camera", "light": "light"}
+# top-level sections whose children may refer to worldbody elements, and the kind each
+# child's own name has
+_SECTIONS = {"tendon": "tendon", "actuator": "actuator", "equality": "equality",
+             "sensor": "sensor", "contact": "contact", "deformable": "deformable"}
+
+
+def expand_includes(xml_path):
+    """Parse an MJCF file with every <include> expanded in place, following MuJoCo's rules:
+    file paths are relative to the main file's directory, and the included file's top-level
+    element is dropped (its children take the include's place). Returns the root Element."""
+    import xml.etree.ElementTree as ET
+    xml_path = os.path.abspath(str(xml_path))
+    base = os.path.dirname(xml_path)
+    root = ET.parse(xml_path).getroot()
+
+    def expand(elem, depth=0):
+        if depth > 50:
+            raise RecursionError(f"<include> nesting too deep in {xml_path}")
+        i = 0
+        while i < len(elem):
+            child = elem[i]
+            if child.tag == "include":
+                path = os.path.join(base, child.attrib["file"])
+                inner = ET.parse(path).getroot()
+                expand(inner, depth + 1)
+                elem.remove(child)
+                for k, sub in enumerate(list(inner)):
+                    elem.insert(i + k, sub)
+                i += len(inner)
+            else:
+                expand(child, depth + 1)
+                i += 1
+    expand(root)
+    return root
+
+
+def _refs(elem):
+    """(kind, name) pairs that `elem` and its descendants refer to."""
+    out = []
+    for e in elem.iter():
+        for attr, kind in _REF_KIND.items():
+            v = e.attrib.get(attr)
+            if v:
+                out.append((kind, v))
+    return out
+
+
+def remove_bodies(root, body_names):
+    """Delete the named bodies (with their subtrees) from an expanded MJCF tree, then every
+    tendon, actuator, equality, sensor, contact pair / exclude and skin that refers to
+    anything deleted (repeatedly, so a sensor on a deleted tendon goes too). Keyframes are
+    dropped if any joint or actuator went (their qpos / ctrl lengths no longer match).
+    Returns {kind: set of deleted names}."""
+    removed = {k: set() for k in ("body", "joint", "geom", "site", "camera", "light",
+                                  "tendon", "actuator", "equality", "sensor", "contact",
+                                  "deformable")}
+    parents = {c: p for p in root.iter() for c in p}
+    wanted = set(body_names)
+    for body in [b for b in root.iter("body") if b.attrib.get("name") in wanted]:
+        for e in body.iter():
+            kind = _DEF_KIND.get(e.tag)
+            if kind and e.attrib.get("name"):
+                removed[kind].add(e.attrib["name"])
+        parents[body].remove(body)
+        wanted.discard(body.attrib.get("name"))
+    if wanted:
+        raise ValueError(f"no body named {sorted(wanted)} in the scene")
+
+    def hit(kind, name):
+        if kind == "*":
+            return any(name in s for s in removed.values())
+        if kind == "body" and " " in name:                     # flex / skin body lists
+            return any(n in removed["body"] for n in name.split())
+        return name in removed[kind]
+
+    changed = True
+    while changed:
+        changed = False
+        for section in [e for e in root if e.tag in _SECTIONS]:
+            kind = _SECTIONS[section.tag]
+            for child in list(section):
+                if any(hit(k, n) for k, n in _refs(child)):
+                    section.remove(child)
+                    unnamed = f"<{child.tag} {len(removed[kind])}>"     # (can't match a name)
+                    removed[kind].add(child.attrib.get("name") or unnamed)
+                    changed = True
+    if removed["joint"] or removed["actuator"]:
+        for kf in [e for e in root if e.tag == "keyframe"]:
+            root.remove(kf)
+    return removed
+
+
+def scene_without_bodies(scene_xml, body_names):
+    """The scene as one MJCF string with the named bodies (and everything referring to them)
+    taken out; mesh / texture directories made absolute so it loads from a string.
+    Returns (xml string, {kind: deleted names})."""
+    import xml.etree.ElementTree as ET
+    scene_xml = os.path.abspath(str(scene_xml))
+    base = os.path.dirname(scene_xml)
+    root = expand_includes(scene_xml)
+    removed = remove_bodies(root, body_names)
+    compilers = root.findall("compiler")
+    if not compilers:
+        compilers = [ET.Element("compiler")]
+        root.insert(0, compilers[0])
+    for c in compilers:
+        asset = c.attrib.pop("assetdir", None)
+        for attr in ("meshdir", "texturedir"):
+            d = c.attrib.get(attr, asset if asset is not None else "")
+            c.attrib[attr] = d if os.path.isabs(d) else os.path.normpath(os.path.join(base, d))
+    return ET.tostring(root, encoding="unicode"), removed
+
+
+def child_bodies(scene_xml, parent):
+    """Names of the bodies directly inside body `parent` of a scene (includes expanded)."""
+    root = expand_includes(scene_xml)
+    for b in root.iter("body"):
+        if b.attrib.get("name") == parent:
+            return [c.attrib.get("name") for c in b if c.tag == "body"]
+    raise ValueError(f"no body named {parent!r} in {scene_xml}")
 
 
 # ----------------------------------------------------------------------------- CLI

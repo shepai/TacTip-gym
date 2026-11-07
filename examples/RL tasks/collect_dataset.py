@@ -73,8 +73,8 @@ def sb3_teacher(env_name, model_name, model_dir):
     from tactip_mujoco_gym.RL_BASE import load_policy
     model, env, normalise, _ = load_policy(env_name, model_name, model_dir)
     raw = env.unwrapped
-    only_privileged = raw.obs_modes == {"vision": False, "tactile": False, "privileged": True}
-    if not only_privileged or raw.obs_format != "flat" or raw.events:
+    only_privileged = {k for k, on in raw.obs_modes.items() if on} == {"privileged"}
+    if not only_privileged or raw.obs_format != "flat":
         raise ValueError(f"{model_name} must be trained on privileged-only flat observations "
                          f"(got {raw.obs_modes}, format {raw.obs_format}, events {raw.events})")
     env.close()
@@ -306,6 +306,7 @@ def write_meta(env_name, out_dir, args, env_kwargs):
         shapes={k: list(sp.shape) for k, sp in env.observation_space.spaces.items()},
         action_dim=int(env.action_space.shape[0]),
         n_markers=int(raw.n_markers),
+        sensor_xml=env_kwargs.get("sensor_xml"),
         vision=dict(camera=raw.VISION_CAMERA, width=raw.VISION_WIDTH,
                     height=raw.VISION_HEIGHT, mode=raw.VISION_MODE),
         shape_names=list(getattr(raw, "SHAPE_NAMES", [])),
