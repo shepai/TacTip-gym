@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from stable_baselines3.common.callbacks import BaseCallback
 
-from RL_BASE import evaluate, load_policy, run, visualise
+from RL_BASE import evaluate, load_policy, run, visualise, TerrainLogger, evaluate_grounds
 
 ENV_NAME = "TacQuad-walk"
 FEET = "tactip"                        # "tactip" | "proxy" | "rigid"
@@ -58,43 +58,6 @@ GROUNDS = {                            # evaluation grounds (every tile the same
     "rough":  (None, 1.0),             # level-1 mix: rough tiles, any feel
 }
 
-
-class TerrainLogger(BaseCallback):
-    """Episode averages of the curriculum level, falls and each reward term."""
-    def _on_step(self):
-        for info in self.locals["infos"]:
-            if "reward_terms" in info:
-                self.logger.record_mean("terrain/level", info["terrain_level"])
-                self.logger.record_mean("terrain/fell", float(bool(info["fail_reason"])))
-                for k, v in info["reward_terms"].items():
-                    self.logger.record_mean(f"reward/{k}", v)
-        return True
-
-
-def evaluate_grounds(model_name, n_episodes=5, command=(0.6, 0.0, 0.0), seconds=10.0):
-    """Walk straight on each ground: how often it stays up and how well it holds the speed."""
-    model, env, normalise, _ = load_policy(ENV_NAME, model_name, env_kwargs={
-        "command": command, "terrain_level": 0.0, "max_steps": int(seconds * 50)})
-    raw = env.unwrapped
-    print(f"\n{model_name}, command {command}:")
-    for name, (feel, level) in GROUNDS.items():
-        raw.set_terrain_level(level)
-        up, speed, slip = [], [], []
-        for ep in range(n_episodes):
-            obs, _ = env.reset(seed=2000 + ep, options={"feel": feel} if feel else None)
-            v = []
-            while True:
-                action, _ = model.predict(normalise(obs), deterministic=True)
-                obs, _, term, trunc, info = env.step(action)
-                v.append(raw._base_state()[1][0])
-                if term or trunc:
-                    break
-            up.append(not term)
-            speed.append(np.mean(v))
-            slip.append(info["reward_terms"]["feet_slip"])
-        print(f"  {name:<7}: stays up {np.mean(up):4.0%}, forward speed {np.mean(speed):.2f} m/s "
-              f"(asked {command[0]:.2f}), slip penalty {np.mean(slip):.3f}")
-    env.close()
 
 
 if __name__ == "__main__":             # required: training uses one subprocess per env
