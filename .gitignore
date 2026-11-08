@@ -3,3 +3,5 @@
 /src/my_package.egg-info
 /datasets
 /src/tactip_gym.egg-info
+/docs/_build
+/docs

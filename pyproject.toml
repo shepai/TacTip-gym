@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tactip-gym"
-version = "0.2.0"
+version = "0.4.0"
 description = "MuJoCo soft-body TacTip simulator and Gymnasium benchmark for tactile, visual and visuo-tactile sensing"
 readme = "README.md"
 authors = [
@@ -28,6 +28,12 @@ train = [
 ]
 test = [
     "pytest",
+]
+docs = [                      # the documentation (docs/; Read the Docs uses docs/requirements.txt)
+    "sphinx>=7.3",
+    "myst-parser>=3.0",
+    "furo>=2024.8.6",
+    "sphinx-copybutton>=0.5.2",
 ]
 legacy = [
     "dm_control",             # only for env.physics on the old base class
