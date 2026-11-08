@@ -1,6 +1,33 @@
 # TacTip-gym
 
 A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://github.com/shepai/Robot_foot">robot foot repo</a>), and a Gymnasium benchmark for testing **tactile, visual-tactile and visual sensing** on several robots: a robot arm, a quadruped and a wheeled humanoid.
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/edge.gif" width="250"><br>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/peg.gif" width="250"><br>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/incline.gif" width="250"><br>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/" width="250"><br>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/quad.gif" width="250"><br>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/humanoid.gif" width="250"><br>
+
+    </td>
+  </tr>
+</table>
 
 The simulator models the TacTip's silicone skin as a mesh of points with a flexible structure, so the sensor deforms like a soft body. Our <a href="https://shepai.github.io/tutorials/softbodies.html">tutorial page</a> explains how this was built.
 
