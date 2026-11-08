@@ -9,21 +9,32 @@ A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://
     <td align="center">
       <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/peg.gif" width="250"><br>
     </td>
+    tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/tacarm-surface" width="250"><br>
+    </td>
   </tr>
   <tr>
     <td align="center">
       <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/incline.gif" width="250"><br>
     </td>
     <td align="center">
-      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/" width="250"><br>
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/tacarm-shape.gif" width="250"><br>
     </td>
-  </tr>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/tacgripper-pick.gif" width="250"><br>
+    </td>
+    <tr>
+
   <tr>
     <td align="center">
       <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/quad.gif" width="250"><br>
     </td>
     <td align="center">
       <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/humanoid.gif" width="250"><br>
+    </td>
+    <td align="center">
+      <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/tacarm-peg.gif" width="250"><br>
     </td>
   </tr>
 </table>
