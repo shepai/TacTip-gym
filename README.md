@@ -1,5 +1,5 @@
 # TacTip-gym
-
+<a href="https://shepai.github.io/docs/tacgym/index.html">READ THE DOCS</a>
 A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://github.com/shepai/Robot_foot">robot foot repo</a>), and a Gymnasium benchmark for testing **tactile, visual-tactile and visual sensing** on several robots: a robot arm, a quadruped, a wheeled humanoid, a two-TacTip gripper and a Cartesian test rig.
 <table>
   <tr>
