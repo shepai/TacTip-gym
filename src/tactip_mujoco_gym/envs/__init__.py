@@ -21,8 +21,16 @@ from gymnasium.envs.registration import register
 ARM = "Unitree Z1 arm, sensor as the fingertip (1 mount: tip)"
 QUAD = "Unitree Go2 quadruped, sensor on every foot (4 mounts: FL FR RL RR)"
 HUMANOID = "RB-Y1 wheeled humanoid, sensors as palms (2 mounts: left right)"
+RIG = "Cartesian test rig (x, y, z axes; tilting plate), sensor as the spindle (1 mount: tip)"
+GRIPPER = "parallel gripper on a gantry, a sensor as each finger (2 mounts: left right)"
 ARM_INPUTS = ("privileged", "tactile", "tactile_image", "vision", "events")
 ARM_KW = {"start_touching": "start in contact with the object (default True)"}
+RIG_INPUTS = ("force", "privileged", "tactile", "tactile_image", "vision")
+RIG_KW = {"textures": "dataset textures 1..20 and / or STL block files (default: the six, 1..6)",
+          "sensor_stiffness": "skin stiffness multiplier (default 1)"}
+PICK_KW = {"objects": "names to draw from (default all ten)",
+           "level": "0..1 fixed difficulty, None = curriculum",
+           "sensor_stiffness": "skin stiffness multiplier (default 10)"}
 
 TASKS = {
     "TacArm-edge": dict(
@@ -44,6 +52,15 @@ TASKS = {
         summary="stop a ball rolling down a ramp of unknown friction, push it to the top",
         actions="2: along / across the slope",
         options={"observe_friction": "add the true friction to the privileged input"}),
+    "TacArm-surface": dict(
+        entry_point="tactip_mujoco_gym.envs.surface_follow:SurfaceFollow", robot=ARM,
+        inputs=("privileged", "tactile", "tactile_image", "vision"),
+        summary="slide along a wavy, optionally textured strip at a set depth, square to it",
+        actions="2: depth, pitch rate (1 with follow_normal=False); forward motion is automatic",
+        options={"wave": "'uniform' | 'chirp' | 'multi' | 'flat' | 'random' (default) or a list",
+                 "texture": "None (default) | dataset texture 1..20 | 'random' | 'patches' "
+                            "(changes along the strip) | a list",
+                 "follow_normal": "keep the sensor square to the surface too (default True)"}),
     "TacQuad-walk": dict(
         entry_point="tactip_mujoco_gym.envs.tactip_quadruped:TacQuadruped", robot=QUAD,
         inputs=("privileged", "tactile", "tactile_image", "vision"),
@@ -62,6 +79,21 @@ TASKS = {
                  "level": "0..1 fixed difficulty, None = curriculum",
                  "action_mode": "'bimanual' | 'independent'",
                  "sensor_stiffness": "skin stiffness multiplier (default 10)"}),
+    "TacGripper-pick": dict(
+        entry_point="tactip_mujoco_gym.envs.tactip_gripper:TacGripperPick", robot=GRIPPER,
+        inputs=("object", "privileged", "tactile", "tactile_image", "vision"),
+        summary="the humanoid's task with a two-TacTip gripper: squeeze-grasp, carry, put down",
+        actions="5: grasp centre x, y, z, width, yaw", options=dict(PICK_KW)),
+    "TacRig-texture": dict(
+        entry_point="tactip_mujoco_gym.envs.tactile_rig:TacRigTexture", robot=RIG,
+        inputs=RIG_INPUTS,
+        summary="feel a 3D-printed dataset block on the rig, then say which texture it is",
+        actions="3 + 1 + n textures: sensor velocity x, y, z; answer (> 0); a score per texture",
+        options=dict(RIG_KW)),
+    "TacRig-v0": dict(
+        entry_point="tactip_mujoco_gym.envs.tactile_rig:TacRig", robot=RIG, inputs=RIG_INPUTS,
+        summary="the rig over a dataset block, no task (protocols: envs.tactile_rig.press_grid)",
+        actions="3: sensor velocity x, y, z", options=dict(RIG_KW)),
     "RobotArm-v0": dict(
         entry_point="tactip_mujoco_gym.envs.robot_arm:RobotArmEnv", robot=ARM,
         inputs=ARM_INPUTS, summary="the arm and sensor with no task (zero reward, no end)",

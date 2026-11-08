@@ -1,6 +1,6 @@
 # TacTip-gym
 
-A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://github.com/shepai/Robot_foot">robot foot repo</a>), and a Gymnasium benchmark for testing **tactile, visual-tactile and visual sensing** on several robots: a robot arm, a quadruped and a wheeled humanoid.
+A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://github.com/shepai/Robot_foot">robot foot repo</a>), and a Gymnasium benchmark for testing **tactile, visual-tactile and visual sensing** on several robots: a robot arm, a quadruped, a wheeled humanoid, a two-TacTip gripper and a Cartesian test rig.
 <table>
   <tr>
     <td align="center">
@@ -27,7 +27,6 @@ A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://
     </td>
   </tr>
 </table>
-
 The simulator models the TacTip's silicone skin as a mesh of points with a flexible structure, so the sensor deforms like a soft body. Our <a href="https://shepai.github.io/tutorials/softbodies.html">tutorial page</a> explains how this was built.
 
 ![TacTip in simulator](https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/example.gif)
@@ -37,7 +36,7 @@ The benchmark is built so that a researcher changes **what is being tested** thr
 
 | You choose | How | Default |
 |------------|-----|---------|
-| The task and robot | the Gym id, e.g. `TacArm-peg`, `TacQuad-walk`, `TacHumanoid-pick` | |
+| The task and robot | the Gym id, e.g. `TacArm-peg`, `TacQuad-walk`, `TacHumanoid-pick`, `TacRig-texture` | |
 | The sensor hardware mounted on the robot | `sensor_xml=` a registered name or a stand-alone MJCF file | the TacTip |
 | How the sensor is read (readouts) | `sensors={key: readout}`: change, add or remove inputs | markers, in-sensor camera, robot camera, taxel events |
 | What the policy gets (inputs) | `obs_modes=["tactile", "vision", ...]` | privileged state only |
@@ -70,6 +69,7 @@ flowchart LR
 - [Event-based tactile layer (taxels)](#event-based-tactile-layer-taxels)
 - [Arm tasks in detail](#arm-tasks-in-detail)
 - [Quadruped and humanoid](#quadruped-and-humanoid)
+- [Surface following, the rig and the gripper](#surface-following-the-rig-and-the-gripper)
 - [Tests](#tests)
 - [Training tips](#training-tips)
 - [Adding your own task](#adding-your-own-task)
@@ -97,6 +97,7 @@ The mesh files are large and are kept out of some copies of the repo. They go he
 | `src/tactip_mujoco_gym/assets/robotarm/assets/z1_Link0*.stl` | every `TacArm-*` task (Unitree Z1) |
 | `src/tactip_mujoco_gym/assets/go2.xml` (or any `go2.xml` under `assets/`) and `assets/go2/*.obj` | `TacQuad-walk` (Unitree Go2, from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie)) |
 | `src/tactip_mujoco_gym/assets/rby1/` with its `assets/` meshes | `TacHumanoid-pick` (Rainbow Robotics RB-Y1, from MuJoCo Menagerie) |
+| `src/tactip_mujoco_gym/assets/sensor/tactip.xml` (written on first use, from the arm scene) | `TacRig-*` and `TacGripper-pick`, which need only the TacTip: this file, or the Z1 meshes to make it |
 | `encoders/*.pt` | pretrained visuo-tactile encoders (made by `train_encoders.py`) |
 
 ## Quick start
@@ -109,6 +110,15 @@ python -m tactip_mujoco_gym describe TacArm-peg      # its inputs, whether each 
 ```
 
 (`tactip-gym list` does the same once the package is installed.)
+
+Boot every task (or the ones you name) and watch one with a scripted controller:
+
+```bash
+python examples/demos/boot_gyms.py                                   # build, reset and run each task
+python examples/demos/boot_gyms.py TacRig-texture TacGripper-pick -v  # + inputs and shapes
+python examples/demos/boot_gyms.py TacArm-surface --view --kwargs '{"texture": "patches"}'
+python examples/demos/boot_gyms.py TacGripper-pick --video gripper.mp4
+```
 
 Run a task with random actions in the MuJoCo viewer:
 
@@ -161,7 +171,11 @@ python -m tactip_mujoco_gym train configs/peg_sensing.yaml --variant tactile   #
 | `TacArm-shape` | Z1 arm (1: `tip`) | Start touching one of four shapes and push it into its own hole | 2 (x, y) | 300 steps (6 s) | Shape goes into the correct hole |
 | `TacArm-hill` | Z1 arm (1: `tip`) | Intercept a ball rolling down a ramp whose friction changes each episode, then push it to the top | 2 (along / across the slope) | 300 steps (6 s) | Ball within 4 cm of the top |
 | `TacQuad-walk` | Go2 quadruped (4: `FL` `FR` `RL` `RR`) | Follow velocity commands over tiles whose friction, softness, bounce and roughness change | 12 joint targets | 1000 steps (20 s) | Still up at the end |
+| `TacArm-surface` | Z1 arm (1: `tip`) | Slide along a wavy, optionally textured strip, holding the same depth and staying square to the surface | 2 (depth, pitch) or 1 (depth) | 250 steps (5 s) | Reach the end of the strip |
 | `TacHumanoid-pick` | RB-Y1 wheeled humanoid (2: `left` `right`) | Squeeze-grasp a soft or rigid object between the two sensors, carry it to a target, put it down | 7 (bimanual) or 9 (independent) | 1000 steps (20 s) | Object resting on the target, hands off |
+| `TacGripper-pick` | Gantry gripper, a sensor as each finger (2: `left` `right`) | The humanoid's task with a two-TacTip parallel gripper | 5 (centre x, y, z; width; yaw) | 750 steps (15 s) | Object resting on the target, fingers off |
+| `TacRig-texture` | Cartesian test rig (1: `tip`) | Feel a 3D-printed block of the tactile dataset, then say which of its textures it is | 3 (x, y, z) + answer + a score per texture | 200 steps (4 s) | The right answer |
+| `TacRig-v0` | Cartesian test rig (1: `tip`) | The rig over a block, no task: for fixed protocols such as `press_grid` | 3 (x, y, z) | 500 steps | |
 | `RobotArm-v0` | Z1 arm | The arm and sensor with the task controller and no task (zero reward, never ends) | 3 | | |
 | `RandomTac-v0` | the sensor alone | Boxes dropped on a standalone TacTip; observation `{"image": in-sensor camera}` (original API) | none | | |
 
@@ -175,7 +189,7 @@ Keyword arguments every robot takes through `gym.make(...)`:
 | `obs_format` | `"flat"` | `"flat"`: one long vector. `"dict"`: one key per input |
 | `sensors` | | Change, add or remove readouts (below) |
 | `sensor_xml` | the TacTip | The sensor hardware (below) |
-| `sensor_stiffness` | 1 (arm), 10 (quadruped, humanoid) | Multiplies the sensor's joint and tendon stiffness, damping and armature |
+| `sensor_stiffness` | 1 (arm, rig), 10 (quadruped, humanoid, gripper) | Multiplies the sensor's joint and tendon stiffness, damping and armature |
 | `overrides` | | `{"CONSTANT": value}` for any of the env's UPPER_CASE class constants, on this instance only |
 | `max_steps` | per task | Override the episode length |
 | `privileged` | | Earlier shortcut: `True` = privileged only, `False` = tactile only. Ignored if `obs_modes` is given |
@@ -194,6 +208,11 @@ Task options:
 | `command` | quadruped | `None` | `None` = random commands, or a fixed `(vx, vy, yaw_rate)` |
 | `objects`, `level`, `curriculum` | humanoid | all, `None`, `True` | Objects to draw from, fixed difficulty or curriculum |
 | `action_mode` | humanoid | `"bimanual"` | `"bimanual"` (grasp centre, width and yaw) or `"independent"` (each hand) |
+| `wave` | surface | `"random"` | `"uniform"` (one sine), `"chirp"` (wavelength and amplitude change along the strip), `"multi"` (sines added), `"flat"`, `"random"` (one of the three waves) or a list |
+| `texture` | surface | `None` | `None` (smooth), a dataset texture `1`..`20` all along, `"random"`, `"patches"` (a different texture every 5 cm) or a list |
+| `follow_normal` | surface | `True` | Also keep the sensor square to the surface (adds the pitch action) |
+| `textures` | rig | `(1, ..., 6)` | Blocks to draw from: dataset textures (1..20) and / or STL files |
+| `objects`, `level`, `curriculum` | gripper | all, `None`, `True` | As the humanoid |
 
 ## Choosing what the policy senses
 
@@ -209,9 +228,10 @@ Every observation starts with a short **proprioception** block, because a real r
 | `tactile_image` | readout `tactip_camera` | Image from the camera inside each TacTip, stacked along channels | 64 × 64 × 3 | 64 × 64 × 12 | 64 × 64 × 6 |
 | `vision` | readout `camera` | The robot's camera (`handcam` / `headcam`) | 64 × 64 × 3 | 64 × 64 × 3 | 64 × 64 × 3 |
 | `events` | readout `taxel_events` | Event counts from the touch grids on the objects | one per taxel | | |
+| `force` | task (rig) | The rig's plate force sensor: normal force between the sensor and the block, N / 5 | | | |
 | yours | your readout | Anything you add with `sensors=` | | | |
 
-Sizes are for the 71-marker TacTip and the default camera settings. `python -m tactip_mujoco_gym describe <task>` prints the inputs a task offers, whether each one is available with the current hardware (a markerless sensor has no `tactile`, `feet="proxy"` has no sensor at all) and the observation shapes.
+Sizes are for the 71-marker TacTip and the default camera settings. The rig's `privileged` input has 10 values (which texture as a one-hot, the tip over the block, its height above the surface, the tilt) and its camera is `rigcam`. The gripper's inputs have the humanoid's sizes, and its camera is `overhead`. `python -m tactip_mujoco_gym describe <task>` prints the inputs a task offers, whether each one is available with the current hardware (a markerless sensor has no `tactile`, `feet="proxy"` has no sensor at all) and the observation shapes.
 
 ```python
 env = gym.make("TacArm-peg", obs_modes=["vision", "tactile"])                   # privileged off
@@ -288,12 +308,14 @@ Where the sensor goes on each robot:
 - **Quadruped.** One copy on each foot, with its tip where the original foot touched the ground (`TIP_DIRECTION`, `LEG_EXTENSION`, `SENSOR_SPIN`). `feet="proxy"` uses a sphere with the sensor's size and mass instead.
 - **Humanoid.** One copy as each palm, mounted on the side of the wrist so the two face each other.
 
+Attaching a sensor gives it the robot's simulation options (timestep, integrator, ...), which MuJoCo would keep anyway, so it has no conflicts to report. The one MuJoCo notice left is `WARNING: Attaching a spec with an empty prefix ...`, printed once each time a humanoid is built: the humanoid scene attaches the RB-Y1 without a name prefix so its element names stay as in the Menagerie file. It is harmless (it only matters for saving that combined model as XML).
+
 How the tip is found, in order of preference:
 
 1. A site named **`sensor_tip`** in the sensor file: its position is the tip and its z axis points out of the sensing surface, e.g. `<site name="sensor_tip" pos="0 0 0.024" zaxis="0 0 1"/>`. A sensor without TacTip markers needs this.
 2. TacTip-style marker sites (`s_c*`): a dome is fitted to them.
 
-`"tactip"` is `assets/sensor/tactip.xml` if that file exists, and otherwise the TacTip is extracted from `assets/tactip_arm.xml` each time a process starts. Write the file once to skip that:
+`"tactip"` is `assets/sensor/tactip.xml`. If that file doesn't exist, the TacTip is extracted from `assets/tactip_arm.xml` on first use and written there (kept only if it loads back into the same model), so later runs and worker processes just read the file. Delete the file after changing the sensor in `tactip_arm.xml` to extract it again, or write it by hand:
 
 ```bash
 python -m tactip_mujoco_gym.sensor_tools extract src/tactip_mujoco_gym/assets/tactip_arm.xml \
@@ -742,6 +764,58 @@ Low friction means the ball rolls back down as soon as the push stops, so the ag
 
 **`TacHumanoidPick`** uses a Rainbow Robotics RB-Y1 whose two hands are sensors, mounted like palms so that the forearms come down from above with the sensors facing each other. It picks up one of ten objects (five soft ones that dent where pressed, five rigid ones) by squeezing it between the hands, carries it to a target on the table and puts it down. Each episode randomises the object's stiffness, mass, friction, position and yaw; gripping too lightly lets heavy or slippery objects slide out, and squeezing too hard crushes soft ones. The `object` input is what a camera-based tracker would give; `privileged` adds what touch has to work out (stiffness, mass, friction, squash, grip force). `ScriptedPicker` in `tactip_humanoid.py` solves the task from the simulator's state, for checks, demos and the warm start in `humanoid_pick.py`.
 
+## Surface following, the rig and the gripper
+
+**`TacArm-surface`** slides the arm's sensor along a 30 cm strip while keeping it pressed in by the same depth and, with `follow_normal=True`, square to the surface. The strip is a heightfield redrawn every episode. The tip moves along the strip by itself, and the policy controls depth and pitch. `wave` sets the profile:
+
+- `"uniform"`: one sine.
+- `"chirp"`: wavelength and amplitude change steadily along the strip.
+- `"multi"`: two or three sines added.
+
+`texture` puts the 3D Printable Tactile Dataset's textures on top, at their printed scale: one texture all along (`1`..`20` or `"random"`), or a different one every 5 cm (`"patches"`). Depth and squareness are measured from the wave; a texture is relief on it that the sensor feels but doesn't have to trace. The waves' amplitude and wavelength ranges (`WAVE_AMP`, `WAVE_LENGTH`) are kept within what the TacTip's 35 mm dome can follow; widen them with `overrides` for a smaller sensor. `python -m tactip_mujoco_gym.check_envs TacArm-surface` runs a scripted follower.
+
+**`TacRig-texture`** and **`TacRig-v0`** put the sensor on a Cartesian test rig modelled on [Rig-controller](https://github.com/shepai/Rig-controller): a desktop-CNC frame with the sensor in place of the spindle, three stepper axes (stiff position servos that stall at a force limit) and a plate that tilts. On the plate, a block from the [3D Printable Tactile Dataset](https://doi.org/10.25377/sussex.30256453) sits in the dataset's printed holder, whose pocket and rim are measured from `Holder_textures.stl`. The blocks are built from the dataset generator's own equations:
+
+- **Textures**: the six benchmark textures (1–6), plus the extension textures 7–20.
+- **Size**: as printed, 29.3 × 30 mm and 7 mm tall at the highest point. These are the generator's dimensions and the holder pocket's. The paper's text gives 23.3 × 30 mm; change `BLOCK_MM` if that is your print.
+- **Other blocks**: `textures=` also takes STL files (the dataset's own or your own blocks) and reads their top surface.
+- **Print variation**: `PRINT_BLUR_MM` and `PRINT_NOISE_MM` imitate a printer's smoothing and roughness.
+
+The rig's plate force sensor is the `force` input. The two tasks:
+
+- `TacRig-texture`: feel the block, then answer which texture it is. The action is the sensor velocity, then "answer" (> 0), then a score per texture. A right answer earns +10 and a wrong one −5, with small terms for touching gently.
+- `TacRig-v0` + `press_grid()`: the paper's protocol. Press a 5 × 5 grid (5 × 5 mm) twice per point at 1.9 N, record any input, and classify. `examples/RL tasks/rig_texture_dataset.py` runs it end to end with the paper's PCA + random-forest classifier, for any sensor.
+
+```python
+from tactip_mujoco_gym.envs.tactile_rig import press_grid
+data = press_grid(gym.make("TacRig-v0"), readout="tactile")      # X, y, pos, force
+```
+
+MuJoCo heightfields must be static, which forces two simplifications:
+
+- **x travel**: the sensor carries the rig's x travel instead of the plate. This is the same motion relative to the block.
+- **Tilt**: set per episode (`reset(options={"tilt": 0.2})` or `TILT_RANGE`), not driven during it.
+
+The simulated TacTip's markers are about 10 mm apart, wider than the textures' 6.3 mm period, so it feels a block as a pattern of a few contacts. The rig is the place to compare a finer sensor through `sensor_xml`.
+
+**`TacGripper-pick`** is the humanoid's pick-and-place with a parallel gripper: two TacTips as fingers, facing each other, on a gantry that moves the gripper in x, y and z and turns it.
+
+- **Shared with the humanoid**: the objects, randomisation, curriculum, reward and success test are the humanoid's own code, so results compare directly with `TacHumanoid-pick`.
+- **Actions**: the humanoid's bimanual set without the base, i.e. grasp centre (x, y, z), width and yaw.
+- **Fingers**: each one is a force-limited servo.
+- **Other sensors**: the frame around the sensors is sized from the mounted sensor, so a `sensor_xml` of another size gets a gripper that fits it.
+
+`ScriptedPicker` drives it too.
+
+Training scripts in `examples/RL tasks/`:
+
+- `surface_following.py`: plain PPO.
+- `rig_texture.py`: PPO, then an evaluation on "printed" blocks.
+- `rig_texture_dataset.py`: the paper's protocol and classifier, without RL.
+- `gripper_pick.py`: the humanoid's recipe from `humanoid_pick.py`. Scripted demos give a warm start, then PPO runs with a fading behaviour-cloning term.
+
+Each task also has a config in `configs/`.
+
 ## Tests
 
 ```bash
@@ -753,6 +827,8 @@ pytest                    # everything that can run on this machine
 - `tests/test_arm_scene.py`: cutting the built-in TacTip out of every arm scene leaves no dangling references
 - `tests/test_envs.py`: every task with the default and swapped sensors, and the custom sensor example (skipped when the meshes or robot models are missing)
 - `tests/test_experiment.py`: every config in `configs/` resolves, plus the CLI
+- `tests/test_textures.py`: the dataset textures against the generator's equations, STL blocks, wave surfaces (no simulation)
+- `tests/test_new_robots.py`: surface following (with the scripted follower), the rig (pressing, answering, tilt, STL blocks, `press_grid`, another sensor) and the gripper (with the scripted picker)
 
 ## Training tips
 
@@ -781,7 +857,7 @@ Optional: `_apply_action()` for a different action layout (as `Incline` does), `
 
 Then add it to `TASKS` in `src/tactip_mujoco_gym/envs/__init__.py` (Gym id, entry point, robot, inputs, summary and options), which registers it with Gymnasium and lists it in `python -m tactip_mujoco_gym list`.
 
-A new robot subclasses `TactileGymEnv` the way `TacQuadruped` and `TacHumanoidPick` do: build the model (attaching the sensor with `sensor_tools.attach_sensor` at each mount), set `self.sensor_mounts`, call `self._setup_sensors(sensors)` and `self._calibrate_sensors(...)`, put `self._sensor_obs()` into `_obs_parts()`, call `self._reset_sensors()` at the end of `reset()` and `self._step_sensors()` after the physics in `step()`, and step the physics with `self._mj_step(n)`. Every readout then works on it unchanged.
+A new robot subclasses `TactileGymEnv` the way `TacQuadruped`, `TacHumanoidPick` and `TacRig` (the smallest) do: build the model (attaching the sensor with `sensor_tools.attach_sensor` at each mount), set `self.sensor_mounts`, call `self._setup_sensors(sensors)` and `self._calibrate_sensors(...)`, put `self._sensor_obs()` into `_obs_parts()`, call `self._reset_sensors()` at the end of `reset()` and `self._step_sensors()` after the physics in `step()`, and step the physics with `self._mj_step(n)`. Every readout then works on it unchanged. A task that rewrites heightfields at reset (as the rig and `TacArm-surface` do) also takes `HeightfieldMixin` from `envs/base.py`, so every camera sees the new surface.
 
 ## Project layout
 
@@ -793,11 +869,13 @@ examples/
   demos/                       viewers for the robots
 src/tactip_mujoco_gym/
   envs/                        the tasks: base.py (inputs, readouts, formats), robot_arm.py,
-                               tactip_quadruped.py, tactip_humanoid.py, random_gym.py;
+                               surface_follow.py, tactip_quadruped.py, tactip_humanoid.py,
+                               tactip_gripper.py, tactile_rig.py, random_gym.py;
                                __init__.py is the task catalogue
   sensors/                     readouts (base.py: Sensor, registry; tactip.py, camera.py,
                                taxels.py) and sensor hardware (models.py)
   sensor_tools.py              extract / inspect / attach sensor models, scene surgery
+  textures.py                  the tactile dataset's textures, wave surfaces, heightfields
   experiment.py, __main__.py   configs and the command line
   RL_BASE.py, vt_encoders.py   training, evaluation, fusion encoders
   check_envs.py, check_quadruped.py, check_humanoid.py

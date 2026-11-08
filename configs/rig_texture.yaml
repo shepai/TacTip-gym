@@ -1,0 +1,25 @@
+# Texture identification on the Cartesian rig, with the blocks of the 3D Printable Tactile
+# Dataset. For the paper's fixed protocol (presses on a grid + a classifier) instead of RL,
+# see examples/RL tasks/rig_texture_dataset.py.
+#
+#   python -m tactip_mujoco_gym train configs/rig_texture.yaml --variant tactile
+name: rig_texture
+description: TacRig-texture - feel the block, then say which of the six textures it is
+env: TacRig-texture
+train:
+  steps: 2000000
+  n_envs: 8
+evaluate:
+  episodes: 100
+
+variants:
+  tactile:
+    obs_modes: [tactile]
+  tactile_force:                   # + the rig's plate force sensor
+    obs_modes: [tactile, force]
+  tactile_image:                   # the camera inside the TacTip
+    obs_modes: [tactile_image]
+    obs_format: dict
+  printed:                         # blocks as a printer makes them: smoothed and rough
+    obs_modes: [tactile]
+    overrides: {PRINT_BLUR_MM: 0.2, PRINT_NOISE_MM: 0.03}

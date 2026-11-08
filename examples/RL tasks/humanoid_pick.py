@@ -49,8 +49,8 @@ OBS_MODES = {"object": True, "tactile": True}
 OBS_FORMAT = "flat"                    # "dict" for vision (CNN on the camera image)
 ENV_KWARGS = {"action_mode": "bimanual", "sensor_stiffness": 10.0}
 STEPS = 20_000_000
-N_ENVS = 8
-DEMOS = 0                            # scripted episodes for the warm start (0 = pure RL)
+N_ENVS = 16
+DEMOS = 600                            # scripted episodes for the warm start (0 = pure RL)
 DEMO_LEVELS = (0.0, 0.5)               # difficulty range of the demos
 DEMO_NOISE = 0.3                       # action noise while recording (the labels stay clean), so
                                        # the demos also show how to recover from small mistakes
@@ -102,10 +102,10 @@ def _demo_worker(args):
     noise, the executed action is perturbed but the recorded one is the picker's own.
     One env for the whole batch (building the humanoid takes far longer than a reset); each
     episode's difficulty is set through reset(options={"level": ...})."""
-    env_kwargs, seeds, levels, noise = args
+    env_kwargs, seeds, levels, noise, env_name = args
     from tactip_mujoco_gym.envs.tactip_humanoid import ScriptedPicker
     out = []
-    env = gym.make(env_id(ENV_NAME), **env_kwargs, level=float(levels[0]))
+    env = gym.make(env_id(env_name), **env_kwargs, level=float(levels[0]))
     for seed, level in zip(seeds, levels, strict=True):
         obs, _ = env.reset(seed=int(seed), options={"level": float(level)})
         rng = np.random.default_rng(int(seed))
@@ -133,12 +133,13 @@ def _stack(obs_list):
 
 
 def collect_demos(env_kwargs, episodes, levels=DEMO_LEVELS, noise=DEMO_NOISE, workers=None,
-                  seed=12345, cache=True, batch=10):
+                  seed=12345, cache=True, batch=10, env_name=ENV_NAME):
     """Successful scripted episodes as a list of (obs list, actions, rewards), cached in
     demos/ (delete the file to collect again). Run it before training starts (see __main__):
-    the demo workers and the training workers then never compete for CPU and memory."""
+    the demo workers and the training workers then never compete for CPU and memory.
+    env_name: any task ScriptedPicker drives (TacHumanoid-pick, TacGripper-pick)."""
     modes = "+".join(k for k, on in env_kwargs.get("obs_modes", {}).items() if on) or "blind"
-    path = os.path.join("demos", f"{ENV_NAME}_{modes}_{env_kwargs.get('obs_format', 'flat')}_"
+    path = os.path.join("demos", f"{env_name}_{modes}_{env_kwargs.get('obs_format', 'flat')}_"
                                  f"{env_kwargs.get('action_mode', 'bimanual')}_{episodes}_noise{noise}.npz")
     if cache and os.path.exists(path):
         print(f"[warm start] loading demos from {path}")
@@ -148,7 +149,7 @@ def collect_demos(env_kwargs, episodes, levels=DEMO_LEVELS, noise=DEMO_NOISE, wo
     seeds = rng.integers(0, 2**31, episodes)
     lv = rng.uniform(*levels, episodes)
     workers = workers or max(1, min(os.cpu_count() or 1, 16))
-    chunks = [(env_kwargs, seeds[i:i + batch], lv[i:i + batch], noise)
+    chunks = [(env_kwargs, seeds[i:i + batch], lv[i:i + batch], noise, env_name)
               for i in range(0, episodes, batch)]
     print(f"[warm start] running the scripted picker for {episodes} episodes on {workers} "
           f"processes (about {episodes * 1000 // (150 * workers) // 60 + 1} min; progress every "
@@ -188,9 +189,11 @@ class ScriptedWarmStart(BaseCallback):
 
     def __init__(self, env_kwargs, episodes=DEMOS, epochs=40, batch_size=1024, lr=1e-3,
                  action_std=0.25, check_episodes=10, bc_weight=BC_WEIGHT,
-                 bc_decay_steps=BC_DECAY_STEPS, bc_floor=BC_FLOOR, bc_batches=20):
+                 bc_decay_steps=BC_DECAY_STEPS, bc_floor=BC_FLOOR, bc_batches=20,
+                 env_name=ENV_NAME, demo_levels=DEMO_LEVELS):
         super().__init__()
         self.env_kwargs = env_kwargs
+        self.env_name, self.demo_levels = env_name, demo_levels
         self.episodes, self.epochs, self.batch_size, self.lr = episodes, epochs, batch_size, lr
         self.action_std = action_std
         self.check_episodes = check_episodes
@@ -231,7 +234,8 @@ class ScriptedWarmStart(BaseCallback):
         self.logger.record("pick/bc_loss", tot / self.bc_batches)
 
     def _on_training_start(self):
-        demos = collect_demos(self.env_kwargs, self.episodes)
+        demos = collect_demos(self.env_kwargs, self.episodes, levels=self.demo_levels,
+                              env_name=self.env_name)
         if not demos:
             print("[warm start] no successful demos - starting from scratch")
             return
@@ -301,7 +305,7 @@ class ScriptedWarmStart(BaseCallback):
 
     def _check(self, venv):
         """How well the warm-started policy does on its own, before any RL."""
-        env = gym.make(env_id(ENV_NAME), **self.env_kwargs, level=DEMO_LEVELS[0])
+        env = gym.make(env_id(self.env_name), **self.env_kwargs, level=self.demo_levels[0])
         norm = venv.normalize_obs if isinstance(venv, VecNormalize) else (lambda o: o)
         wins = 0
         for ep in range(self.check_episodes):
@@ -314,14 +318,14 @@ class ScriptedWarmStart(BaseCallback):
             wins += info["is_success"]
         env.close()
         print(f"[warm start] the warm-started policy succeeds in {wins}/{self.check_episodes} "
-              f"episodes at level {DEMO_LEVELS[0]} before RL")
+              f"episodes at level {self.demo_levels[0]} before RL")
 
 
 # ----------------------------------------------------------------------------- evaluation
-def evaluate_objects(model_name, levels=(0.0, 1.0), n_episodes=5):
+def evaluate_objects(model_name, levels=(0.0, 1.0), n_episodes=5, env_name=ENV_NAME):
     """Success per object at each level, with how hard it squeezed soft ones."""
     from tactip_mujoco_gym.envs.tactip_humanoid import OBJECT_NAMES
-    model, env, normalise, _ = load_policy(ENV_NAME, model_name)
+    model, env, normalise, _ = load_policy(env_name, model_name)
     raw = env.unwrapped
     for level in levels:
         print(f"\n{model_name}, level {level}:")

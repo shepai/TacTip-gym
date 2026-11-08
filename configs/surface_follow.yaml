@@ -1,0 +1,30 @@
+# Surface following on waves and textures: which inputs let a policy keep the sensor pressed
+# in by the same depth and square to the surface?
+#
+#   python -m tactip_mujoco_gym train configs/surface_follow.yaml --variant tactile
+#   python -m tactip_mujoco_gym evaluate configs/surface_follow.yaml
+name: surface
+description: TacArm-surface on uniform and non-uniform waves, smooth and textured
+env: TacArm-surface
+env_kwargs:
+  wave: random                     # uniform | chirp | multi, drawn per episode
+  texture: null                    # smooth
+train:
+  steps: 3000000
+evaluate:
+  episodes: 50
+
+variants:
+  privileged:                      # upper bound: depth error, slope, the surface ahead
+    obs_modes: [privileged]
+  tactile:
+    obs_modes: [tactile]
+  tactile_textured:                # the dataset's textures, changing along the strip
+    obs_modes: [tactile]
+    env_kwargs: {texture: patches}
+  vision:
+    obs_modes: [vision]
+    obs_format: dict
+  visuotactile:
+    obs_modes: [tactile, vision]
+    obs_format: dict

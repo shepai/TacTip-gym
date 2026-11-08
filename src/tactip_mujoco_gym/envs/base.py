@@ -553,3 +553,38 @@ class TaxelMixin(TactileGymEnv):
     def n_taxels(self):
         s = self.sensors.get("events")
         return s.n_taxels if s is not None and s.available else 0
+
+
+class HeightfieldMixin:
+    """For tasks that rewrite heightfields at reset (texture blocks, wave surfaces): keeps
+    every renderer's copy of them current. Put it before the env class in the bases, list the
+    heightfields in _hfield_ids() and call _hfields_changed() after writing to them."""
+    _hf_version = 0
+
+    def _hfield_ids(self):
+        return ()
+
+    def _hfields_changed(self):
+        self._hf_version += 1
+
+    def sync_renderer(self, renderer):
+        """Upload the heightfields to a mujoco.Renderer (or passive viewer handle) if they
+        changed since it last drew."""
+        if renderer is None or getattr(renderer, "_tactip_hf_version", None) == self._hf_version:
+            return
+        from tactip_mujoco_gym.textures import upload_hfields
+        try:
+            upload_hfields(self.model, renderer, self._hfield_ids())
+            renderer._tactip_hf_version = self._hf_version
+        except (AttributeError, TypeError):
+            pass
+
+    def _sync_renderer(self, renderer, new):
+        if new:                                   # made from the model as it is now
+            renderer._tactip_hf_version = self._hf_version
+        else:
+            self.sync_renderer(renderer)
+
+    def render(self):
+        self.sync_renderer(getattr(self, "_view_renderer", None))
+        return super().render()

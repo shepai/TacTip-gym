@@ -1,0 +1,15 @@
+# Pick-and-place with a two-TacTip gripper (the humanoid's task, without the humanoid):
+# sees the object vs sees + feels it.
+name: gripper
+env: TacGripper-pick
+env_kwargs:
+  sensor_stiffness: 10.0
+train:
+  steps: 20000000
+  n_envs: 16
+variants:
+  object: {obs_modes: [object]}
+  object_tactile: {obs_modes: [object, tactile]}
+  vision_tactile:
+    obs_modes: [vision, tactile]
+    obs_format: dict

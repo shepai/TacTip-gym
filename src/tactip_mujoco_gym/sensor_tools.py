@@ -328,14 +328,31 @@ def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
     root = spec.worldbody.first_body()
-    rid = m.body(root.name).id
+    return model_sensor_info(m, d, m.body(root.name).id, marker_prefix, sensor_site, axis)
+
+
+def model_sensor_info(m, d, rid, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis=None,
+                      within=None, skip_root_geoms=False):
+    """sensor_info on a compiled model, in body `rid`'s frame. With within=True only the
+    markers and geoms in rid's subtree count, and with skip_root_geoms rid's own geoms don't
+    (so rid = the arm link of a TacTip written into a scene measures it as extract_sensor
+    would, without extracting it)."""
     origin, R = d.xpos[rid], d.xmat[rid].reshape(3, 3)
+    root_name = m.body(rid).name
+    geoms = None
     markers = [i for i in range(m.nsite) if m.site(i).name.startswith(marker_prefix)]
+    if within:
+        sub = np.zeros(m.nbody, bool)
+        sub[[b for b in range(m.nbody) if _ancestor(m, b, rid)]] = True
+        markers = [i for i in markers if sub[m.site_bodyid[i]]]
+        geoms = sub[m.geom_bodyid]
+        if skip_root_geoms:
+            geoms &= m.geom_bodyid != rid
     tip_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, TIP_SITE)
     has_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, sensor_site) >= 0
     if tip_site >= 0 or not markers:
         return _info_without_dome(m, d, rid, origin, R, markers, tip_site, axis, has_site,
-                                  root.name, marker_prefix)
+                                  root_name, marker_prefix, geoms)
     P = (d.site_xpos[markers] - origin) @ R            # markers in the root frame
     centroid = P.mean(axis=0)
     centre = _sphere_centre(P)
@@ -348,7 +365,7 @@ def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis
             axis = -axis                                # point away from the mount
     else:
         axis = np.asarray(axis, float) / np.linalg.norm(axis)
-    pts = (_collision_points(m, d, axis=R @ axis) - origin) @ R
+    pts = (_collision_points(m, d, axis=R @ axis, geoms=geoms) - origin) @ R
     along = (pts - centre) @ axis
     tip = centre + along.max() * axis
     start = ((P - centre) @ axis).min() - 1e-3          # the dome end: from the lowest marker on
@@ -357,11 +374,11 @@ def sensor_info(sensor, marker_prefix=MARKER_PREFIX, sensor_site="ee_site", axis
     radius = float(np.linalg.norm(lateral, axis=1).max())
     return dict(axis=axis, centre=centre, tip=tip, reach=float(tip @ axis), radius=radius,
                 n_markers=len(markers), mass=float(m.body_subtreemass[rid]),
-                timestep=float(m.opt.timestep), has_site=has_site, root=root.name)
+                timestep=float(m.opt.timestep), has_site=has_site, root=root_name)
 
 
 def _info_without_dome(m, d, rid, origin, R, markers, tip_site, axis, has_site, root_name,
-                       marker_prefix):
+                       marker_prefix, geoms=None):
     """sensor_info for a sensor with a "sensor_tip" site, or without markers."""
     if tip_site >= 0:
         tip = (d.site_xpos[tip_site] - origin) @ R
@@ -374,7 +391,7 @@ def _info_without_dome(m, d, rid, origin, R, markers, tip_site, axis, has_site, 
             "surface, with its z axis pointing outward, e.g. "
             f'<site name="{TIP_SITE}" pos="0 0 0.03" zaxis="0 0 1"/> (or pass axis=...).')
     axis = np.asarray(axis, float) / np.linalg.norm(axis)
-    pts = (_collision_points(m, d, axis=R @ axis, exact_cylinders=True) - origin) @ R
+    pts = (_collision_points(m, d, axis=R @ axis, exact_cylinders=True, geoms=geoms) - origin) @ R
     if tip_site < 0:                                    # furthest point along the axis line
         tip = (pts @ axis).max() * axis
     along = (pts - tip) @ axis
@@ -398,11 +415,11 @@ def _sphere_centre(P):
     return sol[:3]
 
 
-def _collision_points(m, d, axis=None, exact_cylinders=False):
+def _collision_points(m, d, axis=None, exact_cylinders=False, geoms=None):
     """Extreme points of every colliding geom (world frame): exact for spheres and capsules
     (along `axis` and perpendicular to it), and for cylinders with exact_cylinders (both rims;
     off by default so the TacTip's measured geometry is unchanged), bounding-box corners for
-    other shapes."""
+    other shapes. `geoms` (a boolean mask) limits it to some geoms."""
     pts = []
     signs = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], float)
     if axis is not None:
@@ -412,6 +429,8 @@ def _collision_points(m, d, axis=None, exact_cylinders=False):
         dirs = np.array([a, -a, p1, -p1, np.cross(a, p1), -np.cross(a, p1)])
     for g in range(m.ngeom):
         if m.geom_contype[g] == 0 and m.geom_conaffinity[g] == 0:
+            continue
+        if geoms is not None and not geoms[g]:
             continue
         R = d.geom_xmat[g].reshape(3, 3)
         t = m.geom_type[g]

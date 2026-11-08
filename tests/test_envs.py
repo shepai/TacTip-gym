@@ -61,12 +61,31 @@ def test_attached_tactip_matches_the_builtin_one(capfd):
     assert b.sensor_mounts[0].prefix == "sensor_" and a.n_markers == b.n_markers
     # same marker rest shape in the sensor frame, and the same tip position for the arm
     np.testing.assert_allclose(a._nodes_rest, b._nodes_rest, atol=2e-4)
+    # mounted in the same place: the markers seen from the ARM's ee_site (not the sensor's)
+    def in_arm_frame(env):
+        ids = env.sensors["tactile"]._ids
+        c, R = env.data.site_xpos[env._ee_site], env.data.site_xmat[env._ee_site].reshape(3, 3)
+        return (env.data.site_xpos[ids] - c) @ R
+    np.testing.assert_allclose(in_arm_frame(a), in_arm_frame(b), atol=5e-4)
     np.testing.assert_allclose(a._tip_pos(), b._tip_pos(), atol=1e-3)
     oa, _ = a.reset(seed=3)
     ob, _ = b.reset(seed=3)
     assert oa.shape == ob.shape
     a.close()
     b.close()
+
+
+@needs_arm
+def test_tactip_file_is_the_extracted_sensor(tmp_path):
+    """The TacTip written to tactip.xml on first use loads back into the same model."""
+    from conftest import ASSETS
+    from tactip_mujoco_gym.sensor_tools import compile_spec, extract_sensor
+    from tactip_mujoco_gym.sensors import models
+    path = tmp_path / "tactip.xml"
+    spec = models.default_tactip(standalone=str(path), verbose=False)
+    assert path.exists(), "the extracted TacTip didn't load back the same, so it wasn't kept"
+    original = compile_spec(extract_sensor(os.path.join(ASSETS, "tactip_arm.xml")))
+    assert models._same_model(original, compile_spec(spec))
 
 
 @needs_arm

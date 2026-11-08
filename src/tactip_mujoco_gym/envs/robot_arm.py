@@ -117,6 +117,7 @@ class RobotArmEnv(TaxelMixin):
                  render_mode=None, max_steps=None, sensors=None, sensor_xml=None,
                  sensor_stiffness=1.0, overrides=None):
         self._apply_overrides(overrides)
+        self._quat_cmd = None     # sensor orientation the IK holds (None: TARGET_QUAT)
         model = self._build_model(xml_subpath, sensor_xml, sensor_stiffness)
         super().__init__(list(xml_subpath), 1, action_dim, model=model)   # obs space: below
         self.render_mode = render_mode
@@ -201,10 +202,15 @@ class RobotArmEnv(TaxelMixin):
         self.sensor_stiffness = float(sensor_stiffness)
         self.sensor_info = None
         self._sensor_root = None
-        if sensor_xml is None and self.sensor_stiffness == 1.0:
+        edits = type(self)._edit_spec is not RobotArmEnv._edit_spec
+        if sensor_xml is None and self.sensor_stiffness == 1.0 and not edits:
             return mujoco.MjModel.from_xml_path(path)
         from tactip_mujoco_gym.sensor_tools import (attach_sensor, child_bodies, compile_spec,
                                                     scene_without_bodies, sensor_info)
+        if sensor_xml is None and self.sensor_stiffness == 1.0:
+            spec = mujoco.MjSpec.from_file(path)
+            self._edit_spec(spec)
+            return compile_spec(spec)
         from tactip_mujoco_gym.sensors import resolve_sensor_model
         xml, _ = scene_without_bodies(path, child_bodies(path, self.SENSOR_PARENT))
         spec = mujoco.MjSpec.from_string(xml)
@@ -214,14 +220,25 @@ class RobotArmEnv(TaxelMixin):
         root = attach_sensor(spec, spec.body(self.SENSOR_LINK), sensor, prefix=self.SENSOR_PREFIX,
                              tip_at=tip, axis_to=axis, stiffness_scale=self.sensor_stiffness)
         self._sensor_root = root.name
+        self._edit_spec(spec)
         return compile_spec(spec)
 
+    def _edit_spec(self, spec):
+        """Task hook: add to the scene (an MjSpec of the scene XML, with the sensor already
+        swapped if sensor_xml was given) before it is compiled."""
+
     def _builtin_tip(self):
-        """Tip point and direction of the scene's own TacTip, in SENSOR_LINK's frame."""
+        """Tip point and direction of the scene's own TacTip, in SENSOR_LINK's frame,
+        measured in the scene as written (as extract_sensor would see it, without the
+        extraction and its MuJoCo attach notices)."""
         src = str(files("tactip_mujoco_gym").joinpath(*self.SENSOR_SOURCE))
         if src not in _BUILTIN_TIP:
-            from tactip_mujoco_gym.sensor_tools import extract_sensor, sensor_info
-            info = sensor_info(extract_sensor(src, "auto"))
+            from tactip_mujoco_gym.sensor_tools import model_sensor_info
+            m = mujoco.MjModel.from_xml_path(src)
+            d = mujoco.MjData(m)
+            mujoco.mj_forward(m, d)
+            info = model_sensor_info(m, d, m.body(self.SENSOR_LINK).id, self.MARKER_PREFIX,
+                                     within=True, skip_root_geoms=True)
             _BUILTIN_TIP[src] = (info["tip"].copy(), info["axis"].copy())
         tip, axis = _BUILTIN_TIP[src]
         return tip.copy(), axis.copy()
@@ -348,6 +365,7 @@ class RobotArmEnv(TaxelMixin):
         self._cmd_vel = np.zeros(self._action_dim)
         self._potentials = {}
         self._fail_reason = ""
+        self._quat_cmd = None
         self._reset_task(options or {})
         self._reset_sensors()
         return self._get_obs(), self._info()
@@ -444,7 +462,7 @@ class RobotArmEnv(TaxelMixin):
     def _drive_arm(self, n_steps):
         """Solve IK for the current target and run n_steps physics steps toward it."""
         q_prev = self._q_cmd.copy()
-        self._q_cmd = self._ik(self._target, self._q_cmd, self.IK_ITERS)
+        self._q_cmd = self._ik(self._target, self._q_cmd, self.IK_ITERS, quat=self._quat_cmd)
         m, d = self.model, self.data
         qd_ref = (self._q_cmd - q_prev) / (n_steps * m.opt.timestep) if self.VEL_FF else 0 * q_prev
         chunks = max(1, min(self.CTRL_CHUNKS, n_steps))

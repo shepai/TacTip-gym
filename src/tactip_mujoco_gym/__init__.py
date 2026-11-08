@@ -14,12 +14,14 @@ The pieces a researcher picks (each documented in its module):
     inputs            envs/base.py       obs_modes=..., obs_format="flat" | "dict"
     fusion / policy   vt_encoders.py     RL_BASE.run(..., encoders=...)
     experiments       experiment.py      python -m tactip_mujoco_gym train <config.yaml>
+    surfaces          textures.py        the 3D Printable Tactile Dataset's textures, waves
 """
 from . import envs
 from .envs import TASKS, list_tasks
 from . import sensors
+from . import textures
 from .sensors import (Sensor, SensorUnavailable, list_sensor_models, list_sensors,
                       make_sensor, register_sensor, register_sensor_model)
 
-__all__ = ["TASKS", "list_tasks", "sensors", "Sensor", "SensorUnavailable", "register_sensor",
+__all__ = ["TASKS", "list_tasks", "sensors", "textures", "Sensor", "SensorUnavailable", "register_sensor",
            "make_sensor", "list_sensors", "register_sensor_model", "list_sensor_models"]

@@ -73,11 +73,21 @@ def edge_policy(raw):
     return np.clip([xy[0], xy[1], -dz / raw.ACTION_SCALE[2]], -1, 1)
 
 
+def surface_policy(raw):
+    st = raw._current()
+    gx, _ = raw._base.gradient(st["tip"][0], st["tip"][1])
+    a_z = np.clip((-st["err"] + gx * raw.SPEED) / raw.Z_SCALE, -1, 1)   # + feed-forward of the slope
+    if not raw.follow_normal:
+        return np.array([a_z])
+    return np.array([a_z, np.clip((st["pitch_goal"] - st["pitch"]) / raw.PITCH_RATE, -1, 1)])
+
+
 TASKS = {
     "TacArm-peg":   (peg_policy,     lambda r: r._cyl_body,             {}),
     "TacArm-shape": (shape_policy,   lambda r: r._body[r.shape],        {"spawn_toward_hole": 1.0}),
     "TacArm-hill":  (incline_policy, lambda r: r._ball_body,            {}),
     "TacArm-edge":  (edge_policy,    lambda r: r._block_body,           {}),
+    "TacArm-surface": (surface_policy, lambda r: r._surface_body,       {}),
 }
 
 

@@ -283,6 +283,8 @@ class TacHumanoidPick(TactileGymEnv):
     VISION_CAMERA = "headcam"
     OBS_MODE_NAMES = ("vision", "tactile", "privileged", "object")    # (legacy)
     TASK_INPUTS = ("object", "privileged")
+    HAS_BASE      = True          # a mobile base (forward speed + turn rate actions)
+    ROBOT_ROOT    = "base"        # the robot's root body (its other geoms on the table = "bump")
 
     TIMESTEP   = 0.002
     FRAME_SKIP = 10               # 50 Hz policy
@@ -437,6 +439,13 @@ class TacHumanoidPick(TactileGymEnv):
 
     def _scene_xml(self, robot_path):
         """Robot, floor, table, target marker and every object (parked), as one MJCF."""
+        return self._scene(robot_asset=f'<model name="robot" file="{robot_path}"/>',
+                           robot_body='<attach model="robot" body="base" prefix=""/>')
+
+    def _scene(self, robot_asset="", robot_body="", extra=""):
+        """The shared scene (floor, table, target marker, every object parked) with a robot:
+        robot_asset goes in <asset>, robot_body in <worldbody>, extra after it (actuators,
+        contact excludes ...)."""
         tz = self.TABLE_TOP
         tx = (self.TABLE_X[0] + self.TABLE_X[1]) / 2
         thx = (self.TABLE_X[1] - self.TABLE_X[0]) / 2
@@ -453,7 +462,7 @@ class TacHumanoidPick(TactileGymEnv):
           solver="CG" iterations="50" tolerance="1e-6"/>
   <visual><global offwidth="640" offheight="480"/><headlight ambient="0.35 0.35 0.35" diffuse="0.5 0.5 0.5"/></visual>
   <asset>
-    <model name="robot" file="{robot_path}"/>
+    {robot_asset}
     <texture name="sky" type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
     <texture name="floor" type="2d" builtin="checker" rgb1="0.2 0.3 0.4" rgb2="0.1 0.15 0.2" width="512" height="512"/>
     <material name="floor" texture="floor" texrepeat="1 1" texuniform="true"/>
@@ -471,9 +480,10 @@ class TacHumanoidPick(TactileGymEnv):
     </body>
     <site name="target" type="cylinder" size="{self.PLACE_RADIUS} 0.001" pos="0.6 0.2 {tz + 0.001}"
           rgba="0.2 0.9 0.3 0.5"/>
-    <attach model="robot" body="base" prefix=""/>
+    {robot_body}
     {''.join(objs)}
   </worldbody>
+  {extra}
 </mujoco>"""
 
     def _build_spec(self, sensor_xml=None, robot_xml=None):
@@ -546,6 +556,11 @@ class TacHumanoidPick(TactileGymEnv):
         return spec
 
     def _index_model(self, sensors=None):
+        self._index_robot()
+        self._index_scene(sensors)
+
+    def _index_robot(self):
+        """Ids of the robot's joints, actuators, and the "{side}_tip" sites."""
         m = self.model
         jid = lambda n: m.joint(n).id                                   # noqa: E731
         self._base_q = np.array([m.jnt_qposadr[jid(n)] for n in ("base_x", "base_y", "base_yaw")])
@@ -566,6 +581,11 @@ class TacHumanoidPick(TactileGymEnv):
         self._arm_hi = {s: m.jnt_range[self._arm_j[s], 1] for s in SIDES}
         self._tip = {s: m.site(f"{s}_tip").id for s in SIDES}
         self._wrist = {s: m.body(f"link_{s}_arm_6").id for s in SIDES}
+
+    def _index_scene(self, sensors=None):
+        """Ids of the table, target, hands and objects (shared by every robot), and the
+        sensor readouts (one mount per hand)."""
+        m = self.model
         self._target_site = m.site("target").id
         self._table = m.geom("table_top").id
 
@@ -586,7 +606,7 @@ class TacHumanoidPick(TactileGymEnv):
                     self._hand_geom[g] = k
         table_body = m.body("table").id
         self._is_table = (m.geom_bodyid == table_body)
-        base_id = m.body("base").id
+        base_id = m.body(self.ROBOT_ROOT).id
         self._robot_geom = np.array([collides[g] and self._hand_geom[g] < 0 and under(int(m.geom_bodyid[g]), base_id)
                                      for g in range(m.ngeom)])
 
@@ -889,15 +909,19 @@ class TacHumanoidPick(TactileGymEnv):
         return hand, table
 
     # ================================================================ observation
-    def _obs_parts(self):
-        tips = self._tips_local()
+    def _proprio(self, tips):
         lag = np.concatenate([(self._cmd[s] - tips[s]) / self.LEASH for s in SIDES])
         R = _rot_z(self._base_pose()[1])
         vb = R.T @ np.array([*self.data.qvel[self._base_v[:2]], 0.0])
         tgt = self.to_local(self._target)
-        parts = {"proprio": np.concatenate([
+        return np.concatenate([
             tips["left"], tips["right"], np.clip(lag, -3, 3), self._vel_cmd,
-            [vb[0], self.data.qvel[self._base_v[2]]], tgt, [self._yaw_cmd, float(self._was_lifted)]])}
+            [vb[0], self.data.qvel[self._base_v[2]]], tgt, [self._yaw_cmd, float(self._was_lifted)]])
+
+    def _obs_parts(self):
+        tips = self._tips_local()
+        R = _rot_z(self._base_pose()[1])
+        parts = {"proprio": self._proprio(tips)}
         if self.obs_modes["object"] or self.obs_modes["privileged"]:
             # what a camera-based object tracker would give: pose, motion, size, shape
             centre, vel, h, _, strain, Ro = self._obj
@@ -938,7 +962,24 @@ class TacHumanoidPick(TactileGymEnv):
         self._last_outcome = None
         m, d, rng = self.model, self.data, self.np_random
         mujoco.mj_resetData(m, d)
+        self._reset_robot(rng)
+        self._reset_object(options, rng)
+        xy = self._obj_start_xy
+        t = self._choose_target(xy, rng)
+        self._target = np.array([t[0], t[1], self.TABLE_TOP])
+        m.site_pos[self._target_site] = [t[0], t[1], self.TABLE_TOP + 0.001]
 
+        mujoco.mj_forward(m, d)
+        for _ in range(100):                            # settle the object on the table
+            mujoco.mj_step(m, d)
+            self._park_all()
+        mujoco.mj_forward(m, d)
+        return self._start_episode()
+
+    def _reset_robot(self, rng):
+        """Robot in its start pose; sets the grasp commands (_centre_cmd, _width_cmd,
+        _yaw_cmd, _cmd) and _q_cmd."""
+        m, d = self.model, self.data
         # robot: base a little back from its spot, torso / head posed, arms at the start pose
         back = rng.uniform(*self._lerp(self.BASE_BACK))
         d.qpos[self._base_q] = [-back, 0.0, rng.uniform(-0.05, 0.05)]
@@ -958,6 +999,8 @@ class TacHumanoidPick(TactileGymEnv):
             d.qpos[self._arm_q[s]] = self._q_cmd[s]
             d.ctrl[self._arm_act[s]] = self._q_cmd[s]
 
+    def _reset_object(self, options, rng):
+        """This episode's object, its properties and start pose (sets _obj_start_xy)."""
         # object and its properties
         self.obj = options.get("object") or self.object_names[rng.integers(len(self.object_names))]
         soft = self._rec["soft"]
@@ -977,7 +1020,10 @@ class TacHumanoidPick(TactileGymEnv):
                else rng.uniform(*self._lerp(self.YAW)) + 2 * np.pi / n * rng.integers(n))
         self._place_object(xy, float(options.get("yaw", yaw)))
         self._park_all()
+        self._obj_start_xy = xy
 
+    def _choose_target(self, xy, rng):
+        """Target (x, y) on the table for an object starting at xy."""
         # target: on the table, a set distance from the object, within reach of the robot's
         # spot; at level 0 nearly straight ahead, at higher levels off to the side (the base
         # has to turn to face it)
@@ -995,15 +1041,10 @@ class TacHumanoidPick(TactileGymEnv):
                 t, best = c, miss
             if on_table and miss == 0.0 and np.linalg.norm(c - xy) > 0.06:
                 break
-        self._target = np.array([t[0], t[1], self.TABLE_TOP])
-        m.site_pos[self._target_site] = [t[0], t[1], self.TABLE_TOP + 0.001]
+        return t
 
-        mujoco.mj_forward(m, d)
-        for _ in range(100):                            # settle the object on the table
-            mujoco.mj_step(m, d)
-            self._park_all()
-        mujoco.mj_forward(m, d)
-
+    def _start_episode(self):
+        """Episode bookkeeping once everything is placed; returns (obs, info)."""
         self.step_count = 0
         self._vel_cmd = np.zeros(self.action_space.shape[0])
         self._base_cmd = np.zeros(2)
@@ -1226,6 +1267,8 @@ class ScriptedPicker:
         """(forward, turn) in action units bringing goal (robot frame) in front of the hands."""
         e = self.env
         fwd, rot = 0.0, 0.0
+        if not e.HAS_BASE:
+            return fwd, rot
         dx = goal[0] - self.SWEET_X
         if abs(dx) > 0.06:
             fwd = float(np.clip(dx / 0.15, -1, 1))
@@ -1247,7 +1290,9 @@ class ScriptedPicker:
         mass, mu = e._props["mass"], e._props["friction"]
         need = self.safety * mass * 9.81 / (2 * mu) + e.GRIP_FORCE
         half_h = e._objects[e.obj]["size"][2] / 2
-        grasp_z = e.TABLE_TOP + min(half_h, 0.035)
+        # mid-height, up to 3.5 cm; robots whose sensors would hit the table lower than some
+        # height (TacGripper: the sensor's radius) set grasp_z_min
+        grasp_z = max(e.TABLE_TOP + min(half_h, 0.035), getattr(e, "grasp_z_min", -np.inf))
         goal_c, goal_w = cmd_c.copy(), cmd_w
         self.t += 1
         fwd = turn = 0.0
@@ -1291,7 +1336,7 @@ class ScriptedPicker:
                 if np.linalg.norm(centre[:2] - e._target[:2]) < 0.015:
                     self.phase = "lower"
             else:
-                goal_c = np.array([cmd_c[0], cmd_c[1], grasp_z + 0.005])
+                goal_c = np.array([cmd_c[0], cmd_c[1], grasp_z + getattr(e, "PICKER_LOWER_TO", 0.005)])
                 if h < 0.004:
                     self.phase = "release"
         elif self.phase == "release":
@@ -1304,7 +1349,9 @@ class ScriptedPicker:
         a_c = np.clip(gain * (goal_c - cmd_c) / e.CENTRE_SPEED, -gain, gain)
         a_w = float(np.clip((goal_w - cmd_w) / e.WIDTH_SPEED, -1, 1))
         a_y = float(np.clip((self.yaw_goal - e._yaw_cmd) / e.GRASP_YAW_SPEED, -1, 1))
-        if e.action_mode == "bimanual":
+        if not e.HAS_BASE:
+            a = np.array([*a_c, a_w, a_y])
+        elif e.action_mode == "bimanual":
             a = np.array([fwd, turn, *a_c, a_w, a_y])
         else:                                                 # same motion, per hand
             off = axis * (a_w * e.WIDTH_SPEED / 2) / e.CENTRE_SPEED
