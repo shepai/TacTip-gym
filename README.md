@@ -9,7 +9,6 @@ A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://
     <td align="center">
       <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/peg.gif" width="250"><br>
     </td>
-    tr>
     <td align="center">
       <img src="https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/tacarm-surface" width="250"><br>
     </td>
