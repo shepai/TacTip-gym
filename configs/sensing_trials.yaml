@@ -1,0 +1,96 @@
+# The sensing comparison: every task trained on the TacTip, on vision and on privileged
+# information, and each policy tested on the same 20 trials.
+#
+#   python -m tactip_mujoco_gym train configs/sensing_trials.yaml --dry-run          # the plan
+#   python -m tactip_mujoco_gym train configs/sensing_trials.yaml --steps-scale 0.05 # a pilot
+#   python -m tactip_mujoco_gym train configs/sensing_trials.yaml --skip-trained     # everything
+#   python -m tactip_mujoco_gym evaluate configs/sensing_trials.yaml                 # 20 trials each
+#   python -m tactip_mujoco_gym summary configs/sensing_trials.yaml                  # table + chart
+#
+# A subset: --tasks TacArm-peg TacRig-texture and / or --variant tactip vision.
+# Stopped part way? Run the train command again: --skip-trained leaves finished models alone.
+# (A pilot with --steps-scale writes the same model names: delete models/sensing_trials_* first.)
+#
+# Results go to results/sensing_trials/: episodes.csv (one row per trial), summary.csv (success
+# rate with its 95% CI per task and condition) and success.png. Models are
+# models/sensing_trials_<task>_<condition>.zip.
+name: sensing_trials
+description: every task trained on the TacTip, on vision and on privileged information; each policy tested on the same 20 trials
+
+train:
+  record_video: false
+  # seeds: 5                       # independent training runs per task and condition (names
+  #                                # end _s0 .. _s4); the CI then spans the runs, not the trials
+evaluate:
+  episodes: 20                     # the trials
+  seed: 100000                     # trial k of every policy is reset(seed=100000 + k)
+  deterministic: true
+
+variants:                          # the conditions; proprioception is always included
+  tactip:
+    obs_modes: [tactile]           # the TacTip's markers
+  vision:
+    obs_modes: [vision]            # the task's camera image, through a CNN
+    obs_format: dict
+  privileged:
+    obs_modes: [privileged]        # the simulator's true task state: an upper bound
+  # tactip_object:                 # touch + where the object is: on the pick tasks touch alone
+  #   obs_modes: [tactile, object] # can't find the object (skipped on tasks without "object")
+
+tasks:                             # each task's usual training budget and settings
+  TacArm-peg:
+    train: {steps: 3000000}
+  TacArm-shape:
+    env_kwargs: {spawn_yaw: 0.1, spawn_toward_hole: 0.0}
+    train: {steps: 10000000}
+  TacArm-hill:
+    train: {steps: 5000000}
+  TacArm-edge:
+    train: {steps: 5000000}
+  TacArm-surface:
+    train: {steps: 3000000}
+  TacRig-texture:
+    train: {steps: 2000000, n_envs: 8}
+  TacQuad-walk:
+    env_kwargs: {feet: tactip, sensor_stiffness: 10.0}
+    train:
+      steps: 30000000
+      n_envs: 16
+      checkpoint_every: 2000000
+      algo_kwargs:                 # locomotion settings (quadruped_walk.py)
+        learning_rate: 0.0003
+        n_steps: 1024
+        batch_size: 4096
+        n_epochs: 5
+        gamma: 0.99
+        gae_lambda: 0.95
+        clip_range: 0.2
+        ent_coef: 0.003
+        vf_coef: 1.0
+        max_grad_norm: 1.0
+        target_kl: 0.02
+        policy_kwargs: {net_arch: {pi: [512, 256, 128], vf: [512, 256, 128]},
+                        activation_fn: ELU, log_std_init: -0.5}
+  TacGripper-pick:
+    env_kwargs: {sensor_stiffness: 10.0}
+    train: &pick                   # pick settings (humanoid_pick.py), plain PPO: no demos
+      steps: 20000000
+      n_envs: 16
+      checkpoint_every: 2000000
+      algo_kwargs:
+        learning_rate: 0.0001
+        n_steps: 512
+        batch_size: 2048
+        n_epochs: 5
+        gamma: 0.995
+        gae_lambda: 0.95
+        clip_range: 0.2
+        ent_coef: 0.0
+        vf_coef: 0.5
+        max_grad_norm: 0.5
+        target_kl: 0.02
+        policy_kwargs: {net_arch: {pi: [512, 256, 128], vf: [512, 256, 128]},
+                        activation_fn: ELU, log_std_init: -1.0}
+  TacHumanoid-pick:
+    env_kwargs: {action_mode: bimanual, sensor_stiffness: 10.0}
+    train: *pick

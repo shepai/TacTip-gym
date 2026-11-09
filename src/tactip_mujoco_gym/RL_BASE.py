@@ -95,6 +95,18 @@ def default_algo_kwargs(algo, n_envs):
     raise ValueError(f"unknown algo {algo!r}; choose from {list(ALGOS)}")
 
 
+def _resolve_activation(kw):
+    """policy_kwargs.activation_fn may be given by name (config files): "ELU" -> torch.nn.ELU."""
+    pk = kw.get("policy_kwargs")
+    if isinstance(pk, dict) and isinstance(pk.get("activation_fn"), str):
+        name = pk["activation_fn"].split(".")[-1]
+        fn = getattr(torch.nn, name, None)
+        if fn is None:
+            raise ValueError(f"activation_fn {pk['activation_fn']!r} is not in torch.nn")
+        kw["policy_kwargs"] = {**pk, "activation_fn": fn}
+    return kw
+
+
 # ----------------------------------------------------------------------------- envs
 ENCODED_KEYS = ("tactile", "vision")      # default: normalised by their own encoders, not
                                           # VecNormalize (envs report theirs: obs_modalities)
@@ -366,6 +378,7 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
         env_kwargs.setdefault("obs_format", obs_format)
     kw = default_algo_kwargs(algo, n_envs)
     kw.update(algo_kwargs or {})
+    _resolve_activation(kw)
 
     config = dict(env_name=env_name, algo=algo, env_kwargs=jsonable(env_kwargs),
                   total_timesteps=total_timesteps, n_envs=n_envs, seed=seed,
@@ -446,9 +459,12 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
 
 # ----------------------------------------------------------------------------- evaluation
 def evaluate(env_name, model_name, n_episodes=50, model_dir="models", deterministic=True,
-             env_kwargs=None, seed=1000):
+             env_kwargs=None, seed=1000, per_episode=False):
+    """Success rate, mean return and length over n_episodes (episode k: reset(seed=seed + k),
+    so every policy can be tested on the same episodes). per_episode=True adds "episodes":
+    [{success, return, length, fail_reason}, ...]."""
     model, env, normalise, _ = load_policy(env_name, model_name, model_dir, env_kwargs)
-    returns, successes, lengths = [], [], []
+    returns, successes, lengths, episodes = [], [], [], []
     for ep in range(n_episodes):
         obs, _ = env.reset(seed=seed + ep)
         R, L = 0.0, 0
@@ -462,9 +478,13 @@ def evaluate(env_name, model_name, n_episodes=50, model_dir="models", determinis
         returns.append(R)
         successes.append(bool(info.get("is_success", False)))
         lengths.append(L)
+        episodes.append(dict(success=successes[-1], ret=float(R), length=L,
+                             fail_reason=str(info.get("fail_reason", "") or "")))
     env.close()
     res = dict(success_rate=float(np.mean(successes)), mean_return=float(np.mean(returns)),
                mean_length=float(np.mean(lengths)))
+    if per_episode:
+        res["episodes"] = episodes
     print(f"{env_name} / {model_name}: success {res['success_rate']:.0%}, "
           f"return {res['mean_return']:.1f}, length {res['mean_length']:.0f}")
     return res

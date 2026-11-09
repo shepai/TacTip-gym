@@ -8,7 +8,14 @@ Command line:
     python -m tactip_mujoco_gym describe configs/peg_sensing.yaml --variant tactile
     python -m tactip_mujoco_gym train configs/peg_sensing.yaml [--variant NAME ...] [--dry-run]
     python -m tactip_mujoco_gym evaluate configs/peg_sensing.yaml [--variant NAME] [--episodes N]
+    python -m tactip_mujoco_gym summary configs/peg_sensing.yaml      results table + chart again
     python -m tactip_mujoco_gym visualise configs/peg_sensing.yaml --variant NAME
+
+    A config with several tasks (configs/sensing_trials.yaml):
+    python -m tactip_mujoco_gym train configs/sensing_trials.yaml --dry-run          the plan
+    python -m tactip_mujoco_gym train configs/sensing_trials.yaml --skip-trained     resumes
+    python -m tactip_mujoco_gym train configs/sensing_trials.yaml --tasks TacArm-peg --steps-scale 0.1
+    python -m tactip_mujoco_gym visualise configs/sensing_trials.yaml --task TacArm-peg --variant tactip
 
 (also installed as the `tactip-gym` command)
 """
@@ -39,7 +46,7 @@ def _describe(args):
     import tactip_mujoco_gym  # noqa: F401
     if args.target.endswith((".yaml", ".yml", ".json")):
         from tactip_mujoco_gym.experiment import make_env
-        env = make_env(args.target, variant=args.variant)
+        env = make_env(args.target, variant=args.variant, task=args.task)
     else:
         kw = json.loads(args.env_kwargs)
         if args.sensor_xml:
@@ -70,17 +77,24 @@ def _describe(args):
 
 def _train(args):
     from tactip_mujoco_gym.experiment import train
-    train(args.config, variant=args.variant or None, dry_run=args.dry_run, steps=args.steps)
+    train(args.config, variant=args.variant or None, dry_run=args.dry_run, steps=args.steps,
+          tasks=args.tasks or None, skip_trained=args.skip_trained, steps_scale=args.steps_scale)
 
 
 def _evaluate(args):
     from tactip_mujoco_gym.experiment import evaluate
-    evaluate(args.config, variant=args.variant or None, episodes=args.episodes)
+    evaluate(args.config, variant=args.variant or None, episodes=args.episodes,
+             tasks=args.tasks or None)
+
+
+def _summary(args):
+    from tactip_mujoco_gym.experiment import summary
+    summary(args.config)
 
 
 def _visualise(args):
     from tactip_mujoco_gym.experiment import visualise
-    visualise(args.config, variant=args.variant)
+    visualise(args.config, variant=args.variant, task=args.task, seed=args.seed)
 
 
 def main(argv=None):
@@ -92,6 +106,7 @@ def main(argv=None):
     d = sub.add_parser("describe", help="build a task (or a config's env) and list its inputs")
     d.add_argument("target", help="task id, or a config file")
     d.add_argument("--variant", default=None)
+    d.add_argument("--task", default=None, help="a config's task (configs with tasks)")
     d.add_argument("--sensor-xml", default=None, help="sensor hardware (name or MJCF file)")
     d.add_argument("--sensors", default=None, help='readouts as JSON, e.g. \'{"tactile": {"clip": 10}}\'')
     d.add_argument("--obs-modes", default=None, help="e.g. tactile+vision")
@@ -101,19 +116,29 @@ def main(argv=None):
     t = sub.add_parser("train", help="train the runs a config describes")
     t.add_argument("config")
     t.add_argument("--variant", nargs="*", default=None, help="only these variants")
+    t.add_argument("--tasks", nargs="*", default=None, help="only these tasks (configs with tasks)")
     t.add_argument("--steps", type=int, default=None, help="override train.steps")
+    t.add_argument("--steps-scale", type=float, default=None, help="x every run's train.steps (pilots)")
+    t.add_argument("--skip-trained", action="store_true", help="leave runs whose model exists (resume)")
     t.add_argument("--dry-run", action="store_true", help="print the runs without training")
     t.set_defaults(fn=_train)
 
-    e = sub.add_parser("evaluate", help="success rate of a config's trained models")
+    e = sub.add_parser("evaluate", help="test a config's trained models; save per-trial results")
     e.add_argument("config")
     e.add_argument("--variant", nargs="*", default=None)
+    e.add_argument("--tasks", nargs="*", default=None)
     e.add_argument("--episodes", type=int, default=None)
     e.set_defaults(fn=_evaluate)
+
+    m = sub.add_parser("summary", help="results table and chart from a config's saved trials")
+    m.add_argument("config")
+    m.set_defaults(fn=_summary)
 
     v = sub.add_parser("visualise", help="watch a config's trained model in the viewer")
     v.add_argument("config")
     v.add_argument("--variant", default=None)
+    v.add_argument("--task", default=None)
+    v.add_argument("--seed", type=int, default=None, help="which training run (train.seeds)")
     v.set_defaults(fn=_visualise)
 
     args = ap.parse_args(argv)
