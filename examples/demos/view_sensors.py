@@ -412,8 +412,12 @@ def main():
     raw.set_obs_format("dict")
     raw.set_obs_modes(keys)
     obs, _ = env.reset(seed=a.seed)
+    def input_source(key):
+        readout = raw.sensors.get(key)
+        return type(readout).__name__ if readout is not None else "task input"
+
     print(f"{a.task} with {a.sensor_xml or 'tactip'}: " + ", ".join(
-        f"{k} {np.shape(obs[k])} ({type(raw.sensors[k]).__name__})" for k in keys))
+        f"{k} {np.shape(obs[k])} ({input_source(k)})" for k in keys))
     act = make_policy(a.task, env, a.policy)
     windows = build_windows(raw, obs, keys, a.one_window)
     steps = a.steps or (100 if a.save else 0)

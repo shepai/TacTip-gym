@@ -24,8 +24,8 @@ The builders take the sizes and stiffnesses, so variants are one call away:
     hardware.write("gelsight", "gelsight.xml")               # the MJCF, to read or edit
 
 All of them point their sensing side along +z and carry a "sensor_tip" site there, which is
-how robots mount them (sensors/models.py). They are rigid parts on sprung joints, which the
-robot's 1 ms time step handles; each joint's armature keeps its natural frequency below
+how robots mount them (sensors/models.py). They use sprung joints and compliant surface patches where appropriate; the robot's 1 ms
+time step handles them, and each joint's armature keeps its natural frequency below
 MAX_OMEGA. No hinge has a range, so the angle unit of the scene they are attached to never
 matters (slides have ranges, in metres).
 
@@ -38,13 +38,14 @@ Modelling notes, and where they depart from the real devices:
             the contact point. The piezo reads the high-passed pad force; the accelerometer
             sits on the cap (accel_on="board" puts it on the rigid board, where in a
             simulation it only feels the robot).
-  GelSight  a GelSight Mini-sized gel (18.6 x 14.3 mm) with a camera behind it. The gel is a
-            rigid slab on springs; what the camera sees is how far objects come into the
-            space the gel fills at rest (rendered, so any shape works), and the "gelsight"
-            image shades that depth map with three coloured lights.
-  TacTip depth  a dome the size of the soft TacTip's (35 mm radius), rigid on springs, with
-            a depth camera at its centre: the contact depth image of Tactile Gym 2.0 (Lin et
-            al., 2022), which used it for sim-to-real with real TacTip images.
+  GelSight  a GelSight Mini-sized gel (18.6 x 14.3 mm) represented by a 9 x 7 array of
+            overlapping, independently sprung tiles, with a camera behind it. The image
+            shades object intrusion into the undeformed gel envelope with three coloured
+            lights. This is a reduced-order compliant model, not hyperelastic FEM.
+  TacTip depth  a 35 mm-radius dome represented by overlapping, independently sprung
+            surface patches and viewed by a depth camera at its centre. The depth image
+            measures object intrusion relative to the undeformed dome, as in Tactile Gym 2.0.
+            This is a reduced-order model, not a full continuum dome or optical pin TacTip.
   whiskers  rows x cols tapered whiskers fanned out from a pad, each a chain of capsules on
             two-axis sprung hinges, curved like a rat's, longer towards the back. Whiskers
             don't collide with each other or the pad, only with the world.
@@ -194,23 +195,24 @@ def presstip(**kw):
 # ----------------------------------------------------------------------------- GelSight
 def gelsight_xml(gel=(0.0186, 0.0143), thickness=0.004, housing=(0.032, 0.028, 0.024),
                  camera_distance=0.015, stiffness=5000.0, tilt_stiffness=0.5, travel=0.0018,
-                 proud=0.002):
-    """A GelSight-style sensor as MJCF text.
+                 proud=0.002, deformable=(9, 7), tile_overlap=1.03):
+    """GelSight-style sensor with a locally compliant, spring-supported gel surface.
 
-    gel              sensing area (x, y), m; GelSight Mini's by default
-    thickness        of the gel
-    housing          outer size (x, y, depth)
-    camera_distance  from the camera to the gel surface (sets the camera's field of view)
-    stiffness        of the gel pressed straight in (N/m) and tilted (N m/rad)
-    travel           how far the gel can be pushed in before it bottoms out
-    proud            how far the gel stands out of the housing
+    The elastomer is approximated by overlapping independently sprung tiles. This
+    reduced-order model captures local indentation but is not a continuum/FEM model.
+    The camera and non-colliding rest surface retain the ContactDepth interface.
     """
     gx, gy = gel
     hx, hy, hd = housing
+    nx, ny = map(int, deformable)
+    if nx < 2 or ny < 2 or tile_overlap < 1.0:
+        raise ValueError("deformable must be at least (2, 2) and tile_overlap >= 1")
+    if gx >= hx or gy >= hy or thickness <= proud or travel <= 0:
+        raise ValueError("gel must fit housing; thickness must exceed proud; travel > 0")
     fovy = math.degrees(2 * math.atan(gy / 2 / camera_distance))
     m_gel = 0.004
     front = -proud
-    rim = []                                  # the frame around the gel window
+    rim = []
     for name, (sx, sy, px, py) in {
             "rim_x0": ((hx - gx) / 4, hy / 2, -(hx + gx) / 4, 0.0),
             "rim_x1": ((hx - gx) / 4, hy / 2, (hx + gx) / 4, 0.0),
@@ -219,19 +221,28 @@ def gelsight_xml(gel=(0.0186, 0.0143), thickness=0.004, housing=(0.032, 0.028, 0
         rim.append(f'      <geom name="{name}" type="box" size="{_f(sx, sy, (thickness - proud) / 2)}" '
                    f'pos="{_f(px, py, front - (thickness - proud) / 2)}" mass="0.002" rgba="0.15 0.15 0.17 1"/>')
     back = hd - (thickness - proud) - proud
+    dx, dy = gx / nx, gy / ny
+    tile_mass, tile_k = m_gel / (nx * ny), stiffness / (nx * ny)
+    tiles = []
+    for iy in range(ny):
+        for ix in range(nx):
+            x, y = -gx / 2 + (ix + 0.5) * dx, -gy / 2 + (iy + 0.5) * dy
+            name = f"gel_tile_{iy}_{ix}"
+            tiles.append(
+                f'      <body name="{name}" pos="{_f(x, y, 0)}">\n'
+                f'        {_joint(name + "_z", "slide", (0, 0, 1), tile_k, tile_mass, rng=(-travel, 0.0005))}\n'
+                f'        <geom name="{name}_surface" type="box" size="{_f(dx * tile_overlap / 2, dy * tile_overlap / 2, thickness / 2)}"\n'
+                f'              pos="0 0 {-thickness / 2:.6g}" mass="{tile_mass:.7g}" rgba="0.78 0.78 0.8 0.9"\n'
+                f'              contype="1" conaffinity="0" friction="1 0.005 0.0001" solref="0.003 1" solimp="0.97 0.995 0.001"/>\n'
+                f'      </body>')
     body = f"""    <body name="gelsight">
       <geom name="housing" type="box" size="{_f(hx / 2, hy / 2, back / 2)}" pos="0 0 {-thickness - back / 2:.6g}"
             mass="0.03" rgba="0.15 0.15 0.17 1"/>
 {chr(10).join(rim)}
       <camera name="depth_cam" pos="0 0 {-camera_distance:.6g}" xyaxes="1 0 0 0 -1 0" fovy="{fovy:.4g}"/>
-      <body name="gel" pos="0 0 0">
-        {_joint("press_z", "slide", (0, 0, 1), stiffness, m_gel, rng=(-travel, 0.0005))}
-        {_joint("tilt_x", "hinge", (1, 0, 0), tilt_stiffness, m_gel * gy * gy / 12)}
-        {_joint("tilt_y", "hinge", (0, 1, 0), tilt_stiffness, m_gel * gx * gx / 12)}
-        <geom name="surface" type="box" size="{_f(gx / 2, gy / 2, thickness / 2)}" pos="0 0 {-thickness / 2:.6g}"
-              mass="{m_gel}" rgba="0.78 0.78 0.8 0.85" friction="1 0.005 0.0001"
-              solref="0.005 1" solimp="0.95 0.99 0.001"/>
-      </body>
+      <geom name="surface" type="box" size="{_f(gx / 2, gy / 2, thickness / 2)}" pos="0 0 {-thickness / 2:.6g}"
+            contype="0" conaffinity="0" mass="0" rgba="0 0 0 0"/>
+{chr(10).join(tiles)}
       {TIP.format(z=0.0)}
     </body>"""
     return _mujoco("gelsight", body)
@@ -244,26 +255,46 @@ def gelsight(**kw):
 
 # ----------------------------------------------------------------------------- TacTip (depth)
 def tactip_depth_xml(radius=0.035, mount_radius=0.04, mount_length=0.04, fovy=120.0,
-                     stiffness=800.0, shear_stiffness=600.0, tilt_stiffness=0.15, travel=0.006):
-    """A TacTip read as a depth image, as MJCF text: a rigid dome on springs with a depth
-    camera at its centre (Tactile Gym 2.0). Sized like the soft TacTip by default."""
+                     stiffness=800.0, shear_stiffness=600.0, tilt_stiffness=0.15, travel=0.006,
+                     deformable=(9, 9), tile_overlap=1.08, skin_thickness=0.002):
+    """Depth TacTip with a locally compliant dome made from sprung surface patches.
+
+    This reduced-order approximation permits local indentation; it is not a full
+    hyperelastic/FEM dome. A non-colliding sphere defines the undeformed depth reference.
+    """
     if radius > mount_radius:
         raise ValueError("the dome must fit on the mount")
+    nx, ny = map(int, deformable)
+    if nx < 3 or ny < 3 or tile_overlap < 1.0 or skin_thickness <= 0:
+        raise ValueError("deformable must be >= (3, 3), tile_overlap >= 1 and skin_thickness > 0")
     m_tip = 0.01
-    I_tip = 0.4 * m_tip * radius ** 2
+    dx, dy = 2 * radius / nx, 2 * radius / ny
+    patches = []
+    for iy in range(ny):
+        for ix in range(nx):
+            x, y = -radius + (ix + 0.5) * dx, -radius + (iy + 0.5) * dy
+            r2 = x*x + y*y
+            if r2 >= (radius - max(dx, dy) * 0.35) ** 2:
+                continue
+            z = math.sqrt(radius * radius - r2)
+            quat = _quat_z_to(np.array([x, y, z]) / radius)
+            name = f"dome_patch_{iy}_{ix}"
+            tile_mass = m_tip / (nx * ny)
+            tile_k = stiffness / (nx * ny)
+            patches.append(
+                f'      <body name="{name}" pos="{_f(x, y, z)}" quat="{_f(*quat)}">\n'
+                f'        {_joint(name + "_normal", "slide", (0, 0, 1), tile_k, tile_mass, rng=(-travel, 0.0005))}\n'
+                f'        <geom name="{name}_skin" type="box" size="{_f(dx * tile_overlap / 2, dy * tile_overlap / 2, skin_thickness / 2)}"\n'
+                f'              mass="{tile_mass:.7g}" rgba="0.92 0.93 0.96 1" contype="1" conaffinity="0" friction="1 0.005 0.0001"\n'
+                f'              solref="0.003 1" solimp="0.97 0.995 0.001"/>\n'
+                f'      </body>')
     body = f"""    <body name="tactip_depth">
       <geom name="mount" type="cylinder" size="{_f(mount_radius, mount_length / 2)}" pos="0 0 {-mount_length / 2:.6g}"
             mass="0.05" rgba="0.1 0.1 0.1 1"/>
       <camera name="depth_cam" pos="0 0 0" xyaxes="1 0 0 0 -1 0" fovy="{fovy:.4g}"/>
-      <body name="tip" pos="0 0 0">
-        {_joint("press_z", "slide", (0, 0, 1), stiffness, m_tip, rng=(-travel, 0.001))}
-        {_joint("shear_x", "slide", (1, 0, 0), shear_stiffness, m_tip, rng=(-0.004, 0.004))}
-        {_joint("shear_y", "slide", (0, 1, 0), shear_stiffness, m_tip, rng=(-0.004, 0.004))}
-        {_joint("tilt_x", "hinge", (1, 0, 0), tilt_stiffness, I_tip)}
-        {_joint("tilt_y", "hinge", (0, 1, 0), tilt_stiffness, I_tip)}
-        <geom name="surface" type="sphere" size="{radius:.6g}" mass="{m_tip}" rgba="0.95 0.95 0.95 1"
-              friction="1 0.005 0.0001" solref="0.005 1" solimp="0.95 0.99 0.001"/>
-      </body>
+      <geom name="surface" type="sphere" size="{radius:.6g}" mass="0" contype="0" conaffinity="0"
+            rgba="0 0 0 0"/>
+{chr(10).join(patches)}
       {TIP.format(z=radius)}
     </body>"""
     return _mujoco("tactip_depth", body)

@@ -183,7 +183,10 @@ class ContactDepth(Sensor):
             self._hide.append(mask)
         # the rest surface, measured with every joint at zero
         d = mujoco.MjData(m)
-        mujoco.mj_kinematics(m, d)
+        # Camera poses are computed in MuJoCo's camera/light stage (mj_camlight),
+        # which is not run by mj_kinematics alone. A full forward pass is required
+        # before reading data.cam_xpos / data.cam_xmat for the pixel-ray geometry.
+        mujoco.mj_forward(m, d)
         self._ref = [self._reference(m, d, c, g) for c, g in zip(cams, surfs, strict=True)]
         for k, ref in enumerate(self._ref):
             if not np.isfinite(ref).any():
