@@ -1,4 +1,3 @@
-# TacTip-gym
 <a href="https://shepai.github.io/docs/tacgym/index.html">READ THE DOCS</a>
 A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://github.com/shepai/Robot_foot">robot foot repo</a>), and a Gymnasium benchmark for testing **tactile, visual-tactile and visual sensing** on several robots: a robot arm, a quadruped, a wheeled humanoid, a two-TacTip gripper and a Cartesian test rig.
 <table>
@@ -37,7 +36,7 @@ A MuJoCo simulation of the TacTip tactile sensor (based on the <a href="https://
     </td>
   </tr>
 </table>
-The simulator models the TacTip's silicone skin as a mesh of points with a flexible structure, so the sensor deforms like a soft body. Our <a href="https://shepai.github.io/tutorials/softbodies.html">tutorial page</a> explains how this was built.
+The simulator models the TacTip's silicone skin as a mesh of points with a flexible structure, so the sensor deforms like a soft body. Our <a href="https://shepai.github.io/tutorials/softbodies.html">tutorial page</a> explains how this was built. Four more sensors can be mounted on any of the robots in its place: the PressTip, a GelSight, a TacTip read as contact depth images (the Tactile Gym 2.0 approach) and an array of rat-like whiskers.
 
 ![TacTip in simulator](https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/example.gif)
 ![TacTip in simulator](https://raw.githubusercontent.com/shepai/TacTip-gym/refs/heads/main/assets/armgif.gif)
@@ -47,7 +46,7 @@ The benchmark is built so that a researcher changes **what is being tested** thr
 | You choose | How | Default |
 |------------|-----|---------|
 | The task and robot | the Gym id, e.g. `TacArm-peg`, `TacQuad-walk`, `TacHumanoid-pick`, `TacRig-texture` | |
-| The sensor hardware mounted on the robot | `sensor_xml=` a registered name or a stand-alone MJCF file | the TacTip |
+| The sensor hardware mounted on the robot | `sensor_xml=` a built-in name (`tactip`, `presstip`, `gelsight`, `tactip_depth`, `whiskers`), another registered name or a stand-alone MJCF file | the TacTip |
 | How the sensor is read (readouts) | `sensors={key: readout}`: change, add or remove inputs | markers, in-sensor camera, robot camera, taxel events |
 | What the policy gets (inputs) | `obs_modes=["tactile", "vision", ...]` | privileged state only |
 | How the inputs are fused | `obs_format="flat"` / `"dict"`, pretrained `encoders=` | one flat vector |
@@ -56,7 +55,7 @@ The benchmark is built so that a researcher changes **what is being tested** thr
 
 ```mermaid
 flowchart LR
-    T["Task + robot<br/>TacArm-peg, TacQuad-walk, ..."] --> H["Sensor hardware<br/>sensor_xml: TacTip, your MJCF"]
+    T["Task + robot<br/>TacArm-peg, TacQuad-walk, ..."] --> H["Sensor hardware<br/>sensor_xml: TacTip, PressTip, GelSight, whiskers, your MJCF"]
     H --> R["Readouts<br/>tactile, tactile_image, vision, events, yours"]
     T --> P["Task inputs<br/>privileged, object"]
     R --> I["Selected inputs<br/>obs_modes"]
@@ -65,6 +64,7 @@ flowchart LR
     F --> L["Policy<br/>PPO / SAC (RL_BASE)"]
 ```
 
+<!-- docs:contents -->
 ## Contents
 
 - [Installation](#installation)
@@ -85,6 +85,7 @@ flowchart LR
 - [Adding your own task](#adding-your-own-task)
 - [Project layout](#project-layout)
 
+<!-- docs:installation -->
 ## Installation
 
 Navigate to the folder where you downloaded the repo and run:
@@ -94,6 +95,7 @@ pip install -e .              # the environments: mujoco, gymnasium, numpy
 pip install -e ".[train]"     # + training: stable-baselines3, torch, opencv, tqdm, rich, pyyaml
 pip install -e ".[test]"      # + pytest
 pip install -e ".[legacy]"    # + dm_control, only needed for the old env.physics attribute
+pip install -e ".[docs]"      # + Sphinx, to build the documentation in docs/
 ```
 
 For GPU training on Windows, install PyTorch from the selector at [pytorch.org](https://pytorch.org) **before** `pip install -e ".[train]"`; a plain `pip install torch` gives the CPU-only build there.
@@ -110,6 +112,7 @@ The mesh files are large and are kept out of some copies of the repo. They go he
 | `src/tactip_mujoco_gym/assets/sensor/tactip.xml` (written on first use, from the arm scene) | `TacRig-*` and `TacGripper-pick`, which need only the TacTip: this file, or the Z1 meshes to make it |
 | `encoders/*.pt` | pretrained visuo-tactile encoders (made by `train_encoders.py`) |
 
+<!-- docs:quick-start -->
 ## Quick start
 
 See what is available, then build a task and look at its inputs:
@@ -172,6 +175,7 @@ python -m tactip_mujoco_gym train configs/peg_sensing.yaml --dry-run          # 
 python -m tactip_mujoco_gym train configs/peg_sensing.yaml --variant tactile   # train one
 ```
 
+<!-- docs:tasks -->
 ## Tasks
 
 | Gym ID | Robot (sensor mounts) | Goal | Action | Episode | Success |
@@ -224,6 +228,7 @@ Task options:
 | `textures` | rig | `(1, ..., 6)` | Blocks to draw from: dataset textures (1..20) and / or STL files |
 | `objects`, `level`, `curriculum` | gripper | all, `None`, `True` | As the humanoid |
 
+<!-- docs:sensing -->
 ## Choosing what the policy senses
 
 ### Inputs
@@ -241,7 +246,7 @@ Every observation starts with a short **proprioception** block, because a real r
 | `force` | task (rig) | The rig's plate force sensor: normal force between the sensor and the block, N / 5 | | | |
 | yours | your readout | Anything you add with `sensors=` | | | |
 
-Sizes are for the 71-marker TacTip and the default camera settings. The rig's `privileged` input has 10 values (which texture as a one-hot, the tip over the block, its height above the surface, the tilt) and its camera is `rigcam`. The gripper's inputs have the humanoid's sizes, and its camera is `overhead`. `python -m tactip_mujoco_gym describe <task>` prints the inputs a task offers, whether each one is available with the current hardware (a markerless sensor has no `tactile`, `feet="proxy"` has no sensor at all) and the observation shapes.
+Sizes are for the 71-marker TacTip and the default camera settings; other sensor hardware brings its own `tactile` and `tactile_image` readouts (see [Built-in sensors](#built-in-sensors)). The rig's `privileged` input has 10 values (which texture as a one-hot, the tip over the block, its height above the surface, the tilt) and its camera is `rigcam`. The gripper's inputs have the humanoid's sizes, and its camera is `overhead`. `python -m tactip_mujoco_gym describe <task>` prints the inputs a task offers, whether each one is available with the current hardware (a markerless sensor has no `tactile`, `feet="proxy"` has no sensor at all) and the observation shapes.
 
 ```python
 env = gym.make("TacArm-peg", obs_modes=["vision", "tactile"])                   # privileged off
@@ -280,6 +285,12 @@ A **readout** turns the simulation into one input. The built-in ones work on eve
 | `tactip_camera` | `tactile_image` | `camera` (`"sensor_cam"`), `width`, `height` (64), `mode` (`"rgb"` / `"gray"`), `groups` ((2,): the pins only) |
 | `camera` | `vision` | `camera` (`VISION_CAMERA`), `width`, `height` (64), `mode` (`"rgb"` / `"gray"` / `"depth"`), `max_depth`, `shadows`, `antialias` |
 | `taxel_events` | `events` | `prefix` (`"tx_"`), `threshold` (0.02 N), `clip` (5) |
+| `contact_depth` | `tactile_image` | `camera` (`"depth_cam"`), `surface` (`"surface"`), `width`, `height` (64), `mode` (`"depth"` / `"gelsight"`), `max_depth` (4 mm), `blur` (0.7 px), `gain` (0.9) |
+| `contact_map` | `tactile` | as `contact_depth` without `mode` and `gain`, plus `cell` (4: pixels per grid cell) |
+| `presstip` | `tactile` | `sigma` (5 mm), `f_ref` (2 N), `piezo_tau` (20 ms), `piezo_ref` (0.05 N), and the names of its parts |
+| `whiskers` | `tactile` | `angle_ref` (0.1 rad), `vib_tau` (10 ms), `vib_ref` (2 rad/s), `prefix` (`"w"`), `tip_site` |
+
+The last four are what the built-in sensors bring (see [Built-in sensors](#built-in-sensors)); they work with any hardware that names its parts the same way.
 
 `sensors=` changes them per environment:
 
@@ -302,6 +313,7 @@ img = env.unwrapped.get_camera()                                   # handcam, 64
 depth = env.unwrapped.get_camera("depth", width=320, height=240)   # float32, metres
 ```
 
+<!-- docs:sensor-hardware -->
 ## Sensor hardware
 
 `sensor_xml=` chooses the sensor model mounted on the robot: a registered name (`"tactip"`), a path to a stand-alone MJCF file, or an `MjSpec`. One file holds just the sensor, with its root body first in `<worldbody>`; its tendons, equalities and contact excludes come with it. Every element is renamed with the mount's prefix when it is attached (`sensor_`, `FL_`, `left_`, ...), so the same file can be mounted several times.
@@ -311,6 +323,55 @@ gym.make("TacArm-peg", sensor_xml="examples/custom_sensor/rigid_pad.xml", obs_mo
 gym.make("TacQuad-walk", sensor_xml="my_tactip_variant.xml", obs_modes=["tactile"])
 gym.make("TacArm-peg", sensor_stiffness=3.0, obs_modes=["tactile"])            # stiffer skin
 ```
+
+### Built-in sensors
+
+Besides the TacTip, four sensors are built in (`sensors/hardware.py`). Used by name, each brings the readouts that suit it in place of the TacTip's; `sensors=` still changes them.
+
+| `sensor_xml=` | What it is | Inputs it brings |
+|---------------|------------|------------------|
+| `"tactip"` | The soft TacTip (the default): 71 markers on a flexible skin, a camera inside | `tactile`: `tactip_markers`; `tactile_image`: `tactip_camera` |
+| `"presstip"` | The [PressTip](https://shepai.github.io/dev/PressTip.html) (Shepherd et al.): 42 mm across, a silicone pad over 15 force pads, a piezoelectric film and a 3-axis accelerometer | `tactile`: `presstip`, i.e. 15 pad forces, the piezo signal and the acceleration (19 values per sensor) |
+| `"gelsight"` | A gel the size of a GelSight Mini's (18.6 × 14.3 mm) with a camera behind it | `tactile_image`: `contact_depth` in `"gelsight"` mode (64 × 48 RGB); `tactile`: `contact_map` (16 × 12 contact depths, mm) |
+| `"tactip_depth"` | A dome the size of the soft TacTip's (35 mm radius) read as a contact depth image, as in Tactile Gym 2.0 | `tactile_image`: `contact_depth` (64 × 64 × 1); `tactile`: `contact_map` (16 × 16) |
+| `"whiskers"` | 3 × 4 rat-like whiskers on a pad: tapered, curved, longer towards the back | `tactile`: `whiskers`, i.e. per whisker the bend at its base (x, y), contact and vibration (48 values) |
+
+```python
+gym.make("TacRig-texture", sensor_xml="presstip", obs_modes=["tactile", "force"])
+gym.make("TacArm-edge", sensor_xml="tactip_depth", obs_modes=["tactile_image"], obs_format="dict")
+gym.make("TacGripper-pick", sensor_xml="gelsight", sensors={"tactile_image": {"mode": "depth"}})
+gym.make("TacArm-surface", sensor_xml="whiskers", obs_modes=["tactile"])
+```
+
+How they are modelled:
+
+- **Rigid parts on springs.** The PressTip's silicone, the GelSight's gel and the depth TacTip's dome are each one rigid body on sprung joints (pressing in, sideways, tilting). Each whisker is a chain of capsules on sprung two-axis hinges. Every joint's armature keeps its natural frequency below 250 rad/s, so the robots' 1 ms time step stays stable. `sensor_stiffness` scales them all (the gripper and the humanoid default to 10, for their larger grip forces).
+- **Contact depth.** A camera inside the GelSight and inside the depth TacTip renders how far objects come into the space the gel or dome fills at rest. Only geoms that can collide are drawn, and none of the sensor's own. This is the Tactile Gym 2.0 method. `"gelsight"` mode then shades the depth map with three coloured lights, as the real sensor's image does.
+- **PressTip.** Each contact on the silicone presses on the pads around where it acts, spread with a Gaussian 5 mm wide (`sigma`). The piezo reads the high-passed pad force (RMS over each env step). The accelerometer sits on the silicone and reads +1 g at rest. The PressTip page doesn't give the pad layout, so here it is a centre pad with rings of 6 and 8.
+- **Whiskers.** The bend at a whisker's base gives the direction it was touched from. Its vibration is the high-passed angular velocity at the base (RMS over each env step), which picks up stick-slip on a texture. Whiskers collide with the world but not with each other or their pad. The sensor's tip is level with the longest whisker, so bringing the tip to a surface makes the first contact.
+
+The builders take the sizes and stiffnesses, so a variant is one call (`hardware.whisker_array(rows=5, cols=6)`), and `hardware.write("gelsight", "gelsight.xml")` writes the MJCF to read or edit. The arm tasks' constants were tuned for the TacTip, so `TIP_R` / `PUSH_Z` may need `overrides` (see the end of this section).
+
+### Watching the readings
+
+`examples/demos/view_sensors.py` opens a window per input, with a panel per mounted sensor, next to the MuJoCo viewer of the robot doing its scripted task:
+
+```bash
+python examples/demos/view_sensors.py TacRig-v0 --sensor-xml presstip     # pads, piezo, acceleration
+python examples/demos/view_sensors.py TacRig-v0 --sensor-xml gelsight     # RGB image and depth grid
+python examples/demos/view_sensors.py TacGripper-pick --sensor-xml whiskers --one-window
+python examples/demos/view_sensors.py TacRig-v0                           # the TacTip's markers and camera
+python examples/demos/view_sensors.py TacRig-v0 --sensor-xml tactip_depth --save depth.png --steps 120
+```
+
+- **Markers**: displacement arrows.
+- **PressTip**: the pad forces, the piezo trace and the accelerometer.
+- **Whiskers**: seen from above, with each whisker's deflection (red while touching) and vibration.
+- **Images**: as they are.
+
+`--inputs` picks the inputs (default: every sensor input the robot has). `--save` runs without windows and writes the figure. The script needs matplotlib (in the `train` extra). On macOS, add `--no-viewer`: the MuJoCo viewer needs `mjpython`, which matplotlib windows don't run under.
+
+### Mounting a sensor
 
 Where the sensor goes on each robot:
 
@@ -333,12 +394,13 @@ python -m tactip_mujoco_gym.sensor_tools extract src/tactip_mujoco_gym/assets/ta
 python -m tactip_mujoco_gym.sensor_tools info my_sensor.xml     # tip, axis, reach, radius, markers, mass
 ```
 
-Register a model to use it by name (`register_sensor_model("my_gelsight", "path/to/gelsight.xml")`). Constants that depend on the sensor's shape (`TIP_R`, `PUSH_Z`, `Incline.TIP_H`) may need `overrides`; `check_envs.py` measures the sensor radius at the pushing height and tells you:
+Register a model to use it by name: `register_sensor_model("my_sensor", "path/to/my_sensor.xml", readouts={"tactile_image": "contact_depth"})`, where `readouts` are the inputs it brings. Constants that depend on the sensor's shape (`TIP_R`, `PUSH_Z`, `Incline.TIP_H`) may need `overrides`; `check_envs.py` measures the sensor radius at the pushing height and tells you:
 
 ```bash
 python -m tactip_mujoco_gym.check_envs TacArm-peg --sensor-xml my_sensor.xml
 ```
 
+<!-- docs:experiments -->
 ## Experiment configs
 
 One YAML (or JSON) file says what is being tested: the task, robot options, sensor hardware, readouts, inputs, fusion and training settings. `variants` turn one file into a set of comparisons, each merged over the base (dicts merge, everything else replaces).
@@ -382,10 +444,11 @@ Each run is named `<name>_<variant>` and saved as `models/<name>_<variant>.zip` 
 | `obs_modes`, `obs_format` | Inputs and format |
 | `overrides` | Class constants |
 | `policy` | `encoders` (`null`, `scratch` or a checkpoint) and `freeze_encoders` |
-| `train` | `algo`, `steps`, `n_envs`, `seed`, `algo_kwargs`, `record_video`, `video_every_percent`, `video_seconds`, `checkpoint_every` |
-| `evaluate` | `episodes`, `deterministic`, `seed` |
+| `train` | `algo`, `steps`, `n_envs`, `seed`, `algo_kwargs`, `record_video`, `video_every_percent`, `video_seconds`, `checkpoint_every`, and `seeds` (that many independent training runs, named `..._s<seed>`). `algo_kwargs.policy_kwargs.activation_fn` can be a `torch.nn` name such as `ELU` |
+| `evaluate` | `episodes`, `deterministic`, `seed` (episode *k* of every policy starts from `seed + k`, so all policies face the same episodes) |
 | `imports` | Modules to import first, e.g. one that registers your readout |
 | `variants` | `{name: {any of the keys above}}` |
+| `tasks` | `{task id: {any of the keys above but variants}}`, or a list of ids: the variants on several tasks, each with its own settings |
 
 Unknown keys are an error, so a typo fails at once instead of being ignored. The example configs:
 
@@ -396,6 +459,49 @@ Unknown keys are an error, so a typo fails at once instead of being ignored. The
 | `configs/edge_tactile.yaml` | A single run with a tweaked readout |
 | `configs/quadruped_touch.yaml` | Privileged teacher, blind and touch on proxy and TacTip feet |
 | `configs/humanoid_touch.yaml` | Object tracker vs tracker + touch vs camera + touch |
+| `configs/gripper_pick.yaml` | The same comparison on the two-TacTip gripper |
+| `configs/surface_follow.yaml` | Surface following: privileged, touch (smooth and textured), vision, both |
+| `configs/rig_texture.yaml` | Texture identification on the rig: touch, touch + plate force, the TacTip's camera, printed blocks |
+| `configs/sensing_trials.yaml` | Every task trained on the TacTip, on vision and on privileged information; each policy tested on the same 20 trials |
+| `configs/rig_sensors.yaml` | The built-in sensors on texture identification: TacTip (markers, camera), PressTip, GelSight (image, depth grid), depth TacTip, whiskers, and the plate force alone; 20 trials each |
+
+### Many tasks, repeated runs and saved results
+
+With `tasks`, one file runs the same comparison on several tasks. Each task entry is merged over the base, then each variant over that, and every combination is one run, named `<name>_<task>_<variant>`. A variant asking for an input the task doesn't offer is skipped for that task (e.g. `object` on the arm). `configs/sensing_trials.yaml` is an example:
+
+```yaml
+name: sensing_trials
+evaluate: {episodes: 20, seed: 100000}         # 20 trials, the same for every policy
+variants:
+  tactip:     {obs_modes: [tactile]}
+  vision:     {obs_modes: [vision], obs_format: dict}
+  privileged: {obs_modes: [privileged]}
+tasks:
+  TacArm-peg:     {train: {steps: 3000000}}
+  TacArm-shape:   {env_kwargs: {spawn_yaw: 0.1}, train: {steps: 10000000}}
+  TacRig-texture: {train: {steps: 2000000, n_envs: 8}}
+  # ... every task, with its own budget and PPO settings
+```
+
+```bash
+python -m tactip_mujoco_gym train configs/sensing_trials.yaml --dry-run           # the plan
+python -m tactip_mujoco_gym train configs/sensing_trials.yaml --steps-scale 0.05  # a quick pilot
+python -m tactip_mujoco_gym train configs/sensing_trials.yaml --skip-trained      # resumable
+python -m tactip_mujoco_gym train configs/sensing_trials.yaml --tasks TacArm-peg --variant tactip
+python -m tactip_mujoco_gym evaluate configs/sensing_trials.yaml                  # the trials
+python -m tactip_mujoco_gym summary configs/sensing_trials.yaml                   # table + chart again
+python -m tactip_mujoco_gym visualise configs/sensing_trials.yaml --task TacArm-peg --variant vision
+```
+
+With several runs, a run that fails is logged in `results/<name>/errors.log` and the rest carry on. `train: {seeds: 5}` trains each combination five times (`..._s0` to `..._s4`).
+
+`evaluate` works the same for every config. It skips runs not trained yet and writes these files to `results/<name>/`:
+
+- `episodes.csv`: one row per trial, with task, variant, seed, success, return, length and why it failed.
+- `summary.csv`: per task and variant, the success rate with its 95% confidence interval, plus return and length.
+- `success.png`: those success rates as a chart.
+
+The same table is also printed. With one training run per combination, the confidence interval is the Wilson interval over the trials. With `seeds`, it is a t-interval over the runs' success rates, because training runs usually differ more than episodes do.
 
 From Python:
 
@@ -406,6 +512,7 @@ env = make_env(cfg, variant="tactile")
 train(cfg, variant="tactile")
 ```
 
+<!-- docs:custom-sensors -->
 ## Adding your own sensor
 
 A simulated sensor is two independent parts, and you can supply either or both:
@@ -477,6 +584,7 @@ my_sensor = "my_package.sensors:MySensor"
 
 Then check it: `python -m tactip_mujoco_gym describe TacArm-peg --sensor-xml my_sensor.xml --sensors '{"mine": "my_package.sensors:MySensor"}'`, `check_envs.py` with `--sensor-xml`, and a short training run with `--steps`.
 
+<!-- docs:training -->
 ## Training
 
 `RL_BASE.py` wraps Stable-Baselines3; the config files and the scripts in `examples/RL tasks/` both use it.
@@ -489,6 +597,8 @@ Then check it: `python -m tactip_mujoco_gym describe TacArm-peg --sensor-xml my_
 | `examples/RL tasks/quadruped_walk.py`, `humanoid_pick.py` | The quadruped and humanoid, with their own PPO settings (the humanoid adds a scripted-demo warm start) |
 | `src/tactip_mujoco_gym/check_envs.py`, `check_quadruped.py`, `check_humanoid.py` | Checks each task before training (see below) |
 | `examples/RL tasks/collect_dataset.py`, `train_encoders.py`, `visuotactile_train.py` | The visuo-tactile pipeline (see below) |
+| `configs/sensing_trials.yaml` | The sensing comparison: every task on the TacTip, vision and privileged information, 20 trials per policy (see [Experiment configs](#many-tasks-repeated-runs-and-saved-results)) |
+| `configs/rig_sensors.yaml` | The built-in sensors compared on texture identification on the rig (TacTip, PressTip, GelSight, depth TacTip, whiskers, and the plate force alone), 20 trials per policy |
 
 ```python
 from tactip_mujoco_gym.RL_BASE import run, evaluate, visualise
@@ -537,6 +647,7 @@ Success rate over the last 100 training episodes, with PPO:
 
 The first version of the incline task stayed at 3 to 5% success over a million training steps. These runs used a stand-in arm (a Unitree Z1 with a simplified 37-marker TacTip) and a minimal PPO implementation with the same normalisation and loss, so exact numbers on the full TacTip model will differ.
 
+<!-- docs:visuotactile -->
 ## Visuo-tactile pipeline
 
 Learning from camera images and tactile markers with RL alone is slow: on peg, the tactile-only policy needed several times more steps than the privileged one. The pipeline uses the simulator's privileged state as free labels to pretrain the encoders first, then trains the policy on top of them.
@@ -607,6 +718,7 @@ Notes:
 - SB3's PPO policies re-initialise every layer of the feature extractor after building it, which would erase pretrained weights. `VisuoTactilePolicy` loads them again afterwards. With SAC the encoders are passed through `policy_kwargs`, because SAC does not re-initialise them.
 - Collect the dataset with the same sensor hardware, readout settings, camera, image size and `VISION_MODE` you train the policy with. A mismatch raises an error when the encoders are loaded.
 
+<!-- docs:taxels -->
 ## Event-based tactile layer (taxels)
 
 On top of the TacTip, any object or plane in a scene can be covered in a dense grid of touch sensors, called taxels. Each taxel reports the normal force on its patch of surface. These can be read as raw forces or as **events**, which only fire when a taxel's force changes, like a neuromorphic or event-camera sensor. A steady load, such as an object resting on the platform, produces no events.
@@ -667,6 +779,7 @@ Touch sensors give normal force only (no shear), so the layer produces a pressur
 
 The taxel sites are in site group 4, which the viewer hides by default. In the MuJoCo viewer, press **Shift + 4**, or tick group **4** under *Site groups* in the Rendering panel. From Python, set `viewer.opt.sitegroup[4] = 1`.
 
+<!-- docs:arm-tasks -->
 ## Arm tasks in detail
 
 Every arm task builds on a shared `RobotArmEnv` base class, which owns the arm, the controller, the sensor mounting, the observation inputs and the reset logic. Each task supplies its own scene, task state, reward and success / failure rule.
@@ -768,12 +881,14 @@ Low friction means the ball rolls back down as soon as the push stops, so the ag
 - **Fail:** -10 if the ball rolls off the bottom, goes more than 10 cm sideways, or pops off the surface
 - **Evaluation:** fix the friction with `env.reset(options={"friction": 0.0})`
 
+<!-- docs:quadruped-humanoid -->
 ## Quadruped and humanoid
 
 **`TacQuad-walk`** puts a sensor on every foot of a Unitree Go2 (MuJoCo Menagerie) and teaches it to follow velocity commands over an 8 × 8 grid of 2 m tiles. Every reset draws, per tile, a friction, a softness and a damping ratio, and decides whether the tile is flat or rough; `terrain_level` (or the curriculum) scales how extreme they get. Tile colour shows the feel: blue = slippery, red-brown = grippy, paler = softer. The model is built in code each time (`go2.xml` is never edited), with the foot spheres replaced by prefixed copies of the sensor. A skin tuned for finger pressure bottoms out under a 15 kg robot, so `sensor_stiffness` defaults to 10; `check_quadruped.py` reports how much of the marker travel standing uses. The reward follows legged_gym (velocity tracking, posture, smoothness, air time, slip). `feet="proxy"` is about 6 times faster than TacTip feet: train a privileged teacher on it. `python -m tactip_mujoco_gym.envs.tactip_quadruped --view` shows the robot; `--save go2_tactip.xml` writes it as a standalone MJCF.
 
 **`TacHumanoidPick`** uses a Rainbow Robotics RB-Y1 whose two hands are sensors, mounted like palms so that the forearms come down from above with the sensors facing each other. It picks up one of ten objects (five soft ones that dent where pressed, five rigid ones) by squeezing it between the hands, carries it to a target on the table and puts it down. Each episode randomises the object's stiffness, mass, friction, position and yaw; gripping too lightly lets heavy or slippery objects slide out, and squeezing too hard crushes soft ones. The `object` input is what a camera-based tracker would give; `privileged` adds what touch has to work out (stiffness, mass, friction, squash, grip force). `ScriptedPicker` in `tactip_humanoid.py` solves the task from the simulator's state, for checks, demos and the warm start in `humanoid_pick.py`.
 
+<!-- docs:new-robots -->
 ## Surface following, the rig and the gripper
 
 **`TacArm-surface`** slides the arm's sensor along a 30 cm strip while keeping it pressed in by the same depth and, with `follow_normal=True`, square to the surface. The strip is a heightfield redrawn every episode. The tip moves along the strip by itself, and the policy controls depth and pitch. `wave` sets the profile:
@@ -826,6 +941,7 @@ Training scripts in `examples/RL tasks/`:
 
 Each task also has a config in `configs/`.
 
+<!-- docs:tests -->
 ## Tests
 
 ```bash
@@ -839,7 +955,9 @@ pytest                    # everything that can run on this machine
 - `tests/test_experiment.py`: every config in `configs/` resolves, plus the CLI
 - `tests/test_textures.py`: the dataset textures against the generator's equations, STL blocks, wave surfaces (no simulation)
 - `tests/test_new_robots.py`: surface following (with the scripted follower), the rig (pressing, answering, tilt, STL blocks, `press_grid`, another sensor) and the gripper (with the scripted picker)
+- `tests/test_new_sensors.py`: the PressTip, GelSight, depth TacTip and whiskers. Each one alone, pressed on the rig, on the gripper and the arm, and the sensor viewer
 
+<!-- docs:training-tips -->
 ## Training tips
 
 - **Privileged first.** Train with the privileged input to confirm the task and reward work, then move to tactile and vision.
@@ -853,6 +971,7 @@ pytest                    # everything that can run on this machine
 - **Evaluation.** Always evaluate with the saved `VecNormalize` statistics. `evaluate()` and `visualise()` do this for you.
 - **Time limits** are reported as `truncated`, not `terminated`, so the value function bootstraps correctly.
 
+<!-- docs:own-task -->
 ## Adding your own task
 
 A new arm task needs a MuJoCo scene file and a class that inherits from `RobotArmEnv`. The base class handles the controller, the sensor mounting and readouts, the observation inputs and formats, taxel events, the success and failure bonuses and the episode length. The task fills in these hooks:
@@ -869,6 +988,7 @@ Then add it to `TASKS` in `src/tactip_mujoco_gym/envs/__init__.py` (Gym id, entr
 
 A new robot subclasses `TactileGymEnv` the way `TacQuadruped`, `TacHumanoidPick` and `TacRig` (the smallest) do: build the model (attaching the sensor with `sensor_tools.attach_sensor` at each mount), set `self.sensor_mounts`, call `self._setup_sensors(sensors)` and `self._calibrate_sensors(...)`, put `self._sensor_obs()` into `_obs_parts()`, call `self._reset_sensors()` at the end of `reset()` and `self._step_sensors()` after the physics in `step()`, and step the physics with `self._mj_step(n)`. Every readout then works on it unchanged. A task that rewrites heightfields at reset (as the rig and `TacArm-surface` do) also takes `HeightfieldMixin` from `envs/base.py`, so every camera sees the new surface.
 
+<!-- docs:layout -->
 ## Project layout
 
 ```
@@ -876,23 +996,31 @@ configs/                       experiment configs (python -m tactip_mujoco_gym t
 examples/
   RL tasks/                    training scripts per task, visuo-tactile pipeline
   custom_sensor/               a custom sensor: rigid_pad.xml (hardware) + pad_contact.py (readout)
-  demos/                       viewers for the robots
+  demos/                       boot_gyms.py (boot / watch every task), view_sensors.py (live
+                               sensor readings), viewers for the robots
 src/tactip_mujoco_gym/
   envs/                        the tasks: base.py (inputs, readouts, formats), robot_arm.py,
                                surface_follow.py, tactip_quadruped.py, tactip_humanoid.py,
                                tactip_gripper.py, tactile_rig.py, random_gym.py;
                                __init__.py is the task catalogue
   sensors/                     readouts (base.py: Sensor, registry; tactip.py, camera.py,
-                               taxels.py) and sensor hardware (models.py)
+                               taxels.py, depth.py, presstip.py, whiskers.py) and sensor
+                               hardware (models.py: the registry; hardware.py: the PressTip,
+                               GelSight, depth TacTip and whiskers)
   sensor_tools.py              extract / inspect / attach sensor models, scene surgery
   textures.py                  the tactile dataset's textures, wave surfaces, heightfields
   experiment.py, __main__.py   configs and the command line
+  results.py                   saved trials: per-episode CSV, summary with 95% CIs, chart
   RL_BASE.py, vt_encoders.py   training, evaluation, fusion encoders
   check_envs.py, check_quadruped.py, check_humanoid.py
   assets/                      scenes, robots, the TacTip, taxel grids
 tests/                         pytest suite
+docs/                          documentation: Sphinx + MyST pages that include sections of this
+                               README, and the API reference; Read the Docs builds it from
+                               .readthedocs.yaml (locally: sphinx-build -b html docs docs/_build/html)
 ```
 
+<!-- docs:links -->
 ## Links
 
 - Project page: <a href="https://shepai.github.io">shepai.github.io</a>

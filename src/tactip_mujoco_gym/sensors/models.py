@@ -20,8 +20,16 @@ The tip is found, in order of preference, from:
     2. TacTip-style marker sites (s_c*): a dome is fitted to them
 so a sensor without markers needs the "sensor_tip" site.
 
-    register_sensor_model("my_gelsight", "path/to/gelsight.xml")
+    register_sensor_model("my_gelsight", "path/to/gelsight.xml",
+                          readouts={"tactile_image": "contact_depth"})
     gym.make("TacArm-peg", sensor_xml="my_gelsight")
+
+`readouts` are the inputs the hardware brings when it is used by name: they replace the
+robot's defaults for those keys, and sensors={...} still changes them (a dict without "type"
+tweaks them: sensors={"tactile_image": {"mode": "depth"}}).
+
+Built in: "tactip" (the default), and from sensors/hardware.py "presstip", "gelsight",
+"tactip_depth" and "whiskers" (`python -m tactip_mujoco_gym list` shows them).
 
 "tactip" is the default: assets/sensor/tactip.xml if present. Otherwise the TacTip is
 extracted from assets/tactip_arm.xml, written to that file (if it loads back into the same
@@ -43,13 +51,22 @@ def _asset(*parts):
     return str(files("tactip_mujoco_gym").joinpath(*parts))
 
 
-def register_sensor_model(name, source, description=""):
-    """source: path to a standalone sensor MJCF, or a callable returning an MjSpec / path."""
-    _MODELS[name] = (source, description)
+def register_sensor_model(name, source, description="", readouts=None):
+    """source: path to a standalone sensor MJCF, or a callable returning an MjSpec / path.
+    readouts: {input key: readout spec} the hardware brings when used by name, e.g.
+    {"tactile": "presstip"} (see the module docstring)."""
+    _MODELS[name] = (source, description, dict(readouts or {}))
 
 
 def list_sensor_models():
-    return {k: d for k, (_, d) in sorted(_MODELS.items())}
+    return {k: d for k, (_, d, _) in sorted(_MODELS.items())}
+
+
+def sensor_model_readouts(model):
+    """The readouts registered with a sensor model ({} for files, MjSpecs and unknown names)."""
+    if isinstance(model, str) and model in _MODELS:
+        return {k: (dict(v) if isinstance(v, dict) else v) for k, v in _MODELS[model][2].items()}
+    return {}
 
 
 def default_tactip(source=("assets", "tactip_arm.xml"), root="auto",
@@ -132,6 +149,16 @@ def _write_standalone(spec, src, root, path):
 
 register_sensor_model("tactip", default_tactip,
                       "the TacTip soft-body sensor (71 markers, in-sensor camera)")
+
+
+def _register_built_in():
+    from . import hardware
+    for name in hardware.BUILDERS:
+        build = getattr(hardware, name if name != "whiskers" else "whisker_array")
+        register_sensor_model(name, build, hardware.DESCRIPTIONS[name], hardware.READOUTS[name])
+
+
+_register_built_in()
 
 
 def resolve_sensor_model(model=None, **default_kwargs):

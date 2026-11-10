@@ -5,6 +5,9 @@ classifier on the recordings - the paper's protocol, with any simulated sensor.
 
     python "examples/RL tasks/rig_texture_dataset.py"                       # TacTip markers
     python "examples/RL tasks/rig_texture_dataset.py" --readout tactile_image
+    python "examples/RL tasks/rig_texture_dataset.py" --sensor-xml presstip           # pads, piezo, accel
+    python "examples/RL tasks/rig_texture_dataset.py" --sensor-xml gelsight --readout tactile_image
+    python "examples/RL tasks/rig_texture_dataset.py" --sensor-xml tactip_depth       # contact depth grid
     python "examples/RL tasks/rig_texture_dataset.py" --sensor-xml my_sensor.xml --readout contact \\
         --sensors '{"contact": "examples.custom_sensor.pad_contact:PadContact"}'
     python "examples/RL tasks/rig_texture_dataset.py" --print-blur 0.2 --print-noise 0.03

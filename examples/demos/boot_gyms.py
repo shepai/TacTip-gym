@@ -9,12 +9,18 @@ actions), and print what it offers. With --view, watch one in the MuJoCo viewer;
     python examples/demos/boot_gyms.py TacGripper-pick --video gripper.mp4 --seconds 15
     python examples/demos/boot_gyms.py TacArm-surface --view --kwargs '{"wave": "chirp", "texture": "patches"}'
     python examples/demos/boot_gyms.py TacRig-texture --obs tactile+force --policy random
+    python examples/demos/boot_gyms.py TacRig-v0 --view --sensor-xml examples/custom_sensor/rigid_pad.xml
+    python examples/demos/boot_gyms.py TacRig-v0 --view --sensor-xml whiskers
+
+Built-in sensors for --sensor-xml: tactip (the default), presstip, gelsight, tactip_depth and
+whiskers. To watch what the sensors read as well, use view_sensors.py.
 
 Scripted policies (they read the simulator's state, so they work with any --obs):
     arm tasks          check_envs.py's controllers (TacArm-surface: depth + pitch follower)
     humanoid, gripper  ScriptedPicker: square up, squeeze, lift, carry, put down
-    rig                press to 1.9 N, slide 5 mm, lift; TacRig-texture then answers (with the
-                       true texture: it shows the mechanics, it isn't a classifier)
+    rig                press to 1.9 N (or as low as it goes), slide 5 mm, lift; TacRig-texture
+                       then answers (with the true texture: it shows the mechanics, it isn't
+                       a classifier)
     quadruped          stand still (zero action)
 Tasks whose robot files aren't in assets/ (Z1 meshes, Go2, RB-Y1) are reported as missing.
 """
@@ -50,7 +56,7 @@ class RigScript:
         f = r.plate_force
         if self.phase == "down":
             a[2] = -1.0 if f < 0.05 else -0.25
-            if f >= self.FORCE:
+            if f >= self.FORCE or r._cmd[2] <= r._lo[2] + 1e-4:     # (whiskers: as low as it goes)
                 self.phase, self.t = "slide", 0
         elif self.phase == "slide":                    # 0.1 mm per step, force held by z
             a[0] = 0.25
@@ -66,34 +72,7 @@ class RigScript:
             a[r._decide_index + 1 + r.texture_index] = 1.0
         return a
 
-def gif(task, obs, kwargs, policy, path, seconds):
-    import imageio.v2 as imageio
 
-    env = make(task, obs, kwargs)
-    raw = env.unwrapped
-    env.reset(seed=0)
-
-    act = make_policy(task, env, policy)
-    dt = env_dt(raw)
-    frames = []
-
-    for _ in range(int(seconds / dt)):
-        _, _, term, trunc, _ = env.step(act())
-        frames.append(raw.render())
-
-        if term or trunc:
-            env.reset()
-
-    env.close()
-
-    imageio.mimsave(
-        path,
-        frames,
-        duration=dt,
-        loop=0
-    )
-
-    print(f"saved {len(frames)} frames to {path}")
 def make_policy(task, env, kind):
     """A function of no arguments returning the next action."""
     raw = env.unwrapped
@@ -230,22 +209,26 @@ def main():
     ap.add_argument("--policy", default="scripted", choices=("scripted", "random", "hold"))
     ap.add_argument("--obs", default=None, help='inputs, e.g. "tactile" or "tactile+force" (default: the task\'s)')
     ap.add_argument("--kwargs", default="{}", help="task options as JSON")
+    ap.add_argument("--sensor-xml", default=None, help="sensor hardware: a registered name or an MJCF file")
+    ap.add_argument("--sensor-stiffness", type=float, default=None, help="skin stiffness multiplier")
     ap.add_argument("--steps", type=int, default=150, help="steps per task when booting")
     ap.add_argument("--view", action="store_true", help="watch the (first) task in the viewer")
     ap.add_argument("--video", default=None, help="record the (first) task to this .mp4")
     ap.add_argument("--seconds", type=float, default=10.0)
-    ap.add_argument("--gif", default=None, help="record the (first) task to this .gif")
     ap.add_argument("-v", "--verbose", action="store_true", help="inputs, shapes, tracebacks")
     a = ap.parse_args()
     tasks = a.tasks or list(TASKS)
     kwargs = json.loads(a.kwargs)
+    if a.sensor_xml is not None:
+        kwargs["sensor_xml"] = a.sensor_xml
+    if a.sensor_stiffness is not None:
+        kwargs["sensor_stiffness"] = a.sensor_stiffness
     if a.view:
         view(tasks[0], a.obs, kwargs, a.policy)
     elif a.video:
         video(tasks[0], a.obs, kwargs, a.policy, a.video, a.seconds)
-    elif a.gif:
-        gif(tasks[0], a.obs, kwargs, a.policy, a.gif, a.seconds)
     else:
+        print(f"tactip_mujoco_gym from {tactip_mujoco_gym.__file__}")
         boot(tasks, a.obs, kwargs, a.policy, a.steps, a.verbose)
 
 

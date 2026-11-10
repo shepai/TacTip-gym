@@ -1,0 +1,49 @@
+# The sensors compared on one task: identify the dataset block on the Cartesian rig with the
+# TacTip, the PressTip, a GelSight, the TacTip read as depth images (Tactile Gym 2.0) and the
+# whiskers, each with the rig's plate force, and the plate force alone as the baseline. Every
+# policy is tested on the same 20 trials.
+#
+#   python -m tactip_mujoco_gym train configs/rig_sensors.yaml --dry-run          # the plan
+#   python -m tactip_mujoco_gym train configs/rig_sensors.yaml --skip-trained
+#   python -m tactip_mujoco_gym train configs/rig_sensors.yaml --variant presstip whiskers
+#   python -m tactip_mujoco_gym evaluate configs/rig_sensors.yaml
+#   python -m tactip_mujoco_gym summary configs/rig_sensors.yaml                  # table + chart
+#
+# Watch what each one feels first:
+#   python examples/demos/view_sensors.py TacRig-texture --sensor-xml gelsight
+name: rig_sensors
+description: TacRig-texture with each built-in sensor (and the plate force alone); 20 trials per policy
+env: TacRig-texture
+train:
+  steps: 2000000
+  n_envs: 8
+evaluate:
+  episodes: 20
+  seed: 100000                     # trial k of every policy is reset(seed=100000 + k)
+  deterministic: true
+
+variants:
+  tactip:                          # the TacTip's markers
+    obs_modes: [tactile, force]
+  tactip_image:                    # the camera inside the TacTip
+    obs_modes: [tactile_image, force]
+    obs_format: dict
+  presstip:                        # 15 pads, piezo, accelerometer
+    sensor_xml: presstip
+    obs_modes: [tactile, force]
+  gelsight:                        # the GelSight image, through a CNN
+    sensor_xml: gelsight
+    obs_modes: [tactile_image, force]
+    obs_format: dict
+  gelsight_map:                    # its contact depth on a 16 x 12 grid, through an MLP
+    sensor_xml: gelsight
+    obs_modes: [tactile, force]
+  tactip_depth:                    # the TacTip as a contact depth image
+    sensor_xml: tactip_depth
+    obs_modes: [tactile_image, force]
+    obs_format: dict
+  whiskers:                        # bend, contact and vibration per whisker
+    sensor_xml: whiskers
+    obs_modes: [tactile, force]
+  force_only:                      # the plate force alone: what touch adds over it
+    obs_modes: [force]

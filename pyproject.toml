@@ -25,6 +25,7 @@ train = [
     "tqdm",                        # progress bar in run()
     "rich",
     "pyyaml",                      # YAML experiment configs (JSON works without it)
+    "matplotlib",                  # results charts, examples/demos/view_sensors.py
 ]
 test = [
     "pytest",

@@ -50,7 +50,8 @@ from gymnasium import spaces
 import mujoco
 from importlib.resources import files
 
-from tactip_mujoco_gym.sensors import Camera, SensorUnavailable, TacTipMarkers, make_sensor
+from tactip_mujoco_gym.sensors import (Camera, SensorUnavailable, TacTipMarkers, make_sensor,
+                                       sensor_model_readouts)
 
 OBS_MODES = ("vision", "tactile", "privileged")          # the original three (kept for imports)
 DEFAULT_OBS_MODES = {"vision": False, "tactile": False, "privileged": True}
@@ -146,13 +147,15 @@ class TactileGymEnv(gym.Env):
         self._legacy_camera = None
 
     def _setup_sensors(self, sensors=None):
-        """Build the readouts (DEFAULT_SENSORS, changed by `sensors`) and bind them to the
+        """Build the readouts (DEFAULT_SENSORS, then those the sensor hardware brings when it
+        is used by name, e.g. sensor_xml="whiskers", then `sensors`) and bind them to the
         model. Call once the model is compiled and self.sensor_mounts is set."""
         for s in getattr(self, "sensors", {}).values():
             s.close()
         self.sensors = {}
         self._init_sensor_state()
         specs = dict(self.DEFAULT_SENSORS)
+        specs.update(sensor_model_readouts(getattr(self, "sensor_xml", None)))
         if isinstance(sensors, (list, tuple)):              # [spec, ...]: keys from the readouts
             built = [make_sensor(s) for s in sensors]
             sensors = {}
