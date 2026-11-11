@@ -109,7 +109,7 @@ def _resolve_activation(kw):
 
 # ----------------------------------------------------------------------------- envs
 ENCODED_KEYS = ("tactile", "vision")      # default: normalised by their own encoders, not
-                                          # VecNormalize (envs report theirs: obs_modalities)
+                                          # VecNormalize (envs report theirs: obs_modalities)[cite: 1]
 
 
 def policy_for(obs_space, own_encoders=False, encoded_keys=None):
@@ -303,7 +303,44 @@ class TerrainLogger(BaseCallback):
         return True
 
 
-GROUNDS = {                            # TacQuad-walk evaluation grounds (every tile the same)
+class ProgressSaveCallback(BaseCallback):
+    """Save a policy snapshot and its VecNormalize statistics every N timesteps."""
+
+    def __init__(self, save_dir, model_name, save_every, verbose=1):
+        super().__init__(verbose)
+        if save_every <= 0:
+            raise ValueError("save_every must be a positive number")
+        self.save_dir = save_dir
+        self.model_name = model_name
+        self.save_every = int(save_every)
+        self.next_save = self.save_every
+
+    def _on_training_start(self):
+        os.makedirs(self.save_dir, exist_ok=True)
+
+    def _on_step(self):
+        # num_timesteps counts transitions across all vectorised environments.
+        if self.num_timesteps >= self.next_save:
+            self._save()
+            # Catch up safely if a vectorised step crosses more than one interval.
+            while self.next_save <= self.num_timesteps:
+                self.next_save += self.save_every
+        return True
+
+    def _save(self):
+        path = os.path.join(
+            self.save_dir,
+            f"{self.model_name}_{self.num_timesteps}",
+        )
+        self.model.save(path)
+        vec_env = self.model.get_vec_normalize_env()
+        if vec_env is not None:
+            vec_env.save(path + "_vecnormalize.pkl")
+        if self.verbose:
+            print(f"Saved training progress: {path}.zip")
+
+
+GROUNDS = {                            # TacQuad-walk evaluation grounds (every tile the same)[cite: 1]
     "hard":   ({"friction": 1.0, "softness": 0.0, "dampratio": 1.0}, 0.0),
     "ice":    ({"friction": 0.15, "softness": 0.0, "dampratio": 1.0}, 0.0),
     "soft":   ({"friction": 0.8, "softness": 1.0, "dampratio": 1.0}, 0.0),
@@ -342,7 +379,8 @@ def evaluate_grounds(model_name, n_episodes=5, command=(0.6, 0.0, 0.0), seconds=
 def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_video=True,
         video_every_percent=5, video_seconds=7, obs_modes=None, privileged=None,
         obs_format="flat", algo="PPO", seed=0, env_kwargs=None, algo_kwargs=None,
-        checkpoint_every=500_000, encoders=None, freeze_encoders=True, callbacks=None):
+        checkpoint_every=500_000, log_every=100_000, encoders=None,
+        freeze_encoders=True, callbacks=None):
     """
     obs_modes  : {"vision": bool, "tactile": bool, "privileged": bool}; missing keys = False.
                  Proprioception is always included. Default: privileged only.
@@ -426,6 +464,12 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     callbacks = [CheckpointCallback(save_freq=max(checkpoint_every // n_envs, 1),
                                     save_path=os.path.join(log_dir, "checkpoints"),
                                     name_prefix=model_name, save_vecnormalize=True)]
+    if log_every is not None and log_every > 0:
+        callbacks.append(ProgressSaveCallback(
+            save_dir=os.path.join(log_dir, "progress"),
+            model_name=model_name,
+            save_every=log_every,
+        ))
     callbacks += list(extra_callbacks or [])
     if record_video:
         callbacks.append(TrainingVideoCallback(
