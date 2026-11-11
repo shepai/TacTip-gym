@@ -28,7 +28,7 @@ Keys (all optional except env):
     policy         {encoders: null | scratch | <checkpoint>, freeze_encoders: true}
     train          {algo: PPO, steps: 3000000, n_envs: 8, seed: 0, algo_kwargs: {...},
                     record_video: true, video_every_percent: 5, video_seconds: 7,
-                    checkpoint_every: 500000, seeds: N}
+                    checkpoint_every: 500000, log_every: 100000, seeds: N}
                    seeds: N independent training runs (seeds seed .. seed+N-1, names end
                    _s<seed>); algo_kwargs.policy_kwargs.activation_fn may be a torch.nn
                    name ("ELU")
@@ -61,8 +61,11 @@ import traceback
 ENV_KEYS = ("sensor_xml", "sensor_stiffness", "sensors", "overrides")
 TOP_KEYS = {"name", "description", "env", "env_kwargs", *ENV_KEYS, "obs_modes", "obs_format",
             "policy", "train", "evaluate", "imports", "variants", "tasks"}
-TRAIN_KEYS = {"algo", "steps", "n_envs", "seed", "algo_kwargs", "record_video",
-              "video_every_percent", "video_seconds", "checkpoint_every", "seeds"}
+TRAIN_KEYS = {
+    "algo", "steps", "n_envs", "seed", "algo_kwargs",
+    "record_video", "video_every_percent", "video_seconds",
+    "checkpoint_every", "seeds", "log_every"
+}
 POLICY_KEYS = {"encoders", "freeze_encoders"}
 EVAL_KEYS = {"episodes", "deterministic", "seed"}
 
@@ -296,7 +299,13 @@ def run_arguments(cfg, variant=None, name=None):
                   n_envs=train.get("n_envs"), algo_kwargs=train.get("algo_kwargs"),
                   encoders=_path(cfg, policy.get("encoders")),
                   freeze_encoders=policy.get("freeze_encoders", True))
-    for k in ("record_video", "video_every_percent", "video_seconds", "checkpoint_every"):
+    for k in (
+        "record_video",
+        "video_every_percent",
+        "video_seconds",
+        "checkpoint_every",
+        "log_every",
+    ):
         if k in train:
             run_kw[k] = train[k]
     return (cfg["env"], name, name, int(train.get("steps", 1_000_000))), run_kw
