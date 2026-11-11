@@ -461,15 +461,9 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     model = ALGOS[algo](policy, env, verbose=1, seed=seed, device=device, **kw)
     model.set_logger(configure(log_dir, ["stdout", "csv"]))
 
-    callbacks = [CheckpointCallback(save_freq=max(checkpoint_every // n_envs, 1),
+    callbacks = [CheckpointCallback(save_freq=max(log_every, 1),
                                     save_path=os.path.join(log_dir, "checkpoints"),
                                     name_prefix=model_name, save_vecnormalize=True)]
-    if log_every is not None and log_every > 0:
-        callbacks.append(ProgressSaveCallback(
-            save_dir=os.path.join(log_dir, "progress"),
-            model_name=model_name,
-            save_every=log_every,
-        ))
     callbacks += list(extra_callbacks or [])
     if record_video:
         callbacks.append(TrainingVideoCallback(
