@@ -15,29 +15,28 @@
 # rate with its 95% CI per task and condition) and success.png. Models are
 # models/sensing_trials_<task>_<condition>.zip.
 name: sensing_trials
-description: every task trained on the TacTip, on vision and on privileged information; each policy tested on the same 20 trials
+description: every task trained on the TacTip, on vision and on privileged information; each policy tested on the same 20 trials.
 
 train:
   record_video: false
-  # seeds: 5                       # independent training runs per task and condition (names
-  #                                # end _s0 .. _s4); the CI then spans the runs, not the trials
+  log_every: 500
+  seeds: 20
+
 evaluate:
-  episodes: 20                     # the trials
-  seed: 100000                     # trial k of every policy is reset(seed=100000 + k)
+  episodes: 20
+  seed: 100000
   deterministic: true
 
-variants:                          # the conditions; proprioception is always included
+variants:
   tactip:
-    obs_modes: [tactile]           # the TacTip's markers
+    obs_modes: [tactile]
   vision:
-    obs_modes: [vision]            # the task's camera image, through a CNN
+    obs_modes: [vision]
     obs_format: dict
   privileged:
-    obs_modes: [privileged]        # the simulator's true task state: an upper bound
-  # tactip_object:                 # touch + where the object is: on the pick tasks touch alone
-  #   obs_modes: [tactile, object] # can't find the object (skipped on tasks without "object")
+    obs_modes: [privileged]
 
-tasks:                             # each task's usual training budget and settings
+tasks:
   TacArm-peg:
     train: {steps: 3000000}
   TacArm-shape:
@@ -57,7 +56,7 @@ tasks:                             # each task's usual training budget and setti
       steps: 30000000
       n_envs: 16
       checkpoint_every: 2000000
-      algo_kwargs:                 # locomotion settings (quadruped_walk.py)
+      algo_kwargs:
         learning_rate: 0.0003
         n_steps: 1024
         batch_size: 4096
@@ -69,11 +68,10 @@ tasks:                             # each task's usual training budget and setti
         vf_coef: 1.0
         max_grad_norm: 1.0
         target_kl: 0.02
-        policy_kwargs: {net_arch: {pi: [512, 256, 128], vf: [512, 256, 128]},
-                        activation_fn: ELU, log_std_init: -0.5}
+        policy_kwargs: {net_arch: {pi: [512, 256, 128], vf: [512, 256, 128]}, activation_fn: ELU, log_std_init: -0.5}
   TacGripper-pick:
     env_kwargs: {sensor_stiffness: 10.0}
-    train: &pick                   # pick settings (humanoid_pick.py), plain PPO: no demos
+    train: &pick
       steps: 20000000
       n_envs: 16
       checkpoint_every: 2000000
@@ -89,8 +87,7 @@ tasks:                             # each task's usual training budget and setti
         vf_coef: 0.5
         max_grad_norm: 0.5
         target_kl: 0.02
-        policy_kwargs: {net_arch: {pi: [512, 256, 128], vf: [512, 256, 128]},
-                        activation_fn: ELU, log_std_init: -1.0}
+        policy_kwargs: {net_arch: {pi: [512, 256, 128], vf: [512, 256, 128]}, activation_fn: ELU, log_std_init: -1.0}
   TacHumanoid-pick:
     env_kwargs: {action_mode: bimanual, sensor_stiffness: 10.0}
     train: *pick
