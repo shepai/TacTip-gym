@@ -34,7 +34,7 @@ except Exception:                    # pragma: no cover
     pass
 import torch
 from stable_baselines3 import PPO, SAC
-from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback, LogEveryNTimesteps
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecNormalize
@@ -461,9 +461,13 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
     model = ALGOS[algo](policy, env, verbose=1, seed=seed, device=device, **kw)
     model.set_logger(configure(log_dir, ["stdout", "csv"]))
 
-    callbacks = [CheckpointCallback(save_freq=max(log_every, 1),
+    callbacks = [CheckpointCallback(save_freq=max(checkpoint_every // n_envs, 1),
                                     save_path=os.path.join(log_dir, "checkpoints"),
                                     name_prefix=model_name, save_vecnormalize=True)]
+    if log_every is not None and log_every > 0:
+        callbacks = [
+            LogEveryNTimesteps(n_steps=log_every),
+        ]
     callbacks += list(extra_callbacks or [])
     if record_video:
         callbacks.append(TrainingVideoCallback(
