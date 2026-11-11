@@ -954,7 +954,7 @@ pip install -e ".[real]"     # + OpenCV, pyserial, mpremote for the real rig
 python -m tactip_mujoco_gym.sim2real sim-capture --stiffness 0.5 1 2 4 --out-dir calib
 
 # 2. the same presses on the real rig, with a flat block in the holder (interactive)
-python -m tactip_mujoco_gym.sim2real real-capture --port COM19 --camera 1 \
+python -m tactip_mujoco_gym.sim2real real-capture --port /dev/ttyACM0     --camera 1 \
     --listener ".../Rig-controller/Code/Examples/Board Examples/listener_MP.py" \
     --rig-code ".../Rig-controller/Code" --measure-steps --out-dir calib
 
