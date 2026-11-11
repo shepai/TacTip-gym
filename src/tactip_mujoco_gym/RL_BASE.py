@@ -465,9 +465,9 @@ def run(env_name, model_name, log_name, total_timesteps, n_envs=None, record_vid
                                     save_path=os.path.join(log_dir, "checkpoints"),
                                     name_prefix=model_name, save_vecnormalize=True)]
     if log_every is not None and log_every > 0:
-        callbacks = [
+        callbacks.append(
             LogEveryNTimesteps(n_steps=log_every),
-        ]
+        )
     callbacks += list(extra_callbacks or [])
     if record_video:
         callbacks.append(TrainingVideoCallback(
