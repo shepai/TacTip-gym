@@ -80,6 +80,7 @@ flowchart LR
 - [Arm tasks in detail](#arm-tasks-in-detail)
 - [Quadruped and humanoid](#quadruped-and-humanoid)
 - [Surface following, the rig and the gripper](#surface-following-the-rig-and-the-gripper)
+- [Sim-to-real on the rig](#sim-to-real-on-the-rig)
 - [Tests](#tests)
 - [Training tips](#training-tips)
 - [Adding your own task](#adding-your-own-task)
@@ -941,6 +942,54 @@ Training scripts in `examples/RL tasks/`:
 
 Each task also has a config in `configs/`.
 
+<!-- docs:sim2real -->
+## Sim-to-real on the rig
+
+`tactip_mujoco_gym.sim2real` calibrates the real rig ([Rig-controller](https://github.com/shepai/Rig-controller), MicroPython variant) and its TacTip against `TacRig-v0`. What the real camera sees then comes out as the simulated TacTip's `"tactile"` input, so the same experiment runs on both rigs and a model trained in simulation can be tested on real presses.
+
+```bash
+pip install -e ".[real]"     # + OpenCV, pyserial, mpremote for the real rig
+
+# 1. the calibration presses in simulation, at a few skin stiffnesses (no hardware)
+python -m tactip_mujoco_gym.sim2real sim-capture --stiffness 0.5 1 2 4 --out-dir calib
+
+# 2. the same presses on the real rig, with a flat block in the holder (interactive)
+python -m tactip_mujoco_gym.sim2real real-capture --port COM19 --camera 1 \
+    --listener ".../Rig-controller/Code/Examples/Board Examples/listener_MP.py" \
+    --rig-code ".../Rig-controller/Code" --measure-steps --out-dir calib
+
+# 3. fit; writes calib/rig_calibration.json and prints held-out accuracy
+python -m tactip_mujoco_gym.sim2real fit --out-dir calib
+
+# 4. the same experiment on both, then compare
+python -m tactip_mujoco_gym.sim2real experiment --rig sim  --calibration calib/rig_calibration.json --out sim.npz
+python -m tactip_mujoco_gym.sim2real experiment --rig real --calibration calib/rig_calibration.json \
+    --port COM19 --camera 1 --listener ... --rig-code ... --out real.npz
+python -m tactip_mujoco_gym.sim2real compare sim.npz real.npz
+```
+
+Both rigs work in the same coordinates: x and y in mm from the block centre along the simulator's axes, and z in mm from the point of first contact. Contact is found the same way on both. The sensor is lowered in 0.05 mm steps and a hinge is fitted to how far the pins move, so no threshold has to agree between pixels and millimetres. The calibration protocol presses a flat block to 0.5–2 mm and slides each press 0.5 and 1 mm along ±x and ±y. A flat block dents the skin the same round shape wherever it is pressed, so the dent alone can't show which way the camera is turned. The slides can: while the skin sticks, the pins in contact stay with the block.
+
+The fit, in order:
+
+| Step | What | How |
+|------|------|-----|
+| layout | which real pin is which simulated marker; px → mm on the sensor | rotation / mirror search on the rest image, ICP, a degree-3 lens polynomial; among the symmetric rotations, the one whose pins move like the simulated markers in the slides |
+| skin | `sensor_stiffness` | the simulated stiffness whose markers move as far as the real pins |
+| markers | real pin motion → simulated marker displacement (3D) | per marker, linear in its own motion plus a few whole-field components (the camera can't see a pin move in or out; the shape of the whole field shows how deep the press is), shrunk towards a shared map; both chosen by cross-validation |
+| force | plate reading → N | linear, with `--plate` |
+
+At the start of each session the real rig takes a fresh rest image and matches it to the calibration's, so lighting changes and small camera shifts carry over. In code:
+
+```python
+from tactip_mujoco_gym.sim2real import RigCalibration, RealToSim
+calib = RigCalibration.load("calib/rig_calibration.json")
+to_sim = RealToSim(calib, real_rig.set_rest())
+obs = to_sim.observation(*real_rig.pins())          # same layout as the simulated "tactile"
+```
+
+Steps / mm and axis directions: `--measure-steps` moves each axis 1000 steps and asks how far the sensor moved relative to the block (negative if against the simulator's + axis; z + is up). Print a flat 29.3 × 30 × 7 mm block for the holder; the simulated one is the same size, so its top is level with the textured blocks' highest points and the contact height carries over when the block is changed. Moves go to the board in whole steps, at most 200 per command, because each MOVE must finish within mpremote's timeout.
+
 <!-- docs:tests -->
 ## Tests
 
@@ -956,6 +1005,7 @@ pytest                    # everything that can run on this machine
 - `tests/test_textures.py`: the dataset textures against the generator's equations, STL blocks, wave surfaces (no simulation)
 - `tests/test_new_robots.py`: surface following (with the scripted follower), the rig (pressing, answering, tilt, STL blocks, `press_grid`, another sensor) and the gripper (with the scripted picker)
 - `tests/test_new_sensors.py`: the PressTip, GelSight, depth TacTip and whiskers. Each one alone, pressed on the rig, on the gripper and the arm, and the sensor viewer
+- `tests/test_sim2real.py`: the rig calibration on a synthetic TacTip with known lens, mount and skin (layout, stiffness, maps, a new session), pin detection and tracking, contact finding, the real rig against a mock board and camera, and the simulated rig
 
 <!-- docs:training-tips -->
 ## Training tips
@@ -1009,6 +1059,9 @@ src/tactip_mujoco_gym/
                                GelSight, depth TacTip and whiskers)
   sensor_tools.py              extract / inspect / attach sensor models, scene surgery
   textures.py                  the tactile dataset's textures, wave surfaces, heightfields
+  sim2real/                    real rig + TacTip calibrated to TacRig: markers.py (pin
+                               detection), layout.py (pin matching, lens map), rigs.py (SimRig,
+                               RealRig, protocols), calibration.py (fit, RealToSim), __main__.py
   experiment.py, __main__.py   configs and the command line
   results.py                   saved trials: per-episode CSV, summary with 95% CIs, chart
   RL_BASE.py, vt_encoders.py   training, evaluation, fusion encoders
