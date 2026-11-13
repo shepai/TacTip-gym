@@ -29,6 +29,7 @@ map and the per-marker one.
 """
 import datetime
 import json
+import os
 
 import numpy as np
 
@@ -117,8 +118,19 @@ class RigCalibration:
 
     @classmethod
     def load(cls, path):
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                f"no {path}. The TacTip calibration comes from: sim-capture, real-capture, then "
+                "fit (which writes rig_calibration.json). pose_calibration.json, from "
+                "real-setup / pose-calibrate, only maps positions, not the sensor.")
         with open(path) as f:
             d = json.load(f)
+        if "points" in d and "real_rest" not in d:
+            raise ValueError(
+                f"{path} is a pose calibration (rig positions, from real-setup / pose-calibrate), "
+                "not a TacTip calibration. experiment needs rig_calibration.json: run "
+                "sim-capture, real-capture and fit first. (The pose calibration is what follow "
+                "and examples/sim2real/follow_demo.py use.)")
         if d.get("version", 0) > VERSION:
             raise ValueError(f"{path}: calibration version {d['version']} is newer than this code")
         c = cls()

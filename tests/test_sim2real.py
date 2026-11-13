@@ -360,14 +360,14 @@ def test_connect_controller_uses_installed_package(monkeypatch, tmp_path):
             seen.update(port=port, variant=variant, file=file)
     monkeypatch.setitem(sys.modules, "rig_controller", types.SimpleNamespace(Controller=Controller))
 
-    connect_controller("/dev/ttyACM0")
-    assert seen == dict(port="/dev/ttyACM0", variant="micropython", file="packaged/listener_MP.py")
+    connect_controller("COM19")
+    assert seen == dict(port="COM19", variant="micropython", file="packaged/listener_MP.py")
     mine = tmp_path / "listener_MP.py"
     mine.write_text("# board code")
-    connect_controller("/dev/ttyACM0", str(mine))
+    connect_controller("COM19", str(mine))
     assert seen["file"] == str(mine)
     with pytest.raises(FileNotFoundError, match="leave --listener out"):
-        connect_controller("/dev/ttyACM0", ".../Rig-controller/Code/Examples/Board Examples/listener_MP.py")
+        connect_controller("COM19", ".../Rig-controller/Code/Examples/Board Examples/listener_MP.py")
 
 
 def test_too_few_pins_is_an_error(tmp_path, monkeypatch):
@@ -394,3 +394,82 @@ def test_real_setup_opens_the_simulator(monkeypatch):
               "--out-dir", "calib"])
     assert got["out"] == os.path.join("calib", "pose_calibration.json")
     assert got["setup_out"] == os.path.join("calib", "rig_setup.json") and got["camera"] == 2
+
+
+def test_ctrl_c_asks_the_loop_to_finish():
+    """One Ctrl-C sets quit (save, home, close) rather than raising mid-frame."""
+    import signal
+    import types
+    from tactip_mujoco_gym.sim2real.teleop import _ctrl_c_quits
+    s = types.SimpleNamespace(quit=False)
+    with _ctrl_c_quits(s):
+        os.kill(os.getpid(), signal.SIGINT)
+        assert s.quit
+        with pytest.raises(KeyboardInterrupt):
+            os.kill(os.getpid(), signal.SIGINT)           # a second one forces it
+
+
+def test_helpful_errors(tmp_path):
+    from tactip_mujoco_gym.sim2real import PoseMap, connect_controller
+    pm = PoseMap()
+    pm.add([0, 0, 0], [-1900, -6400, -1750])
+    assert "x, y, z" in pm.needs()
+    path = pm.save(str(tmp_path / "pose_calibration.json"))
+    with pytest.raises(ValueError, match="pose calibration"):
+        RigCalibration.load(path)
+    with pytest.raises(FileNotFoundError, match="sim-capture, real-capture"):
+        RigCalibration.load(str(tmp_path / "rig_calibration.json"))
+    with pytest.raises(FileNotFoundError, match="no serial port /dev/tty/ACM0"):
+        connect_controller("/dev/tty/ACM0")
+
+
+def test_arrow_keys_on_every_opencv_backend():
+    from tactip_mujoco_gym.sim2real.teleop import cv_key, viewer_key
+    for codes in ((2490368, 2621440, 2555904, 2424832),             # Windows
+                  (65362, 65364, 65363, 65361),                     # GTK
+                  (0x01000013, 0x01000015, 0x01000014, 0x01000012),  # Qt (pip opencv on Linux)
+                  (63232, 63233, 63235, 63234)):                    # macOS
+        assert [cv_key(c) for c in codes] == ["up", "down", "right", "left"]
+    assert [viewer_key(c) for c in (265, 264, 262, 263, 266, 267)] == \
+        ["up", "down", "right", "left", "pgup", "pgdn"]
+    assert cv_key(ord("w")) == "up" and cv_key(ord("W")) == "up"
+
+
+@pytest.mark.parametrize("scale,dark", [(1, False), (4, False), (3, True)])
+def test_detector_tunes_itself_to_the_camera(scale, dark):
+    """Big pins (a high-resolution camera) and dark pins: the defaults miss them, the
+    auto-tune finds them all."""
+    from tactip_mujoco_gym.sim2real.markers import auto_tune
+    truth = Truth(mirror=False, fisheye=0.0, px_per_mm=14.0 * scale,
+                  centre=(320 * scale, 240 * scale))
+    xy = truth.camera(dome_layout(rings=6))
+    img = np.zeros((480 * scale, 640 * scale), np.uint8)
+    for x, y in xy:
+        cv2.circle(img, (int(x), int(y)), 4 * scale, 255, -1)
+    img = cv2.GaussianBlur(img, (0, 0), scale)
+    if dark:
+        img = 255 - img
+    det, n = auto_tune(img)
+    P = det(img)
+    d = np.linalg.norm(xy[:, None] - P[None], axis=-1).min(axis=1)
+    assert len(P) == len(xy) and d.max() < 1.5 * scale       # every pin, at its centre
+
+
+def test_rest_tunes_the_detector_when_it_finds_too_few(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    truth = Truth(mirror=False, fisheye=0.0, px_per_mm=56.0, centre=(1280, 960))
+    xy = truth.camera(dome_layout(rings=5))
+    img = np.zeros((1920, 2560), np.uint8)
+    for x, y in xy:
+        cv2.circle(img, (int(x), int(y)), 24, 255, -1)       # ~1800 px each
+
+    class BigCamera:
+        def read(self):
+            return True, img
+
+        def grab(self):
+            return True
+    rig = RealRig(MockBoard(), BigCamera(), steps_per_mm=(25, 25, 25), settle_s=0, flush=0)
+    assert len(MarkerDetector()(img)) < 20                  # the defaults miss big pins
+    rest = rig.set_rest(n_frames=2, verbose=False)
+    assert len(rest) == len(xy) and rig.detector_tuned

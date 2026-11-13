@@ -125,6 +125,18 @@ def _save_preview(rig, path):
     return path
 
 
+def _detector(a, out_dir):
+    """--detector if given, else the settings tuned in an earlier run (detector.json),
+    else the defaults (tuned automatically if they find too few pins)."""
+    if getattr(a, "detector", None):
+        return MarkerDetector(**json.loads(a.detector))
+    path = os.path.join(out_dir, "detector.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            return MarkerDetector(**json.load(f))
+    return MarkerDetector()
+
+
 def _setup_path(a, near=None):
     if getattr(a, "setup", None):
         return a.setup
@@ -151,6 +163,11 @@ def _real_start(rig, out_dir):
          "and go to the start pose, 10 mm above the block centre.")
     rig.reset()
     rest = rig.set_rest()
+    if rig.detector_tuned:
+        path = os.path.join(out_dir, "detector.json")
+        with open(path, "w") as f:
+            json.dump(rig.detector.to_dict(), f, indent=1)
+        print(f"    saved the tuned detector settings to {path} (used from now on)")
     p = _save_preview(rig, os.path.join(out_dir, "rest_pins.png"))
     if p:
         print(f"    detected pins drawn on {p}: check every pin is found once "
@@ -211,7 +228,7 @@ def cmd_real_setup(a):
         a.setup = None
         return cmd_pose_calibrate(a)
     os.makedirs(a.out_dir, exist_ok=True)
-    detector = MarkerDetector(**json.loads(a.detector)) if a.detector else MarkerDetector()
+    detector = _detector(a, a.out_dir)
     if a.steps_per_mm is None and not a.measure_steps:
         raise SystemExit("give --steps-per-mm X Y Z, or --measure-steps")
     c = connect_controller(a.port, a.listener, a.rig_code)
@@ -262,7 +279,7 @@ def cmd_real_setup(a):
 
 def cmd_real_capture(a):
     os.makedirs(a.out_dir, exist_ok=True)
-    detector = MarkerDetector(**json.loads(a.detector)) if a.detector else MarkerDetector()
+    detector = _detector(a, a.out_dir)
     rig = _make_real(a, detector, _setup_path(a))
     rest = _real_start(rig, a.out_dir)
     probes = _calib_probes(a)

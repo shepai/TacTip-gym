@@ -31,8 +31,10 @@ toggles, reset), so those are only read in the "real rig" window.
 
 On macOS the MuJoCo viewer needs `mjpython` instead of `python`.
 """
+import contextlib
 import os
 import queue
+import signal
 import threading
 import time
 
@@ -48,7 +50,11 @@ CV = {2490368: "up", 2621440: "down", 2555904: "right", 2424832: "left", 2162688
       2228224: "pgdn",
       65362: "up", 65364: "down", 65363: "right", 65361: "left", 65365: "pgup", 65366: "pgdn",
       63232: "up", 63233: "down", 63235: "right", 63234: "left", 63276: "pgup", 63277: "pgdn",
-      13: "enter", 10: "enter", 8: "undo", 127: "undo", 9: "tab", 27: "quit"}
+      13: "enter", 10: "enter", 8: "undo", 127: "undo", 9: "tab", 27: "quit",
+      # Qt (pip's opencv-python draws its windows with Qt on Linux)
+      0x01000013: "up", 0x01000015: "down", 0x01000014: "right", 0x01000012: "left",
+      0x01000016: "pgup", 0x01000017: "pgdn", 0x01000004: "enter", 0x01000005: "enter",
+      0x01000003: "undo", 0x01000001: "tab", 0x01000000: "quit"}
 CV_LETTERS = {"w": "up", "s": "down", "d": "right", "a": "left", "r": "pgup", "f": "pgdn",
               "g": "go", "n": "sim_to_real", "u": "undo", "h": "home", "z": "sim_reset",
               "q": "quit", "1": "size1", "2": "size2", "3": "size3", "4": "size4", "5": "size5"}
@@ -204,20 +210,29 @@ class _Session:
         self.mode = "real"
         self.size = 2
         self.msg = ""
+        self.last_key = "none yet: click a window, then press keys"
         self.quit = False
         self.sim_target = np.array(sim._raw())
 
     # ---- keys
     def on_viewer_key(self, code):
         name = viewer_key(code)
+        self.last_key = f"MuJoCo window: {name or f'key {code} (not used there)'}"
         if name:
             self.q.put(("viewer", name))
 
     def poll_window(self):
         import cv2
-        name = cv_key(cv2.waitKeyEx(1))
+        code = cv2.waitKeyEx(1)
+        if code is None or code < 0:
+            return
+        name = cv_key(code)
+        self.last_key = f"real rig window: {name or f'key code {code} (not recognised)'}"
         if name:
             self.q.put(("window", name))
+        else:
+            print(f"[teleop] key code {code} in the real rig window isn't one I know: "
+                  "tell me which key it was and I'll add it (w s a d r f always work there)")
 
     def say(self, text):
         self.msg = text
@@ -233,10 +248,17 @@ class _Session:
         return 1
 
     def move(self, who, axis, sign):
+        ax = "xyz"[axis]
         if who in ("sim", "both"):
             lo, hi = self.sim.limits_mm()
+            before = self.sim_target[axis]
             self.sim_target[axis] = np.clip(self.sim_target[axis] + sign * SIM_STEP_MM[self.size],
                                             lo[axis], hi[axis])
+            if self.sim_target[axis] == before:
+                self.say(f"sim {ax} is at the end of its travel ({lo[axis]:.0f}..{hi[axis]:.0f} mm)")
+            else:
+                self.msg = (f"sim {ax} {sign * SIM_STEP_MM[self.size]:+g} mm -> "
+                            f"{self.sim_target[axis]:+.2f} mm")
             if who == "both":
                 if self.fitted():
                     self.worker.set_target(self.pm.to_steps(self.sim_target))
@@ -244,6 +266,7 @@ class _Session:
                     self.say("both: no map yet (record poses first); moved the sim only")
         if who == "real":
             self.worker.nudge(axis, sign * self.real_dir(axis) * REAL_STEPS[self.size])
+            self.msg = f"real {ax} {sign * self.real_dir(axis) * REAL_STEPS[self.size]:+d} steps"
 
     def handle_common(self, src, name):
         """Moves and sizes; returns True if handled."""
@@ -303,8 +326,11 @@ class _Session:
         real = self.worker.pos
         tgt = self.worker.target
         moving = "" if self.worker.idle() else "  (moving)"
-        lines = [(f"keys move: {self.mode}  |  step: sim {SIM_STEP_MM[self.size]:g} mm, "
-                  f"real {REAL_STEPS[self.size]} steps", (255, 255, 255)),
+        lines = [(f"MuJoCo window keys move: {'both' if self.mode == 'both' else 'sim'}   "
+                  f"this window's keys move: {self.mode}  (Tab)", (255, 255, 255)),
+                 (f"step: sim {SIM_STEP_MM[self.size]:g} mm, real {REAL_STEPS[self.size]} steps  "
+                  "(1-5)", (255, 255, 255)),
+                 (f"last key: {self.last_key}", (180, 180, 180)),
                  (f"sim  x {sim[0]:+7.2f}  y {sim[1]:+7.2f}  z {sim[2]:+7.2f} mm", (120, 220, 255)),
                  (f"real x {real[0]:+6d}  y {real[1]:+6d}  z {real[2]:+6d} steps from home{moving}",
                   (120, 255, 120))]
@@ -328,6 +354,44 @@ class _Session:
         if not ok or frame is None:
             frame = np.zeros((360, 480, 3), np.uint8)
         cv2.imshow(WINDOW, _panel(frame, self.status(extra)))
+
+
+@contextlib.contextmanager
+def _ctrl_c_quits(session):
+    """Ctrl-C in the terminal asks the loop to finish (save, home, close the windows) instead
+    of tearing the program down mid-frame: an interrupt landing inside MuJoCo's or OpenCV's
+    window code can crash the process (a segmentation fault). A second Ctrl-C forces it."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    previous = signal.getsignal(signal.SIGINT)
+
+    def handler(sig, frame):
+        if session.quit:
+            signal.signal(signal.SIGINT, previous)
+            raise KeyboardInterrupt
+        session.quit = True
+        print("\n[teleop] Ctrl-C: saving and homing (Ctrl-C again to force-quit) ...")
+    signal.signal(signal.SIGINT, handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGINT, previous)
+
+
+def _finish(worker, home_on_exit, tag):
+    """Home the real rig (if asked) and stop its worker; Ctrl-C here just skips the homing."""
+    try:
+        if home_on_exit and worker.error is None:
+            print(f"[{tag}] homing the real rig ...")
+            worker.request_home()
+            worker.wait()
+    except KeyboardInterrupt:
+        print(f"[{tag}] homing skipped")
+    except Exception as err:
+        print(f"[{tag}] couldn't home on exit: {err!r}")
+    finally:
+        worker.stop()
 
 
 def _sleep_rest(t0, dt):
@@ -377,10 +441,10 @@ def pose_calibrate(sim, real, out_path, kind="axis", preset=(-1900, -6400), resu
         try:
             pm.fit(kind)
             fit = True
-        except ValueError as err:
+        except ValueError:
             pm.A = None
             fit = False
-            s.say(f"pose {len(pm.points)} recorded; {err}")
+            s.say(f"pose {len(pm.points)} recorded. {pm.needs(kind)}")
         save()
         if fit:
             print(pm.summary())
@@ -397,11 +461,13 @@ def pose_calibrate(sim, real, out_path, kind="axis", preset=(-1900, -6400), resu
         except ValueError:
             pm.A = None
         save()
-        s.say(f"forgot pose {len(pm.points) + 1}; {len(pm.points)} left")
+        s.say(f"forgot pose {len(pm.points) + 1}; {len(pm.points)} left"
+              + ("" if pm.A is not None else f". {pm.needs(kind)}"))
 
     cv2.namedWindow(WINDOW, cv2.WINDOW_AUTOSIZE)
     try:
-        with mujoco.viewer.launch_passive(sim.e.model, sim.e.data, key_callback=s.on_viewer_key) as viewer:
+        with _ctrl_c_quits(s), \
+                mujoco.viewer.launch_passive(sim.e.model, sim.e.data, key_callback=s.on_viewer_key) as viewer:
             while viewer.is_running() and not s.quit:
                 t0 = time.time()
                 s.poll_window()
@@ -418,17 +484,16 @@ def pose_calibrate(sim, real, out_path, kind="axis", preset=(-1900, -6400), resu
                          (255, 200, 120))])
                 _sleep_rest(t0, sim.e.dt)
     finally:
-        cv2.destroyWindow(WINDOW)
         save()
-        if home_on_exit and worker.error is None:
-            worker.request_home()
-            try:
-                worker.wait()
-            except Exception as err:
-                print(f"[teleop] couldn't home on exit: {err!r}")
-        worker.stop()
-    print(f"[teleop] saved {out_path}" + (f" and {setup_out}" if pm.A is not None else ""))
-    print(pm.summary())
+        cv2.destroyAllWindows()
+        _finish(worker, home_on_exit, "teleop")
+    if pm.A is not None:
+        print(f"[teleop] saved {out_path} and {setup_out}")
+        print(pm.summary())
+    else:
+        print(f"[teleop] saved {out_path}: {len(pm.points)} pose(s), not enough for a map yet, "
+              f"so no {os.path.basename(setup_out)}. {pm.needs(kind)}\n"
+              "          Carry on later with --resume.")
     return pm
 
 
@@ -442,6 +507,10 @@ def follow(sim, real, pose_map, margin_mm=20.0, home_on_exit=True, chunk=50, win
         import cv2
 
     if pose_map.A is None:
+        if not pose_map.can_fit(pose_map.kind or "axis"):
+            raise RuntimeError(f"the pose calibration has {len(pose_map.points)} pose(s), not "
+                               f"enough for a map. {pose_map.needs(pose_map.kind or 'axis')} "
+                               "(real-setup --resume)")
         pose_map.fit(pose_map.kind or "axis")
     S, T = pose_map.arrays()
     spm, _ = pose_map.steps_per_mm()
@@ -464,7 +533,8 @@ def follow(sim, real, pose_map, margin_mm=20.0, home_on_exit=True, chunk=50, win
     if window:
         cv2.namedWindow(WINDOW, cv2.WINDOW_AUTOSIZE)
     try:
-        with mujoco.viewer.launch_passive(sim.e.model, sim.e.data, key_callback=s.on_viewer_key) as viewer:
+        with _ctrl_c_quits(s), \
+                mujoco.viewer.launch_passive(sim.e.model, sim.e.data, key_callback=s.on_viewer_key) as viewer:
             while viewer.is_running() and not s.quit:
                 t0 = time.time()
                 if window:
@@ -484,11 +554,5 @@ def follow(sim, real, pose_map, margin_mm=20.0, home_on_exit=True, chunk=50, win
                 _sleep_rest(t0, sim.e.dt)
     finally:
         if window:
-            cv2.destroyWindow(WINDOW)
-        if home_on_exit and worker.error is None:
-            worker.request_home()
-            try:
-                worker.wait()
-            except Exception as err:
-                print(f"[follow] couldn't home on exit: {err!r}")
-        worker.stop()
+            cv2.destroyAllWindows()
+        _finish(worker, home_on_exit, "follow")

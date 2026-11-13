@@ -973,6 +973,16 @@ python -m tactip_mujoco_gym.sim2real experiment --rig real --calibration calib/r
 python -m tactip_mujoco_gym.sim2real compare sim.npz real.npz
 ```
 
+Which file comes from where, and what needs it:
+
+| File | Made by | Holds | Needed by |
+|------|---------|-------|-----------|
+| `pose_calibration.json`, `rig_setup.json` | `real-setup` (= `pose-calibrate`) | where the steppers go for each simulated position | `real-capture`, `experiment --rig real`, `follow`, the follow demo |
+| `sim_k*.npz`, `real.npz` | `sim-capture`, `real-capture` | the same presses on each rig | `fit` |
+| `rig_calibration.json` | `fit` | real TacTip pins → simulated markers | `experiment` |
+
+So the order is `real-setup` → `sim-capture` → `real-capture` → `fit` → `experiment`. For the follow demo, `real-setup` alone is enough. `real-setup` needs at least two matched poses that differ by 1 mm or more along x, y and z (one pose can change all three) before it writes `rig_setup.json`. It says what to record next, and `--resume` adds to the poses already saved. Quit with `q` in the "real rig" window; Ctrl-C in the terminal does the same (save, home, close), and a second Ctrl-C forces it.
+
 Both rigs start every run from the same pose, 10 mm above the block centre, and return to it at the end. On the simulated rig this is `TacRig-v0`'s own reset. The real rig gets there in two moves:
 
 1. **Home.** It drives to the limit switches like `Controller.reset()`, but z goes up first so the sensor can't drag across the block.

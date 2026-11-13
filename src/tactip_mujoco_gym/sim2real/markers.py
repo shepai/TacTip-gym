@@ -127,6 +127,41 @@ def _nearest(A, B):
     return D[np.arange(len(A)), j], j
 
 
+def regular_pins(P, tol=0.35):
+    """How many points sit on a regular pin grid: their nearest neighbour is within tol of
+    the median spacing. Scores a detection: real pins are evenly spaced, noise isn't."""
+    P = np.asarray(P, float).reshape(-1, 2)
+    if len(P) < 6:
+        return 0
+    D = np.linalg.norm(P[:, None] - P[None], axis=-1)
+    np.fill_diagonal(D, np.inf)
+    d = D.min(axis=1)
+    med = np.median(d)
+    return int((np.abs(d - med) < tol * med).sum())
+
+
+def auto_tune(frame, roi=None, verbose=False):
+    """MarkerDetector settings that suit this image: tries bright and dark pins over a
+    range of pin sizes and thresholds, and keeps the one that finds the most evenly spaced
+    pins. Returns (detector, number of regular pins)."""
+    best, best_n = None, -1
+    for invert in (False, True):
+        for s in (0.5, 1, 1.5, 2, 3, 4, 6, 8):
+            for offset in (-4, -8, -16):
+                det = MarkerDetector(invert=invert, block=int(31 * s) | 1, offset=offset,
+                                     blur=1.5 * s, min_area=max(3.0, 6.0 * s * s),
+                                     max_area=900.0 * s * s, roi=roi)
+                try:
+                    n = regular_pins(det(frame))
+                except Exception:
+                    continue
+                if n > best_n:
+                    best, best_n = det, n
+    if verbose and best is not None:
+        print(f"[markers] auto-tuned: {best_n} evenly spaced pins with {best.to_dict()}")
+    return best, best_n
+
+
 def spacing(P):
     """Median nearest-neighbour distance of a point set (the pin pitch)."""
     P = np.asarray(P, float)

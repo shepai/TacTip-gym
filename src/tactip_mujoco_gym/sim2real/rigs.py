@@ -38,7 +38,7 @@ import time
 
 import numpy as np
 
-from .markers import MarkerDetector, MarkerTracker
+from .markers import MarkerDetector, MarkerTracker, auto_tune
 
 
 # ============================================================================ helpers
@@ -438,7 +438,12 @@ def connect_controller(port, listener_path=None, rig_code_dir=None):
     """Rig-controller's Controller on `port`, MicroPython variant. listener_path: a board
     listener to run instead of the package's own (None: the packaged one, which the
     installed package uses by default)."""
+    import glob
     import inspect
+    if str(port).startswith("/dev/") and not os.path.exists(port):
+        ports = sorted(glob.glob("/dev/ttyACM*") + glob.glob("/dev/ttyUSB*"))
+        raise FileNotFoundError(f"no serial port {port}" + (f": the ports here are {', '.join(ports)}"
+                                                           if ports else ": is the board plugged in?"))
     cls = _controller_class(rig_code_dir)
     params = inspect.signature(cls).parameters
     kw = {}
@@ -559,6 +564,7 @@ class RealRig(Rig):
         self.home_chunk = int(home_chunk)
         self.homed = False
         self.tracker = None
+        self.detector_tuned = False
         self.force_zero = 0.0
 
     # ---- motion
@@ -675,10 +681,24 @@ class RealRig(Rig):
         fewer than min_pins are found (the wrong camera, or detector settings that don't
         suit the image): the frame is saved to rest_failed.png to look at."""
         frames = [self.frame() for _ in range(n_frames)]
-        try:
-            rest = self.detector.rest(frames)
-        except RuntimeError:
-            rest = np.zeros((0, 2))
+
+        def detect(det):
+            try:
+                return det.rest(frames)
+            except RuntimeError:
+                return np.zeros((0, 2))
+        rest = detect(self.detector)
+        if len(rest) < min_pins:
+            # the settings don't suit this camera's image: find ones that do
+            print(f"[real] only {len(rest)} pins with the current detector settings; "
+                  "trying others (pin size, bright / dark pins) ...")
+            det, _ = auto_tune(frames[0], roi=self.detector.roi)
+            if det is not None:
+                tuned = detect(det)
+                if len(tuned) > len(rest):
+                    self.detector, rest = det, tuned
+                    self.detector_tuned = True
+                    print(f"[real] detector tuned: {len(rest)} pins with {det.to_dict()}")
         if len(rest) < min_pins:
             try:
                 import cv2

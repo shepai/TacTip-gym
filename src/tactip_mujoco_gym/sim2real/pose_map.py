@@ -75,20 +75,43 @@ class PoseMap:
             return coef[:3].T, coef[3]
         if kind != "axis":
             raise ValueError(f"unknown kind {kind!r} (axis or affine)")
+        missing = self._unvaried()
+        if missing:
+            raise ValueError(self.needs("axis"))
         A, b = np.zeros((3, 3)), np.zeros(3)
         for i, ax in enumerate("xyz"):
             s, t = S[:, i], T[:, i]
             if np.ptp(s) >= 1.0:                                      # varied: fit the scale
                 k, c = np.polyfit(s, t, 1)
-            elif self.known_spm is not None:                          # not varied: known scale
+            else:                                                     # not varied: known scale
                 sign = self.known_sign[i] if self.known_sign is not None else 1.0
                 k = sign * self.known_spm[i]
                 c = float(np.mean(t - k * s))
-            else:
-                raise ValueError(f"{ax}: record two poses at least 1 mm apart along {ax} "
-                                 "(or give the steps/mm, e.g. from rig_setup.json)")
             A[i, i], b[i] = k, c
         return A, b
+
+    def _unvaried(self):
+        """Axes the recorded simulated poses don't yet span by 1 mm (and with no known
+        steps/mm to fall back on)."""
+        S, _ = self.arrays()
+        if not len(S):
+            return list("xyz")
+        return [ax for i, ax in enumerate("xyz")
+                if np.ptp(S[:, i]) < 1.0 and self.known_spm is None]
+
+    def needs(self, kind="axis"):
+        """What to record next for a map, in words."""
+        n = len(self.points)
+        if kind == "affine" and n < 4:
+            return (f"For an affine map: {4 - n} more pose(s) at least, spread in x, y and z "
+                    "(6+ is better).")
+        missing = self._unvaried()
+        if not missing:
+            return "Enough poses for a map."
+        if n == 0:
+            return "Match both rigs and press Enter to record a first pose."
+        return (f"Next: move BOTH rigs at least 1 mm along {', '.join(missing)} (one pose can "
+                "change them all), match them again and press Enter.")
 
     def fit(self, kind="axis"):
         self.A, self.b = self._solve(kind)
