@@ -4,11 +4,21 @@ protocol runs on both.
 
     sim  = SimRig()                                        # TacRig-v0 over a flat block
     real = RealRig(connect_controller("COM19", listener), open_camera(1),
-                   steps_per_mm=(25, 25, 25))
+                   **load_rig_setup("calib/rig_setup.json"))
 
     for rig in (sim, real):
+        rig.reset()                        # the start pose: 10 mm above the block centre
         rig.find_contact()                 # z = 0 where the sensor first touches the surface
         data = run_probes(rig, grid_probes(points=5, span_mm=6, depths_mm=(0.5, 1, 1.5, 2)))
+        rig.reset()
+
+Both rigs start from the same pose: the simulated one's reset (TacRig-v0 puts the tip HOVER,
+10 mm, above the block's top at its centre), and on the real rig, homing against the limit
+switches (z first, then x and y) followed by a fixed move from home to that same pose. The
+fixed move (home_offset, board steps from home to the block centre at contact height) is
+measured once by `python -m tactip_mujoco_gym.sim2real real-setup` and saved with the steps
+per mm in rig_setup.json. Homing again before every session (and texture) also clears any
+steps the motors missed.
 
 Coordinates (both rigs): x, y in mm from the block centre along the simulator's rig axes, z in
 mm above the point of first contact found by find_contact() (negative = pressed in). Moves
@@ -19,6 +29,8 @@ Code/Examples/Board Examples/listener_MP.py, driven from the PC by Code/Controll
 (Controller(port, file=listener_path)). Moves go to the board as whole steps in short chunks
 (each MOVE is one exec on the board, and the board must answer within mpremote's timeout).
 """
+import datetime
+import json
 import os
 import sys
 import tempfile
@@ -89,6 +101,7 @@ class Rig:
     kind = "rig"
     signal_units = ""
     default_stop = 1.0
+    start_height_mm = 10.0             # the start pose: this far above the block centre's top
 
     def __init__(self):
         self.z_contact = None          # raw z (mm, the backend's own zero) of first contact
@@ -111,6 +124,10 @@ class Rig:
 
     def settle(self):
         pass
+
+    def reset(self):
+        """Back to the start pose: over the block centre, start_height_mm above it."""
+        raise NotImplementedError
 
     # ---- shared
     @property
@@ -136,6 +153,10 @@ class Rig:
         x, y, z0 = self._raw()
         self.settle()
         zs, sig = [z0], [self.signal()]
+        if sig[0] >= stop:
+            raise RuntimeError(f"[{self.kind}] the sensor is already touching where the contact "
+                               f"search starts (signal {sig[0]:.3g} {self.signal_units}): "
+                               "start higher")
         n_max = int(np.ceil(max_travel_mm / step_mm))
         past_at = None
         for k in range(1, n_max + 1):
@@ -269,16 +290,23 @@ class SimRig(Rig):
         if not getattr(self.readout, "available", True):
             raise RuntimeError(f"readout {readout!r} unavailable: {self.readout.reason}")
         self.n = int(self.readout.n_markers)
+        self.start_height_mm = float(getattr(e, "HOVER", 0.010)) * 1000.0
         self.set_texture(e.textures[0])
         self._frame_R = self._frame_rotation()
         self.layout = self._layout()
 
     # ---- environment
-    def set_texture(self, texture, x_mm=0.0, y_mm=0.0):
-        """Put `texture` (one of env.textures) in the holder (resets the episode; the sensor
-        returns to hovering, the contact height stays valid: every block is 7 mm tall)."""
-        self.e.reset(options={"texture": texture, "start": (x_mm, y_mm), "tilt": 0.0})
+    def set_texture(self, texture):
+        """Put `texture` (one of env.textures) in the holder and reset to the start pose. The
+        contact height stays valid: every block is 7 mm tall."""
+        self.e.reset(options={"texture": texture, "start": (0.0, 0.0), "tilt": 0.0})
         self.texture = texture
+
+    def reset(self, texture=None, verbose=True):
+        """The env's own reset: the tip at the block centre, HOVER (10 mm) above its top."""
+        self.set_texture(self.texture if texture is None else texture)
+        if verbose:
+            print(f"[sim] reset: over the block centre, {self.gap_mm():.1f} mm above it")
 
     def _frame_rotation(self):
         from tactip_mujoco_gym.sensors import frame_pose
@@ -307,20 +335,33 @@ class SimRig(Rig):
             a[self.e._decide_index] = -1.0                        # (TacRig-texture: no answer)
         return a
 
-    def _move_raw(self, x, y, z, max_steps=5000):
+    def limits_mm(self):
+        """The rig's travel (raw mm): (lo, hi) per axis."""
+        return self.e._lo * 1000.0, self.e._hi * 1000.0
+
+    def step_toward(self, target_mm):
+        """One env step towards target (raw mm, clipped to the travel): the velocity action
+        that lands the commanded axes exactly on it, at the rig's speed. Returns True once
+        there and stopped. For live control: one call per frame."""
         e = self.e
-        target = np.clip(np.array([x, y, z]) / 1000.0, e._lo, e._hi)
+        target = np.clip(np.asarray(target_mm, float) / 1000.0, e._lo, e._hi)
+        err = target - e._cmd
+        if np.all(np.abs(err) < 1e-7) and np.all(np.abs(e._vel_cmd) < 1e-6):
+            e.step(self._action(np.zeros(3)))           # hold (the physics keeps running)
+            return True
         k = float(e.ACTION_SMOOTHING)
         per_step = np.asarray(e.AXIS_SPEED, float) * e.dt
+        v_des = np.clip(err / per_step, -1.0, 1.0)
+        a = np.clip((v_des - k * e._vel_cmd) / (1.0 - k), -1.0, 1.0)
+        e.step(self._action(a))
+        return False
+
+    def _move_raw(self, x, y, z, max_steps=5000):
         for _ in range(max_steps):
-            err = target - e._cmd
-            if np.all(np.abs(err) < 1e-7) and np.all(np.abs(e._vel_cmd) < 1e-6):
+            if self.step_toward([x, y, z]):
                 break
-            v_des = np.clip(err / per_step, -1.0, 1.0)
-            a = np.clip((v_des - k * e._vel_cmd) / (1.0 - k), -1.0, 1.0)
-            e.step(self._action(a))
         else:
-            raise RuntimeError(f"the simulated rig didn't reach {target * 1000} mm")
+            raise RuntimeError(f"the simulated rig didn't reach {[x, y, z]} mm")
 
     def settle(self):
         for _ in range(self.settle_steps):
@@ -337,7 +378,9 @@ class SimRig(Rig):
         self._move_raw(x, y, z - (self.gap_mm() - gap_mm))
         self.settle()
 
-    def find_contact(self, gap_mm=1.5, **kw):
+    def find_contact(self, gap_mm=3.0, **kw):
+        """From wherever the sensor is (the start pose, normally): straight down to gap_mm
+        above the surface, then the slow search (as the real rig does)."""
         self.approach(gap_mm)
         return super().find_contact(**kw)
 
@@ -373,33 +416,95 @@ class SimRig(Rig):
 
 
 # ============================================================================ real rig
-def connect_controller(port, listener_path, rig_code_dir=None):
-    """The Rig-controller PC library's Controller on `port`, running the MicroPython listener
-    (Code/Examples/Board Examples/listener_MP.py) on the board. rig_code_dir: the repo's
-    Code/ folder, if Controller isn't importable already."""
+def _controller_class(rig_code_dir=None):
+    """Rig-controller's Controller: the installed package (pip install -e Rig-controller,
+    `rig_controller`), else the older Code/Controller folder (rig_code_dir)."""
+    try:
+        from rig_controller import Controller
+        return Controller
+    except ImportError:
+        pass
     if rig_code_dir and rig_code_dir not in sys.path:
         sys.path.insert(1, rig_code_dir)
     try:
-        import Controller as rig_controller
+        import Controller as old
+        return old.Controller
     except ImportError as err:
-        raise ImportError("can't import the Rig-controller library: pass rig_code_dir= the "
-                          "repo's Code/ folder (the one holding Controller/)") from err
-    return rig_controller.Controller(port, variant="micropython", file=listener_path)
+        raise ImportError("can't import Rig-controller: pip install it (pip install -e "
+                          "path/to/Rig-controller), or pass rig_code_dir= its Code/ folder") from err
+
+
+def connect_controller(port, listener_path=None, rig_code_dir=None):
+    """Rig-controller's Controller on `port`, MicroPython variant. listener_path: a board
+    listener to run instead of the package's own (None: the packaged one, which the
+    installed package uses by default)."""
+    import inspect
+    cls = _controller_class(rig_code_dir)
+    params = inspect.signature(cls).parameters
+    kw = {}
+    if "variant" in params:
+        kw["variant"] = "micropython"
+    if listener_path:
+        if not os.path.exists(listener_path):
+            raise FileNotFoundError(f"no board listener at {listener_path!r} (leave --listener "
+                                    "out to use the one packaged with Rig-controller)")
+        kw["file"] = listener_path
+    elif "file" in params and params["file"].default is inspect.Parameter.empty:
+        raise ValueError("this Rig-controller version needs the board listener's path: "
+                         "--listener path/to/listener_MP.py")
+    return cls(port, **kw)
+
+
+CAMERA_HINT = ("find the TacTip's index with `python -m tactip_mujoco_gym.sim2real cameras` "
+               "(on Linux each USB camera usually takes two /dev/video numbers, and only the "
+               "even one gives pictures)")
 
 
 def open_camera(index=0, width=None, height=None):
-    """An OpenCV camera (the TacTip's), optionally at a set resolution."""
+    """An OpenCV camera (the TacTip's), optionally at a set resolution. Fails unless it
+    actually delivers frames (OpenCV can 'open' a device that never does)."""
     import cv2
     cap = cv2.VideoCapture(index)
     if not cap.isOpened():
-        raise RuntimeError(f"camera {index} didn't open")
+        raise RuntimeError(f"camera {index} didn't open: {CAMERA_HINT}")
     if width:
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     if height:
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    for _ in range(5):
-        cap.read()
+    good = 0
+    for _ in range(10):
+        ok, f = cap.read()
+        good += bool(ok and f is not None and f.size)
+    if good == 0:
+        cap.release()
+        raise RuntimeError(f"camera {index} gives no pictures: {CAMERA_HINT}")
     return cap
+
+
+def list_cameras(max_index=10, save_dir=None):
+    """The camera indices that deliver pictures: [(index, width, height)]; with save_dir, a
+    snapshot of each (camera_<index>.png) so you can see which one is the TacTip."""
+    import cv2
+    found = []
+    for i in range(max_index):
+        cap = cv2.VideoCapture(i)
+        try:
+            if not cap.isOpened():
+                continue
+            frame = None
+            for _ in range(10):
+                ok, f = cap.read()
+                if ok and f is not None and f.size:
+                    frame = f
+            if frame is None:
+                continue
+            found.append((i, frame.shape[1], frame.shape[0]))
+            if save_dir:
+                os.makedirs(save_dir, exist_ok=True)
+                cv2.imwrite(os.path.join(save_dir, f"camera_{i}.png"), frame)
+        finally:
+            cap.release()
+    return found
 
 
 class RealRig(Rig):
@@ -420,6 +525,10 @@ class RealRig(Rig):
     flush         camera frames thrown away before a reading (drivers buffer old frames)
     track         look at the pins after every move, so the tracker follows them through
                   a press (run_probes moves in small steps for this) and none are lost
+    home_offset   board steps (x, y, z) from home (all limit switches pressed) to the block
+                  centre at contact height: measured by real-setup, in rig_setup.json.
+                  Without it the rig can home but not reach the start pose by itself.
+    home_buttons  readButtons() index of the x, y, z switches (the board's pins: [z, a, y, x])
 
     read() -> {"pins": (n, 2) px tracked pin positions (rest order), "ok": (n,) found this
                frame, "force_raw": plate total (or None)}
@@ -429,7 +538,8 @@ class RealRig(Rig):
     default_stop = 4.0
 
     def __init__(self, controller, camera, steps_per_mm, axis_sign=(1, 1, 1), detector=None,
-                 plate=False, max_chunk=200, settle_s=0.3, flush=4, track=True):
+                 plate=False, max_chunk=200, settle_s=0.3, flush=4, track=True,
+                 home_offset=None, home_buttons=(3, 2, 0), home_chunk=100, **_):
         super().__init__()
         self.c = controller
         self.cam = camera
@@ -443,7 +553,11 @@ class RealRig(Rig):
         self.settle_s = float(settle_s)
         self.flush = int(flush)
         self.track = bool(track)
-        self._steps = np.zeros(3, dtype=np.int64)    # steps sent since this object was made
+        self._steps = np.zeros(3, dtype=np.int64)    # steps from the block centre at contact
+        self.home_offset = None if home_offset is None else np.asarray(home_offset, np.int64)
+        self.home_buttons = tuple(home_buttons)
+        self.home_chunk = int(home_chunk)
+        self.homed = False
         self.tracker = None
         self.force_zero = 0.0
 
@@ -468,6 +582,77 @@ class RealRig(Rig):
             self._steps += part
             rem -= part
 
+    def buttons(self):
+        """Limit switch states, the board's readButtons() order ([z, a, y, x] on the Pico)."""
+        for name in ("getButtons", "buttons", "readButtons"):      # newer Controller methods
+            f = getattr(self.c, name, None)
+            if callable(f):
+                return [int(v) for v in f()]
+        return [int(v) for v in self.c.sendCommand("BUTTONS")]
+
+    def home(self, max_steps=60000, verbose=True):
+        """Drive to the limit switches, as Controller.reset() does (+ steps until pressed),
+        but z first: the sensor lifts clear before x and y move, so it can't drag across the
+        block. Afterwards positions count from the block centre (via home_offset), or from
+        home if there is none yet (real-setup)."""
+        ix, iy, iz = self.home_buttons
+        limit = int(max_steps / self.home_chunk) + 1     # in steps: works before steps/mm are known
+        for axes in (("z",), ("x", "y")):
+            for _ in range(limit):
+                b = self.buttons()
+                todo = [a for a in axes if not b[{"x": ix, "y": iy, "z": iz}[a]]]
+                if not todo:
+                    break
+                d = [self.home_chunk if a in todo else 0 for a in "xyz"]
+                self.c.move(d[0], d[1], d[2], 0)
+            else:
+                raise RuntimeError(f"{'/'.join(axes)} didn't reach its limit switch within "
+                                   f"{max_steps} steps: check the switches "
+                                   f"(home_buttons={self.home_buttons})")
+        self._steps = (-self.home_offset.copy() if self.home_offset is not None
+                       else np.zeros(3, dtype=np.int64))
+        self.homed = True
+        if self.tracker is not None:
+            self.tracker.reset()                     # lifted clear: the pins are at rest
+        if verbose:
+            print("[real] homed (all limit switches pressed)")
+
+    def go_to_start(self, verbose=True):
+        """From home to the start pose: across at the top, then down to start_height_mm
+        above the block centre (above contact once find_contact() has run)."""
+        if not self.homed or self.home_offset is None:
+            raise RuntimeError("home() first, with home_offset from real-setup (rig_setup.json)")
+        zc = self.z_contact or 0.0
+        x, y, z = self._raw()
+        self._move_raw(0.0, 0.0, z)
+        self._move_raw(0.0, 0.0, zc + self.start_height_mm)
+        self.settle()
+        if verbose:
+            print(f"[real] at the start pose: over the block centre, {self.start_height_mm:g} mm up")
+
+    def reset(self, verbose=True):
+        """Home, then the start pose: the same pose the simulated rig resets to."""
+        self.home(verbose=verbose)
+        self.go_to_start(verbose=verbose)
+
+    def find_contact(self, gap_mm=3.0, **kw):
+        """With a home_offset, contact is expected at z = 0: go straight down to gap_mm above
+        it, then search slowly (as the simulated rig does). Without one (real-setup), search
+        down from where the sensor is."""
+        if self.home_offset is not None and self.homed:
+            x, y, _ = self._raw()
+            self._move_raw(x, y, gap_mm)
+            self.settle()
+        return super().find_contact(**kw)
+
+    def contact_offset(self):
+        """Board steps from home to here (x, y) at the contact height: the home_offset, once
+        homed without one and find_contact() has run."""
+        if self.z_contact is None:
+            raise RuntimeError("find_contact() first")
+        zc = int(np.rint(self.z_contact * self.spm[2] * self.sign[2]))
+        return np.array([self._steps[0], self._steps[1], zc], dtype=np.int64)
+
     def zero_xy(self):
         """Make the current x, y the block centre (x = y = 0)."""
         self._steps[:2] = 0
@@ -485,10 +670,25 @@ class RealRig(Rig):
             raise RuntimeError("the TacTip camera returned no frame")
         return f
 
-    def set_rest(self, n_frames=20, verbose=True):
-        """Record the untouched pins (sensor in free space) and start tracking them."""
+    def set_rest(self, n_frames=20, min_pins=20, verbose=True):
+        """Record the untouched pins (sensor in free space) and start tracking them. Fails if
+        fewer than min_pins are found (the wrong camera, or detector settings that don't
+        suit the image): the frame is saved to rest_failed.png to look at."""
         frames = [self.frame() for _ in range(n_frames)]
-        rest = self.detector.rest(frames)
+        try:
+            rest = self.detector.rest(frames)
+        except RuntimeError:
+            rest = np.zeros((0, 2))
+        if len(rest) < min_pins:
+            try:
+                import cv2
+                cv2.imwrite("rest_failed.png", frames[-1])
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"only {len(rest)} TacTip pins found (expected dozens; saved the image to "
+                "rest_failed.png). If it isn't the TacTip's view: " + CAMERA_HINT + ". If it is: "
+                "adjust --detector, e.g. '{\"invert\": true}' for dark pins, or block/offset")
         self.tracker = MarkerTracker(rest)
         if self.plate:
             self.force_zero = float(np.mean([self._plate_raw() for _ in range(5)]))
@@ -524,28 +724,60 @@ class RealRig(Rig):
 
 
 # ============================================================================ set-up help
-def measure_steps_per_mm(controller, axis, steps=1000, ask=None):
-    """Move one axis by `steps` and ask how far the sensor moved relative to the block (mm,
-    measured with calipers / a rule; negative if it went against the simulator's + axis,
-    z + up). Moves back afterwards. Returns (steps per mm, sign)."""
+def measure_steps_per_mm(rig, axis, steps=-800, ask=None):
+    """Move one axis of a RealRig by `steps` (negative: away from the limit switches) and ask
+    how far the sensor moved relative to the block (mm, calipers / a rule; negative if it
+    went against the simulator's + axis, z + up). Moves back afterwards.
+    Returns (steps per mm, sign)."""
     ask = ask or input
     i = "xyz".index(axis)
     move = [0, 0, 0]
     move[i] = int(steps)
-    controller.move(*move, 0)
+    rig.move_steps(*move)
     mm = float(ask(f"{axis}: moved {steps} steps. How far did the sensor move relative to the "
-                   f"block, in mm (negative if against +{axis})? "))
+                   f"block, in mm (negative if against the simulator's +{axis}"
+                   f"{', i.e. down' if axis == 'z' else ''})? "))
     move[i] = -int(steps)
-    controller.move(*move, 0)
+    rig.move_steps(*move)
     if mm == 0:
         raise ValueError("a distance of 0: move more steps")
-    return abs(steps / mm), (1 if mm > 0 else -1)
+    return abs(steps / mm), int(np.sign(mm) * np.sign(steps))
+
+
+SETUP_KEYS = ("steps_per_mm", "axis_sign", "home_offset", "home_buttons")
+
+
+def save_rig_setup_dict(path, d):
+    """Write rig_setup.json from a dict of RealRig keyword arguments (PoseMap.rig_setup())."""
+    d = dict(d, created=datetime.datetime.now().isoformat(timespec="seconds"))
+    with open(path, "w") as f:
+        json.dump(d, f, indent=1)
+    return path
+
+
+def save_rig_setup(path, rig, preset=None):
+    """The real rig's constants (RealRig keyword arguments) as JSON."""
+    d = dict(steps_per_mm=rig.spm.tolist(), axis_sign=rig.sign.astype(int).tolist(),
+             home_offset=None if rig.home_offset is None else rig.home_offset.tolist(),
+             home_buttons=list(rig.home_buttons), start_height_mm=rig.start_height_mm,
+             preset=None if preset is None else list(preset),
+             created=datetime.datetime.now().isoformat(timespec="seconds"))
+    with open(path, "w") as f:
+        json.dump(d, f, indent=1)
+    return path
+
+
+def load_rig_setup(path):
+    """RealRig keyword arguments from rig_setup.json (real-setup writes it)."""
+    with open(path) as f:
+        d = json.load(f)
+    return {k: d[k] for k in SETUP_KEYS if d.get(k) is not None}
 
 
 def jog(rig, ask=None, show=None):
     """Move the real rig by hand: 'x 2', 'y -0.5', 'z -1' (mm, relative), 's z -40' (steps),
-    'show' (display the camera if show= a callable), 'done'. Use it to put the sensor over
-    the block centre, a few mm above it."""
+    'show' (display the camera if show= a callable), 'done'. real-setup uses it once, to put
+    the sensor over the block centre a few mm above it; after that, reset() gets there."""
     ask = ask or input
     print("jog: x|y|z <mm>, s x|y|z <steps>, show, done")
     while True:

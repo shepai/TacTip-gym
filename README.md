@@ -949,14 +949,19 @@ Each task also has a config in `configs/`.
 
 ```bash
 pip install -e ".[real]"     # + OpenCV, pyserial, mpremote for the real rig
+pip install -e path/to/Rig-controller   # the rig's PC library (its board listener is packaged)
+
+# 0. once: match the real rig to the simulated one, side by side (flat block in;
+#    opens the MuJoCo viewer and the "real rig" window; same as pose-calibrate below)
+python -m tactip_mujoco_gym.sim2real cameras          # which --camera is the TacTip
+python -m tactip_mujoco_gym.sim2real real-setup --port /dev/ttyACM0 --camera 2 --out-dir calib
 
 # 1. the calibration presses in simulation, at a few skin stiffnesses (no hardware)
 python -m tactip_mujoco_gym.sim2real sim-capture --stiffness 0.5 1 2 4 --out-dir calib
 
-# 2. the same presses on the real rig, with a flat block in the holder (interactive)
-python -m tactip_mujoco_gym.sim2real real-capture --port /dev/ttyACM0     --camera 1 \
-    --listener ".../Rig-controller/Code/Examples/Board Examples/listener_MP.py" \
-    --rig-code ".../Rig-controller/Code" --measure-steps --out-dir calib
+# 2. the same presses on the real rig: homes, goes to the start pose, presses, homes
+python -m tactip_mujoco_gym.sim2real real-capture --port COM19 --camera 1 \
+    --out-dir calib
 
 # 3. fit; writes calib/rig_calibration.json and prints held-out accuracy
 python -m tactip_mujoco_gym.sim2real fit --out-dir calib
@@ -964,11 +969,18 @@ python -m tactip_mujoco_gym.sim2real fit --out-dir calib
 # 4. the same experiment on both, then compare
 python -m tactip_mujoco_gym.sim2real experiment --rig sim  --calibration calib/rig_calibration.json --out sim.npz
 python -m tactip_mujoco_gym.sim2real experiment --rig real --calibration calib/rig_calibration.json \
-    --port COM19 --camera 1 --listener ... --rig-code ... --out real.npz
+    --port COM19 --camera 1 --out real.npz
 python -m tactip_mujoco_gym.sim2real compare sim.npz real.npz
 ```
 
-Both rigs work in the same coordinates: x and y in mm from the block centre along the simulator's axes, and z in mm from the point of first contact. Contact is found the same way on both. The sensor is lowered in 0.05 mm steps and a hinge is fitted to how far the pins move, so no threshold has to agree between pixels and millimetres. The calibration protocol presses a flat block to 0.5–2 mm and slides each press 0.5 and 1 mm along ±x and ±y. A flat block dents the skin the same round shape wherever it is pressed, so the dent alone can't show which way the camera is turned. The slides can: while the skin sticks, the pins in contact stay with the block.
+Both rigs start every run from the same pose, 10 mm above the block centre, and return to it at the end. On the simulated rig this is `TacRig-v0`'s own reset. The real rig gets there in two moves:
+
+1. **Home.** It drives to the limit switches like `Controller.reset()`, but z goes up first so the sensor can't drag across the block.
+2. **Fixed move.** It moves a fixed number of steps from home to the start pose.
+
+`real-setup` measures that fixed move once and saves it with the steps per mm in `rig_setup.json`. It opens the simulated rig in the MuJoCo viewer next to the real one, and you match the two by hand at a few poses; see [Matching the poses by hand](#matching-the-poses-by-hand-and-the-follow-demo). `real-setup --no-sim` is the older text-only set-up instead: it lets you jog over the block centre by eye, then finds contact and measures steps per mm with a rule. Rerun it if the rig, the holder or the switches move. Because every session and every texture change homes first, steps the motors missed are cleared.
+
+Both rigs work in the same coordinates: x and y in mm from the block centre along the simulator's axes, and z in mm from the point of first contact. From the start pose both go straight down to 3 mm above where contact is expected, then search. Contact is found the same way on both. The sensor is lowered in 0.05 mm steps and a hinge is fitted to how far the pins move, so no threshold has to agree between pixels and millimetres. The calibration protocol presses a flat block to 0.5–2 mm and slides each press 0.5 and 1 mm along ±x and ±y. A flat block dents the skin the same round shape wherever it is pressed, so the dent alone can't show which way the camera is turned. The slides can: while the skin sticks, the pins in contact stay with the block.
 
 The fit, in order:
 
@@ -979,6 +991,28 @@ The fit, in order:
 | markers | real pin motion → simulated marker displacement (3D) | per marker, linear in its own motion plus a few whole-field components (the camera can't see a pin move in or out; the shape of the whole field shows how deep the press is), shrunk towards a shared map; both chosen by cross-validation |
 | force | plate reading → N | linear, with `--plate` |
 
+### Matching the poses by hand, and the follow demo
+
+Instead of `real-setup`, you can match the two rigs by eye. Both reset, and you drive each one with the keyboard until the sensors sit in the same place relative to their blocks, then press Enter. Do this at a few poses: high and low over the centre, and a few mm to each side. Every pose refits a map from the simulated position (mm) to stepper steps from home, and saves `pose_calibration.json` along with the `rig_setup.json` it implies, so `real-capture` and `experiment` work straight after. The follow demo loads the map: you drive the simulation and the real rig follows in the background.
+
+```bash
+python -m tactip_mujoco_gym.sim2real pose-calibrate --port COM19 --camera 1 \
+    --out calib/pose_calibration.json
+python examples/sim2real/follow_demo.py --port COM19 --camera 1
+```
+
+There are two windows. Keys in the MuJoCo viewer move the simulated rig. Keys in the "real rig" window (the TacTip camera feed, or a status panel without a camera) move the real rig; Tab switches that window to the sim, or to both together once there's a map.
+
+| Keys | |
+|------|--|
+| ↑ ↓ / → ← / PgUp PgDn | ±x / ±y / z up, down (in the "real rig" window also w s / d a / r f) |
+| Enter | record this pose (once both rigs have stopped) |
+| 1–5, Tab, u / Backspace | step size, what the keys move, forget the last pose ("real rig" window) |
+| g, n | real rig to the simulated pose; simulated rig to the real pose |
+| h, z, q | home the real rig, reset the simulated one, save and quit |
+
+Until there's a map, real-rig keys move the board's own axes; after that, they move along the simulator's axes. The default `axis` map fits a scale and offset per axis, so vary every axis by at least 1 mm across your poses. `--model affine` fits a full 3 × 3 map, which also covers a gantry that isn't square; give it six or more poses spread in x, y and z. Each pose shows how well it fits the others, so a badly matched one stands out; press `u` to drop it. On macOS run these with `mjpython`.
+
 At the start of each session the real rig takes a fresh rest image and matches it to the calibration's, so lighting changes and small camera shifts carry over. In code:
 
 ```python
@@ -988,7 +1022,7 @@ to_sim = RealToSim(calib, real_rig.set_rest())
 obs = to_sim.observation(*real_rig.pins())          # same layout as the simulated "tactile"
 ```
 
-Steps / mm and axis directions: `--measure-steps` moves each axis 1000 steps and asks how far the sensor moved relative to the block (negative if against the simulator's + axis; z + is up). Print a flat 29.3 × 30 × 7 mm block for the holder; the simulated one is the same size, so its top is level with the textured blocks' highest points and the contact height carries over when the block is changed. Moves go to the board in whole steps, at most 200 per command, because each MOVE must finish within mpremote's timeout.
+Steps / mm and axis directions: `real-setup --measure-steps` moves each axis 800 steps away from its switch and back, and asks how far the sensor moved relative to the block (negative if against the simulator's + axis; z + is up). Print a flat 29.3 × 30 × 7 mm block for the holder; the simulated one is the same size, so its top is level with the textured blocks' highest points and the contact height carries over when the block is changed. Moves go to the board in whole steps, at most 200 per command, because each MOVE must finish within mpremote's timeout.
 
 <!-- docs:tests -->
 ## Tests
@@ -1005,7 +1039,7 @@ pytest                    # everything that can run on this machine
 - `tests/test_textures.py`: the dataset textures against the generator's equations, STL blocks, wave surfaces (no simulation)
 - `tests/test_new_robots.py`: surface following (with the scripted follower), the rig (pressing, answering, tilt, STL blocks, `press_grid`, another sensor) and the gripper (with the scripted picker)
 - `tests/test_new_sensors.py`: the PressTip, GelSight, depth TacTip and whiskers. Each one alone, pressed on the rig, on the gripper and the arm, and the sensor viewer
-- `tests/test_sim2real.py`: the rig calibration on a synthetic TacTip with known lens, mount and skin (layout, stiffness, maps, a new session), pin detection and tracking, contact finding, the real rig against a mock board and camera, and the simulated rig
+- `tests/test_sim2real.py`: the pose map (per-axis and affine), the background stepper worker, the rig calibration on a synthetic TacTip with known lens, mount and skin (layout, stiffness, maps, a new session), pin detection and tracking, contact finding, the real rig against a mock board and camera, and the simulated rig
 
 <!-- docs:training-tips -->
 ## Training tips

@@ -2,13 +2,36 @@
 Calibrate the real rig (Rig-controller, MicroPython) and TacTip against the simulated TacRig,
 then run the same experiment on either.
 
+Matching the rigs' poses by hand (keyboard, both rigs live), and the follow demo:
+
+    # both rigs reset; drive each to the same pose (MuJoCo window: sim, "real rig" window:
+    # real), Enter to record; a few poses. Writes pose_calibration.json + rig_setup.json
+    python -m tactip_mujoco_gym.sim2real pose-calibrate --port COM19 --camera 1 \\
+        --out calib/pose_calibration.json
+    # drive the simulation, the real rig follows
+    python -m tactip_mujoco_gym.sim2real follow --pose-calibration calib/pose_calibration.json \\
+        --port COM19 --camera 1
+    (keys: tactip_mujoco_gym/sim2real/teleop.py; on macOS run these with mjpython)
+
+Rig-controller is used as an installed package (pip install -e path/to/Rig-controller) with
+its own board listener. --listener runs a different listener file; --rig-code is only for an
+old checkout that isn't installed.
+
+Both rigs start every run from the same pose, 10 mm above the block centre: the simulated
+rig's reset, and on the real rig homing against the limit switches (z first, then x, y)
+followed by a fixed move measured once by real-setup. Every run also ends there.
+
+    # 0. once (and again if the rig or the holder moves): measure steps/mm and the move from
+    #    home to the block, with the FLAT block in the holder (interactive)
+    python -m tactip_mujoco_gym.sim2real real-setup --port COM19 --camera 1 \\
+        --measure-steps --out-dir calib
+
     # 1. the simulated presses, at a few skin stiffnesses (no hardware)
     python -m tactip_mujoco_gym.sim2real sim-capture --stiffness 0.5 1 2 4 --out-dir calib
 
-    # 2. the same presses on the real rig, flat block in the holder (interactive)
-    python -m tactip_mujoco_gym.sim2real real-capture --port COM19 \\
-        --listener "C:/.../Rig-controller/Code/Examples/Board Examples/listener_MP.py" \\
-        --rig-code "C:/.../Rig-controller/Code" --camera 1 --measure-steps --out-dir calib
+    # 2. the same presses on the real rig: homes, goes to the start pose, presses, homes
+    python -m tactip_mujoco_gym.sim2real real-capture --port COM19 --camera 1 \\
+        --out-dir calib
 
     # 3. fit: layout, skin stiffness, per-marker maps, force; writes rig_calibration.json
     python -m tactip_mujoco_gym.sim2real fit --out-dir calib
@@ -16,13 +39,14 @@ then run the same experiment on either.
     # 4. an experiment on both rigs, data in the simulated "tactile" format
     python -m tactip_mujoco_gym.sim2real experiment --rig sim  --calibration calib/rig_calibration.json --out sim.npz
     python -m tactip_mujoco_gym.sim2real experiment --rig real --calibration calib/rig_calibration.json \\
-        --port COM19 --listener ... --rig-code ... --camera 1 --out real.npz
+        --port COM19 --camera 1 --out real.npz
     python -m tactip_mujoco_gym.sim2real compare sim.npz real.npz
 
 Steps 1 and 2 must use the same protocol options (--depths, --shears, --points, --span,
 --repeats); the defaults match: presses to 0.5-2 mm, each also slid 0.5 and 1 mm along +-x
-and +-y (the slides tell which way the camera is turned), twice. Both rigs press a flat block for calibrating (the simulated one is an STL
-box the size of a dataset block; print one, 29.3 x 30 x 7 mm, for the real holder).
+and +-y (the slides tell which way the camera is turned), twice. Both rigs press a flat
+block for calibrating (the simulated one is an STL box the size of a dataset block; print
+one, 29.3 x 30 x 7 mm, for the real holder).
 """
 import argparse
 import glob
@@ -34,7 +58,8 @@ import numpy as np
 from .calibration import RealToSim, RigCalibration, fit_calibration
 from .markers import MarkerDetector
 from .rigs import (RealRig, SimRig, calibration_probes, connect_controller, flat_block_stl,
-                   grid_probes, jog, measure_steps_per_mm, open_camera, run_probes)
+                   grid_probes, jog, load_rig_setup, measure_steps_per_mm, open_camera,
+                   run_probes, save_rig_setup)
 
 
 # ============================================================================ helpers
@@ -68,8 +93,10 @@ def _grid_probes(a):
 
 def _real_args(ap):
     ap.add_argument("--port", required=True, help="the Pico's serial port, e.g. COM19 or /dev/ttyACM0")
-    ap.add_argument("--listener", required=True, help="path of Board Examples/listener_MP.py")
-    ap.add_argument("--rig-code", default=None, help="Rig-controller's Code/ folder")
+    ap.add_argument("--listener", default=None,
+                    help="a board listener to use instead of Rig-controller's packaged one")
+    ap.add_argument("--rig-code", default=None,
+                    help="only if Rig-controller isn't pip-installed: its Code/ folder")
     ap.add_argument("--camera", type=int, default=0, help="the TacTip's camera index")
     ap.add_argument("--width", type=int, default=None)
     ap.add_argument("--height", type=int, default=None)
@@ -98,28 +125,38 @@ def _save_preview(rig, path):
     return path
 
 
-def _make_real(a, steps_per_mm, axis_sign, detector):
+def _setup_path(a, near=None):
+    if getattr(a, "setup", None):
+        return a.setup
+    folder = near or getattr(a, "out_dir", "calib")
+    return os.path.join(folder, "rig_setup.json")
+
+
+def _make_real(a, detector, setup_path):
+    if not os.path.exists(setup_path):
+        raise SystemExit(f"no {setup_path}: run real-setup first (it measures the move from "
+                         "home to the block)")
+    setup = load_rig_setup(setup_path)
+    if "home_offset" not in setup:
+        raise SystemExit(f"{setup_path} has no home_offset: run real-setup again")
     c = connect_controller(a.port, a.listener, a.rig_code)
     cam = open_camera(a.camera, a.width, a.height)
-    return RealRig(c, cam, steps_per_mm, axis_sign, detector=detector, plate=a.plate,
-                   settle_s=a.settle)
+    return RealRig(c, cam, detector=detector, plate=a.plate, settle_s=a.settle, **setup)
 
 
-def _real_setup(rig, out_dir, recontact=True):
-    """Jog over the block centre, rest image, contact. Returns the rest pins."""
-    _say("Put the FLAT block in the holder. Next, jog the sensor over its centre, 2-4 mm "
-         "above it, NOT touching (x/y/z in mm; 'done' when there).")
-    jog(rig)
-    rig.zero_xy()
-    _say("The sensor must be in free space (not touching anything) for the rest image.")
+def _real_start(rig, out_dir):
+    """Home, the start pose, a rest image there (the sensor is in free air), contact.
+    Returns the rest pins."""
+    _say("Put the FLAT block in the holder. The rig will home (z up first, then x and y) "
+         "and go to the start pose, 10 mm above the block centre.")
+    rig.reset()
     rest = rig.set_rest()
     p = _save_preview(rig, os.path.join(out_dir, "rest_pins.png"))
     if p:
         print(f"    detected pins drawn on {p}: check every pin is found once "
               "(else adjust --detector)")
-    if recontact:
-        print("    lowering until the TacTip feels the block ...")
-        rig.find_contact()
+    print("    lowering until the TacTip feels the block ...")
+    rig.find_contact()
     return rest
 
 
@@ -130,8 +167,10 @@ def cmd_sim_capture(a):
     for k in a.stiffness:
         print(f"\n=== simulated rig, sensor_stiffness {k} ===")
         rig = SimRig(textures=[flat_block_stl()], sensor_stiffness=k, sensor_xml=a.sensor_xml)
+        rig.reset()                                  # the start pose, as on the real rig
         rig.find_contact()
         data = run_probes(rig, probes, clear_mm=a.clear)
+        rig.reset()
         out = os.path.join(a.out_dir, f"sim_k{k:g}.npz")
         np.savez_compressed(
             out, probes=data["probes"], markers=data["markers"], lateral=data["lateral"],
@@ -147,41 +186,98 @@ def cmd_sim_capture(a):
         rig.close()
 
 
+def cmd_cameras(a):
+    from .rigs import list_cameras
+    found = list_cameras(a.max_index, a.out_dir)
+    if not found:
+        print("no camera gives pictures (is the TacTip plugged in? on Linux, are you in the "
+              "'video' group?)")
+    for i, w, h in found:
+        print(f"camera {i}: {w} x {h}" + (f"  -> {a.out_dir}/camera_{i}.png" if a.out_dir else ""))
+    if found:
+        print("use the TacTip's index as --camera")
+
+
+def cmd_real_setup(a):
+    if not a.no_sim:
+        # matched against the simulator, side by side (pose-calibrate)
+        print("[real-setup] matching the real rig to the simulated one: the MuJoCo viewer and "
+              "the 'real rig' window open. (--no-sim: the old text-only set-up.)")
+        if a.measure_steps or a.steps_per_mm:
+            print("[real-setup] steps/mm come from the poses you match; --measure-steps / "
+                  "--steps-per-mm aren't needed")
+        a.out = os.path.join(a.out_dir, "pose_calibration.json")
+        a.setup_out = a.setup or os.path.join(a.out_dir, "rig_setup.json")
+        a.setup = None
+        return cmd_pose_calibrate(a)
+    os.makedirs(a.out_dir, exist_ok=True)
+    detector = MarkerDetector(**json.loads(a.detector)) if a.detector else MarkerDetector()
+    if a.steps_per_mm is None and not a.measure_steps:
+        raise SystemExit("give --steps-per-mm X Y Z, or --measure-steps")
+    c = connect_controller(a.port, a.listener, a.rig_code)
+    cam = open_camera(a.camera, a.width, a.height)
+    spm = a.steps_per_mm or [1.0, 1.0, 1.0]
+    rig = RealRig(c, cam, spm, a.axis_sign, detector=detector, plate=a.plate, settle_s=a.settle)
+
+    _say("Put the FLAT block in the holder and make sure nothing is in the way: the rig will "
+         "home (z up to its switch first, then x and y).")
+    rig.home()
+    print(f"    moving the preset {a.preset[0]}, {a.preset[1]} steps (x, y) towards the block ...")
+    rig.move_steps(a.preset[0], a.preset[1], 0)
+    rig.set_rest()                                       # high up: free air
+
+    if a.measure_steps:
+        _say("Measuring steps per mm: each axis moves "
+             f"{abs(a.measure_n)} steps and back. Have a rule or calipers ready.")
+        spm, sign = [], []
+        for ax in "xyz":
+            k, g = measure_steps_per_mm(rig, ax, -abs(a.measure_n))
+            spm.append(k)
+            sign.append(g)
+            print(f"    {ax}: {k:.3f} steps/mm, sign {g:+d}")
+        rig.spm = np.asarray(spm, float)
+        rig.sign = np.asarray(sign, float)
+
+    _say("Now jog the sensor over the centre of the block and down to 2-4 mm above it, NOT "
+         "touching (x/y/z in mm, e.g. 'z -20'; 'done' when there). This is the only time.")
+    jog(rig)
+    print("    lowering until the TacTip feels the block ...")
+    rig.find_contact()                                   # no offset yet: from here, down
+    rig.home_offset = rig.contact_offset()
+    out = _setup_path(a)
+    save_rig_setup(out, rig, preset=a.preset)
+    off_mm = rig.sign * rig.home_offset / rig.spm
+    print(f"saved {out}: block centre at contact is {rig.home_offset.tolist()} steps from home "
+          f"({off_mm[0]:.1f}, {off_mm[1]:.1f}, {off_mm[2]:.1f} mm)")
+
+    # check: from home again, the start pose and contact where expected
+    rig.z_contact = None
+    rig.reset()
+    _say("Check: the sensor should be over the block centre, 10 mm above it.")
+    zc = rig.find_contact()
+    print(f"    contact found {zc:+.2f} mm from where the setup expects it (should be ~0)")
+    rig.reset()
+    rig.close()
+
+
 def cmd_real_capture(a):
     os.makedirs(a.out_dir, exist_ok=True)
     detector = MarkerDetector(**json.loads(a.detector)) if a.detector else MarkerDetector()
-    spm = a.steps_per_mm
-    sign = a.axis_sign
-    if a.measure_steps:
-        c = connect_controller(a.port, a.listener, a.rig_code)
-        spm, sign = [], []
-        _say("Measuring steps per mm: put a rule / calipers on each axis in turn. Leave room "
-             f"for {a.measure_n} steps of travel each way.")
-        for ax in "xyz":
-            s, g = measure_steps_per_mm(c, ax, a.measure_n)
-            spm.append(s)
-            sign.append(g)
-            print(f"    {ax}: {s:.3f} steps/mm, sign {g:+d}")
-        cam = open_camera(a.camera, a.width, a.height)
-        rig = RealRig(c, cam, spm, sign, detector=detector, plate=a.plate, settle_s=a.settle)
-    else:
-        if spm is None:
-            raise SystemExit("give --steps-per-mm X Y Z (or --measure-steps)")
-        rig = _make_real(a, spm, sign, detector)
-    rest = _real_setup(rig, a.out_dir)
+    rig = _make_real(a, detector, _setup_path(a))
+    rest = _real_start(rig, a.out_dir)
     probes = _calib_probes(a)
     print(f"\npressing {len(probes)} times ...")
     data = run_probes(rig, probes, clear_mm=a.clear)
     out = os.path.join(a.out_dir, "real.npz")
     extra = {"force_raw": data["force_raw"]} if "force_raw" in data else {}
     np.savez_compressed(out, probes=data["probes"], pins=data["pins"], ok=data["ok"], rest=rest,
-                        steps_per_mm=np.asarray(spm, float), axis_sign=np.asarray(sign, float),
+                        steps_per_mm=rig.spm, axis_sign=rig.sign,
                         detector=json.dumps(detector.to_dict()), z_contact=rig.z_contact,
                         contact_z=rig.contact_trace["z"], contact_signal=rig.contact_trace["signal"],
                         **extra)
     print(f"saved {out}: {len(probes)} presses, {len(rest)} pins "
           f"(found in {data['ok'].mean():.0%} of readings)")
-    rig.move_to(z=10.0)
+    rig.reset()
     rig.close()
 
 
@@ -197,6 +293,41 @@ def _load_npz(path):
     if "velocity" in d:
         d["velocity"] = bool(d["velocity"])
     return d
+
+
+def _teleop_rigs(a, known):
+    from .teleop import NoCamera
+    textures = [flat_block_stl()] if a.texture in (None, "flat") else \
+        [int(a.texture) if str(a.texture).isdigit() else a.texture]
+    sim = SimRig(textures=textures, sensor_stiffness=a.stiffness)
+    c = connect_controller(a.port, a.listener, a.rig_code)
+    cam = open_camera(a.camera, a.width, a.height) if a.camera >= 0 else NoCamera()
+    real = RealRig(c, cam, known.get("steps_per_mm", (1.0, 1.0, 1.0)),
+                   known.get("axis_sign", (1, 1, 1)), settle_s=0.0, track=False,
+                   home_buttons=known.get("home_buttons", (3, 2, 0)))
+    return sim, real
+
+
+def cmd_pose_calibrate(a):
+    from .teleop import pose_calibrate
+    os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+    known = load_rig_setup(a.setup) if a.setup and os.path.exists(a.setup) else {}
+    sim, real = _teleop_rigs(a, known)
+    pose_calibrate(sim, real, a.out, kind=a.model, preset=a.preset, resume=a.resume,
+                   setup_out=a.setup_out, home_on_exit=not a.stay,
+                   known_spm=known.get("steps_per_mm"), known_sign=known.get("axis_sign"))
+    sim.close()
+    real.close()
+
+
+def cmd_follow(a):
+    from .pose_map import PoseMap
+    from .teleop import follow
+    pm = PoseMap.load(a.pose_calibration)
+    sim, real = _teleop_rigs(a, {})
+    follow(sim, real, pm, margin_mm=a.margin, home_on_exit=not a.stay, window=not a.no_window)
+    sim.close()
+    real.close()
 
 
 def cmd_fit(a):
@@ -229,28 +360,28 @@ def cmd_experiment(a):
 
     if a.rig == "sim":
         rig = SimRig(textures=[flat_block_stl()] + textures, **calib.sim_env_kwargs())
+        rig.reset()
         rig.find_contact()                           # on the flat block, as on the real rig
         for i, t in enumerate(textures):
-            rig.set_texture(t)
+            rig.reset(texture=t)                     # new block, back to the start pose
             data = run_probes(rig, probes, clear_mm=a.clear)
             X += [tactile_vector(m, scale_mm, clip, vel) for m in data["markers"]]
             F += list(data["force"])
             y += [i] * len(probes)
             pos += list(probes)
+        rig.reset()
         rig.close()
     else:
-        if calib.steps_per_mm is None:
-            raise SystemExit("the calibration has no steps_per_mm (real capture missing?)")
         detector = MarkerDetector(**calib.detector) if calib.detector else MarkerDetector()
-        rig = _make_real(a, calib.steps_per_mm, calib.axis_sign, detector)
+        rig = _make_real(a, detector, _setup_path(a, near=os.path.dirname(os.path.abspath(a.calibration))))
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
-        rest = _real_setup(rig, os.path.dirname(os.path.abspath(a.out)))
+        rest = _real_start(rig, os.path.dirname(os.path.abspath(a.out)))
         to_sim = RealToSim(calib, rest)
         print(f"    {to_sim.n_seen} of {len(calib.real_rest)} calibrated pins found this session")
         for i, t in enumerate(textures):
-            rig.move_to(z=10.0)
+            rig.home()                               # out of the way, and clears missed steps
             _say(f"Put texture {t} in the holder (same orientation as the simulator's).")
-            rig.move_to(z=a.clear)
+            rig.go_to_start()
             data = run_probes(rig, probes, clear_mm=a.clear)
             for p, ok in zip(data["pins"], data["ok"]):
                 X.append(tactile_vector(to_sim.markers(p, ok), scale_mm, clip, vel))
@@ -260,7 +391,7 @@ def cmd_experiment(a):
                 F += [np.nan] * len(probes)
             y += [i] * len(probes)
             pos += list(probes)
-        rig.move_to(z=10.0)
+        rig.reset()
         rig.close()
 
     np.savez_compressed(a.out, X=np.stack(X), y=np.array(y), pos=np.array(pos),
@@ -309,13 +440,35 @@ def main(argv=None):
     _calib_protocol_args(p)
     p.set_defaults(fn=cmd_sim_capture)
 
-    p = sub.add_parser("real-capture", help="the calibration presses on the real rig (interactive)")
+    p = sub.add_parser("cameras", help="list the cameras that give pictures (find the TacTip)")
+    p.add_argument("--max-index", type=int, default=10)
+    p.add_argument("--out-dir", default="calib", help="snapshots go here")
+    p.set_defaults(fn=cmd_cameras)
+
+    p = sub.add_parser("real-setup", help="once: match the real rig to the simulated one "
+                                          "(opens the simulator; same as pose-calibrate)")
     _real_args(p)
+    p.add_argument("--no-sim", action="store_true",
+                   help="the old text-only set-up: jog by eye to the block, no simulator")
+    p.add_argument("--model", choices=("axis", "affine"), default="axis")
+    p.add_argument("--resume", action="store_true")
+    p.add_argument("--texture", default="flat")
+    p.add_argument("--stiffness", type=float, default=1.0)
+    p.add_argument("--stay", action="store_true")
     p.add_argument("--steps-per-mm", type=float, nargs=3, default=None, metavar=("X", "Y", "Z"))
     p.add_argument("--axis-sign", type=int, nargs=3, default=[1, 1, 1], metavar=("X", "Y", "Z"))
-    p.add_argument("--measure-steps", action="store_true", help="measure steps/mm and signs first")
-    p.add_argument("--measure-n", type=int, default=1000, help="steps moved when measuring")
+    p.add_argument("--measure-steps", action="store_true", help="measure steps/mm and signs")
+    p.add_argument("--measure-n", type=int, default=800, help="steps moved when measuring")
+    p.add_argument("--preset", type=int, nargs=2, default=[-1900, -6400], metavar=("X", "Y"),
+                   help="steps from home to about the block centre (Controller.calibrate_texture's)")
     p.add_argument("--out-dir", default="calib")
+    p.add_argument("--setup", default=None, help="default: <out-dir>/rig_setup.json")
+    p.set_defaults(fn=cmd_real_setup)
+
+    p = sub.add_parser("real-capture", help="the calibration presses on the real rig")
+    _real_args(p)
+    p.add_argument("--out-dir", default="calib")
+    p.add_argument("--setup", default=None, help="default: <out-dir>/rig_setup.json")
     _calib_protocol_args(p)
     p.set_defaults(fn=cmd_real_capture)
 
@@ -333,15 +486,46 @@ def main(argv=None):
     p.add_argument("--textures", nargs="+", default=["1", "2", "3", "4", "5", "6"])
     p.add_argument("--out", required=True)
     p.add_argument("--port")
-    p.add_argument("--listener")
-    p.add_argument("--rig-code", default=None)
+    p.add_argument("--listener", default=None, help="default: Rig-controller's packaged one")
+    p.add_argument("--rig-code", default=None, help="only if Rig-controller isn't pip-installed")
     p.add_argument("--camera", type=int, default=0)
     p.add_argument("--width", type=int, default=None)
     p.add_argument("--height", type=int, default=None)
     p.add_argument("--plate", action="store_true")
     p.add_argument("--settle", type=float, default=0.3)
+    p.add_argument("--setup", default=None, help="default: rig_setup.json next to --calibration")
     _grid_protocol_args(p)
     p.set_defaults(fn=cmd_experiment)
+
+    def teleop_args(p):
+        p.add_argument("--port", required=True)
+        p.add_argument("--listener", default=None, help="default: Rig-controller's packaged one")
+        p.add_argument("--rig-code", default=None, help="only if Rig-controller isn't pip-installed")
+        p.add_argument("--camera", type=int, default=-1, help="TacTip camera index (-1: none)")
+        p.add_argument("--width", type=int, default=None)
+        p.add_argument("--height", type=int, default=None)
+        p.add_argument("--texture", default="flat", help="simulated block: flat, 1..20 or an STL")
+        p.add_argument("--stiffness", type=float, default=1.0, help="sensor_stiffness")
+        p.add_argument("--stay", action="store_true", help="don't home the real rig on exit")
+
+    p = sub.add_parser("pose-calibrate", help="match both rigs' poses with the keyboard")
+    teleop_args(p)
+    p.add_argument("--out", default="calib/pose_calibration.json")
+    p.add_argument("--model", choices=("axis", "affine"), default="axis")
+    p.add_argument("--preset", type=int, nargs=2, default=[-1900, -6400], metavar=("X", "Y"),
+                   help="steps from home towards the block after homing")
+    p.add_argument("--resume", action="store_true", help="add to the poses already in --out")
+    p.add_argument("--setup", default=None, help="a rig_setup.json with known steps/mm (optional)")
+    p.add_argument("--setup-out", default=None, help="default: rig_setup.json next to --out")
+    p.set_defaults(fn=cmd_pose_calibrate)
+
+    p = sub.add_parser("follow", help="drive the simulated rig; the real rig follows")
+    teleop_args(p)
+    p.add_argument("--pose-calibration", default="calib/pose_calibration.json")
+    p.add_argument("--margin", type=float, default=20.0,
+                   help="how far (mm, x / y) past the recorded poses the real rig may go")
+    p.add_argument("--no-window", action="store_true", help="only the MuJoCo viewer")
+    p.set_defaults(fn=cmd_follow)
 
     p = sub.add_parser("compare", help="real (mapped) vs simulated data of the same experiment")
     p.add_argument("sim")
@@ -349,8 +533,8 @@ def main(argv=None):
     p.set_defaults(fn=cmd_compare)
 
     a = ap.parse_args(argv)
-    if a.cmd == "experiment" and a.rig == "real" and not (a.port and a.listener):
-        ap.error("--rig real needs --port and --listener")
+    if a.cmd == "experiment" and a.rig == "real" and not a.port:
+        ap.error("--rig real needs --port")
     a.fn(a)
 
 

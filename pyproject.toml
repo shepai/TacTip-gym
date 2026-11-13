@@ -30,6 +30,11 @@ train = [
 test = [
     "pytest",
 ]
+real = [                      # sim2real with the real rig (github.com/shepai/Rig-controller)
+    "opencv-python",          # the TacTip camera, pin detection
+    "pyserial",
+    "mpremote",               # Rig-controller's MicroPython link
+]
 docs = [                      # the documentation (docs/; Read the Docs uses docs/requirements.txt)
     "sphinx>=7.3",
     "myst-parser>=3.0",
