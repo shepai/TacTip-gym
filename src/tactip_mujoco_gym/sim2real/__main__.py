@@ -325,16 +325,92 @@ def _teleop_rigs(a, known):
     return sim, real
 
 
+def _scale(a, out):
+    """Measured steps/mm (measure-steps), if there are any: --scale, or next to `out`."""
+    path = getattr(a, "scale", None) or os.path.join(os.path.dirname(os.path.abspath(out)),
+                                                     "steps_per_mm.json")
+    if not os.path.exists(path):
+        if getattr(a, "scale", None):
+            raise SystemExit(f"no {path}")
+        return None, None, None
+    with open(path) as f:
+        d = json.load(f)
+    return d["steps_per_mm"], d.get("axis_sign"), path
+
+
+def _model(a, spm):
+    return a.model if a.model != "auto" else ("offset" if spm is not None else "axis")
+
+
 def cmd_pose_calibrate(a):
     from .teleop import pose_calibrate
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     known = load_rig_setup(a.setup) if a.setup and os.path.exists(a.setup) else {}
+    spm, sign, path = _scale(a, a.out)
+    if spm is not None:
+        print(f"[pose-calibrate] measured steps/mm from {path}: {spm} (offset model: one good pose "
+              "is enough, more check it)")
+    kind = _model(a, spm)
     sim, real = _teleop_rigs(a, known)
-    pose_calibrate(sim, real, a.out, kind=a.model, preset=a.preset, resume=a.resume,
+    pose_calibrate(sim, real, a.out, kind=kind, preset=a.preset, resume=a.resume,
                    setup_out=a.setup_out, home_on_exit=not a.stay,
-                   known_spm=known.get("steps_per_mm"), known_sign=known.get("axis_sign"))
+                   known_spm=spm if spm is not None else known.get("steps_per_mm"),
+                   known_sign=sign if spm is not None else known.get("axis_sign"))
     sim.close()
     real.close()
+
+
+def cmd_measure_steps(a):
+    """Each axis starts pressed against its push switch (home): mark there, it moves away
+    by a set number of steps, type how far it went, it goes back to the switch."""
+    from .teleop import NoCamera
+    c = connect_controller(a.port, a.listener, a.rig_code)
+    rig = RealRig(c, NoCamera(), (1.0, 1.0, 1.0), track=False, settle_s=0.0)
+    _say("Measuring steps per mm, from the push switches. For each axis the rig first homes, so "
+         "that axis is pressed against its switch: mark that spot, it moves away from the "
+         "switch, then you type how far it went. Clear the bed first (z moves down).")
+    spm = []
+    for ax in "xyz":
+        rig.home(verbose=False)                      # every axis back against its switch
+        n = abs(a.steps if ax != "z" else a.z_steps)
+        what = {"x": "the plate (x)", "y": "the main body (y)", "z": "the sensor carriage (z)"}[ax]
+        _say(f"{ax}: {what} is now pressed against its push switch. Zero your calipers / mark "
+             f"the rule here. It will then move {n} steps away from the switch.")
+        k, _ = measure_steps_per_mm(rig, ax, -n, signed=False)
+        spm.append(k)
+        print(f"    {ax}: {k:.2f} steps/mm")
+    out = a.out
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    with open(out, "w") as f:
+        json.dump(dict(steps_per_mm=spm, axis_sign=None, steps_moved=a.steps,
+                       z_steps_moved=a.z_steps, measured_from="the push switches (home)"), f, indent=1)
+    print(f"saved {out}. Directions come from the poses. Next: real-setup --resume (or a fresh "
+          "real-setup); it uses these automatically.")
+    rig.home(verbose=False)
+
+
+def cmd_pose_edit(a):
+    from .pose_map import PoseMap
+    from .rigs import save_rig_setup_dict
+    pm = PoseMap.load(a.file)
+    if a.drop:
+        n = pm.drop(a.drop)
+        print(f"dropped {n} pose(s): {sorted(set(a.drop))}")
+    spm, sign, path = _scale(a, a.file)
+    if spm is not None:
+        pm.known_spm, pm.known_sign = np.asarray(spm, float), (None if sign is None else np.asarray(sign, float))
+    kind = _model(a, spm) if a.model != "keep" else (pm.kind or "axis")
+    try:
+        pm.fit(kind)
+    except ValueError as err:
+        pm.A = None
+        print(f"not enough poses for a {kind} map: {err}")
+    pm.save(a.file)
+    if pm.A is not None:
+        setup = os.path.join(os.path.dirname(os.path.abspath(a.file)), "rig_setup.json")
+        save_rig_setup_dict(setup, pm.rig_setup())
+        print(f"saved {a.file} and {setup}")
+    print(pm.summary())
 
 
 def cmd_follow(a):
@@ -467,7 +543,10 @@ def main(argv=None):
     _real_args(p)
     p.add_argument("--no-sim", action="store_true",
                    help="the old text-only set-up: jog by eye to the block, no simulator")
-    p.add_argument("--model", choices=("axis", "affine"), default="axis")
+    p.add_argument("--model", choices=("auto", "offset", "axis", "affine"), default="auto",
+                   help="auto: offset with measured steps/mm (measure-steps), else axis")
+    p.add_argument("--scale", default=None, help="measured steps/mm (default: "
+                                                  "<out-dir>/steps_per_mm.json if there is one)")
     p.add_argument("--resume", action="store_true")
     p.add_argument("--texture", default="flat")
     p.add_argument("--stiffness", type=float, default=1.0)
@@ -528,13 +607,33 @@ def main(argv=None):
     p = sub.add_parser("pose-calibrate", help="match both rigs' poses with the keyboard")
     teleop_args(p)
     p.add_argument("--out", default="calib/pose_calibration.json")
-    p.add_argument("--model", choices=("axis", "affine"), default="axis")
+    p.add_argument("--model", choices=("auto", "offset", "axis", "affine"), default="auto",
+                   help="auto: offset with measured steps/mm (measure-steps), else axis")
+    p.add_argument("--scale", default=None, help="measured steps/mm (default: steps_per_mm.json "
+                                                  "next to --out, if there is one)")
     p.add_argument("--preset", type=int, nargs=2, default=[-1900, -6400], metavar=("X", "Y"),
                    help="steps from home towards the block after homing")
     p.add_argument("--resume", action="store_true", help="add to the poses already in --out")
     p.add_argument("--setup", default=None, help="a rig_setup.json with known steps/mm (optional)")
     p.add_argument("--setup-out", default=None, help="default: rig_setup.json next to --out")
     p.set_defaults(fn=cmd_pose_calibrate)
+
+    p = sub.add_parser("measure-steps", help="measure each axis's steps per mm with a rule")
+    p.add_argument("--port", required=True)
+    p.add_argument("--listener", default=None)
+    p.add_argument("--rig-code", default=None)
+    p.add_argument("--steps", type=int, default=800, help="steps moved away from the switch on x and y")
+    p.add_argument("--z-steps", type=int, default=400, help="steps moved down on z (from the top)")
+    p.add_argument("--out", default="calib/steps_per_mm.json")
+    p.set_defaults(fn=cmd_measure_steps)
+
+    p = sub.add_parser("pose-edit", help="drop poses from a pose calibration and refit")
+    p.add_argument("--file", default="calib/pose_calibration.json")
+    p.add_argument("--drop", type=int, nargs="+", default=None, metavar="N",
+                   help="pose numbers to forget (1 = the first, as the summary lists them)")
+    p.add_argument("--model", choices=("keep", "auto", "offset", "axis", "affine"), default="keep")
+    p.add_argument("--scale", default=None)
+    p.set_defaults(fn=cmd_pose_edit)
 
     p = sub.add_parser("follow", help="drive the simulated rig; the real rig follows")
     teleop_args(p)

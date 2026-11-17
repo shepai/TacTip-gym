@@ -744,7 +744,7 @@ class RealRig(Rig):
 
 
 # ============================================================================ set-up help
-def measure_steps_per_mm(rig, axis, steps=-800, ask=None):
+def measure_steps_per_mm(rig, axis, steps=-800, ask=None, signed=True):
     """Move one axis of a RealRig by `steps` (negative: away from the limit switches) and ask
     how far the sensor moved relative to the block (mm, calipers / a rule; negative if it
     went against the simulator's + axis, z + up). Moves back afterwards.
@@ -754,9 +754,15 @@ def measure_steps_per_mm(rig, axis, steps=-800, ask=None):
     move = [0, 0, 0]
     move[i] = int(steps)
     rig.move_steps(*move)
-    mm = float(ask(f"{axis}: moved {steps} steps. How far did the sensor move relative to the "
-                   f"block, in mm (negative if against the simulator's +{axis}"
-                   f"{', i.e. down' if axis == 'z' else ''})? "))
+    if signed:
+        q = (f"{axis}: moved {steps} steps. How far did the sensor move relative to the "
+             f"block, in mm (negative if against the simulator's +{axis}"
+             f"{', i.e. down' if axis == 'z' else ''})? ")
+    else:
+        q = f"{axis}: moved {abs(steps)} steps. How far did it move from your mark, in mm? "
+    mm = float(ask(q))
+    if not signed:
+        mm = abs(mm)
     move[i] = -int(steps)
     rig.move_steps(*move)
     if mm == 0:

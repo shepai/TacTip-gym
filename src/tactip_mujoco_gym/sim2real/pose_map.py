@@ -6,7 +6,10 @@ until they are in the same place relative to their blocks, press Enter, and repe
 poses. Each pair is (simulated position, mm; real stepper position, steps from home). The
 fit maps one to the other:
 
-    axis    (default) per axis: steps = k * mm + b. Needs two poses that differ by
+    offset  steps = s * mm + b with the steps/mm s measured with a ruler
+            (`sim2real measure-steps`): only where the block is gets fitted, so one pose
+            is enough and every further pose checks the others. The most robust.
+    axis    per axis: steps = k * mm + b. Needs two poses that differ by
             >= 1 mm along every axis (an axis you didn't vary takes its scale from a known
             steps/mm, e.g. rig_setup.json, if given).
     affine  steps = A mm + b, a full 3 x 3: also captures axes that aren't square to the
@@ -26,6 +29,10 @@ import json
 import numpy as np
 
 VERSION = 1
+
+
+def fmt(v):
+    return "(" + ", ".join(f"{float(x):+.1f}" for x in v) + ")"
 
 
 class PoseMap:
@@ -73,8 +80,13 @@ class PoseMap:
                 raise ValueError("affine needs poses spread out in x, y and z (not all in a plane)")
             coef, *_ = np.linalg.lstsq(X, T, rcond=None)              # (4, 3)
             return coef[:3].T, coef[3]
+        if kind == "offset":
+            if self.known_spm is None:
+                raise ValueError("offset needs the measured steps/mm (sim2real measure-steps)")
+            A = np.diag(self.offset_signs() * self.known_spm)
+            return A, (T - S @ A.T).mean(axis=0)
         if kind != "axis":
-            raise ValueError(f"unknown kind {kind!r} (axis or affine)")
+            raise ValueError(f"unknown kind {kind!r} (offset, axis or affine)")
         missing = self._unvaried()
         if missing:
             raise ValueError(self.needs("axis"))
@@ -90,6 +102,46 @@ class PoseMap:
             A[i, i], b[i] = k, c
         return A, b
 
+    def offset_signs(self):
+        """Each axis's direction for the offset model: known if measured, else from the poses
+        that vary that axis by >= 1 mm, else +1."""
+        if self.known_sign is not None:
+            return np.asarray(self.known_sign, float)
+        S, T = self.arrays()
+        out = np.ones(3)
+        for i in range(3):
+            if len(S) > 1 and np.ptp(S[:, i]) >= 1.0:
+                out[i] = 1.0 if np.polyfit(S[:, i], T[:, i], 1)[0] >= 0 else -1.0
+        return out
+
+    def leave_one_out(self):
+        """For each pose: how far (mm) a map fitted to the OTHER poses puts it (None where
+        the others can't make a map on their own). A pose far off is the odd one out."""
+        out = []
+        for k in range(len(self.points)):
+            other = PoseMap(points=[p for i, p in enumerate(self.points) if i != k],
+                            known_spm=self.known_spm, known_sign=self.known_sign)
+            S, _ = other.arrays()
+            if (self.kind or "axis") == "axis" and self.known_spm is None and \
+                    (len(S) < 2 or np.ptp(S, axis=0).min() < 3.0):
+                out.append(None)                    # the others too close together to judge
+                continue
+            try:
+                other.fit(self.kind or "axis")
+            except (ValueError, np.linalg.LinAlgError):
+                out.append(None)
+                continue
+            p = self.points[k]
+            out.append(float(np.linalg.norm(other.to_sim(p["steps"]) - np.asarray(p["sim_mm"]))))
+        return out
+
+    def drop(self, numbers):
+        """Forget poses by number (1 = the first). Returns how many went."""
+        keep = [p for k, p in enumerate(self.points, 1) if k not in set(numbers)]
+        n = len(self.points) - len(keep)
+        self.points = keep
+        return n
+
     def _unvaried(self):
         """Axes the recorded simulated poses don't yet span by 1 mm (and with no known
         steps/mm to fall back on)."""
@@ -102,6 +154,9 @@ class PoseMap:
     def needs(self, kind="axis"):
         """What to record next for a map, in words."""
         n = len(self.points)
+        if kind == "offset":
+            return ("Match both rigs and press Enter to record a first pose." if n == 0 else
+                    "Enough poses for a map; more, spread over the block, check it.")
         if kind == "affine" and n < 4:
             return (f"For an affine map: {4 - n} more pose(s) at least, spread in x, y and z "
                     "(6+ is better).")
@@ -135,7 +190,7 @@ class PoseMap:
 
     def steps_per_mm(self):
         """|scale| and sign per axis (the diagonal; for an affine map, its column norms)."""
-        k = np.diag(self.A) if self.kind == "axis" else np.linalg.norm(self.A, axis=0) * np.sign(np.diag(self.A))
+        k = np.diag(self.A) if self.kind in ("axis", "offset") else np.linalg.norm(self.A, axis=0) * np.sign(np.diag(self.A))
         return np.abs(k), np.sign(k).astype(int)
 
     def rig_setup(self, contact_z_mm=-10.0, home_buttons=(3, 2, 0)):
@@ -157,6 +212,19 @@ class PoseMap:
         if self.residual_mm is not None and len(self.residual_mm):
             lines.append(f"  pose mismatch: rms {np.sqrt(np.mean(self.residual_mm ** 2)):.2f} mm, "
                          f"worst {self.residual_mm.max():.2f} mm (pose {int(self.residual_mm.argmax()) + 1})")
+            loo = self.leave_one_out()
+            for k, (p, r, o) in enumerate(zip(self.points, self.residual_mm, loo), 1):
+                flags = []
+                if o is not None and o > 1.5:
+                    flags.append(f"the other poses put it {o:.1f} mm away")
+                home = [ax for ax, v in zip("xyz", p["steps"]) if v >= -5]
+                if home:
+                    flags.append(f"real {'/'.join(home)} at its home switch: it couldn't go further")
+                lines.append(f"  pose {k}: sim {fmt(p['sim_mm'])} mm, real {p['steps']} steps, "
+                             f"off by {r:.2f} mm" + (f"   <- {'; '.join(flags)}" if flags else ""))
+            if self.residual_mm.max() > 1.0 or any(o is not None and o > 1.5 for o in loo):
+                lines.append("  drop poses that don't agree with `sim2real pose-edit --drop N`, then "
+                             "add better ones with `real-setup --resume`")
         return "\n".join(lines)
 
     # ---- save / load

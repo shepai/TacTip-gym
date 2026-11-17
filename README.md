@@ -1021,6 +1021,10 @@ There are two windows. Keys in the MuJoCo viewer move the simulated rig. Keys in
 | g, n | real rig to the simulated pose; simulated rig to the real pose |
 | h, z, q | home the real rig, reset the simulated one, save and quit |
 
+For the most dependable calibration, first measure each axis's steps per mm with a rule. Run `python -m tactip_mujoco_gym.sim2real measure-steps --port /dev/ttyACM0`: it homes, moves each axis away from its switch and back, and asks how far it went. That saves `calib/steps_per_mm.json`, which `real-setup` then uses automatically (the `offset` model). Only the block's position is left to fit, so one well-matched pose is enough, and every further pose checks the others.
+
+The pose summary lists every pose and says how far a map built from the *other* poses puts it, so a badly matched pose stands out. It also flags any pose where the real rig was stopped at a home switch. Poses at a home switch are now refused when you press Enter. Remove bad poses with `python -m tactip_mujoco_gym.sim2real pose-edit --drop 3 4`, then add better ones with `real-setup --resume`.
+
 Until there's a map, real-rig keys move the board's own axes; after that, they move along the simulator's axes. The default `axis` map fits a scale and offset per axis, so vary every axis by at least 1 mm across your poses. `--model affine` fits a full 3 × 3 map, which also covers a gantry that isn't square; give it six or more poses spread in x, y and z. Each pose shows how well it fits the others, so a badly matched one stands out; press `u` to drop it. On macOS run these with `mjpython`.
 
 At the start of each session the real rig takes a fresh rest image and matches it to the calibration's, so lighting changes and small camera shifts carry over. In code:

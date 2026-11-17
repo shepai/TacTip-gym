@@ -106,6 +106,7 @@ class StepperWorker:
         self._lock = threading.Lock()
         self._target = None
         self._home = False
+        self.limited = {}
         self._stop = False
         self.busy = False
         self.error = None
@@ -117,10 +118,21 @@ class StepperWorker:
         return self.rig._steps.copy()
 
     def clamp(self, steps):
-        s = np.minimum(np.rint(np.asarray(steps, float)), 0).astype(np.int64)
+        """Keep a target reachable: not past home (every axis's limit switch is at its +
+        end) and inside `bounds`. Which axes were held, and why, goes in `limited`."""
+        raw = np.rint(np.asarray(steps, float)).astype(np.int64)
+        s = np.minimum(raw, 0)
+        why = {"xyz"[i]: "home (its limit switch)" for i in range(3) if raw[i] > 0}
         if self.bounds is not None:
-            s = np.clip(s, self.bounds[0], self.bounds[1]).astype(np.int64)
+            b = np.clip(s, self.bounds[0], self.bounds[1]).astype(np.int64)
+            why.update({"xyz"[i]: "the safety limits" for i in range(3) if b[i] != s[i]})
+            s = b
+        self.limited = why
         return s
+
+    def describe_limits(self):
+        """'' or e.g. 'real x held at home (its limit switch)'."""
+        return "; ".join(f"real {ax} held at {why}" for ax, why in sorted(self.limited.items()))
 
     @property
     def target(self):
@@ -336,6 +348,9 @@ class _Session:
                   (120, 255, 120))]
         if tgt is not None and not np.array_equal(tgt, real):
             lines.append((f"     -> {tgt[0]:+6d}     {tgt[1]:+6d}     {tgt[2]:+6d}", (120, 255, 120)))
+        held = self.worker.describe_limits()
+        if held:
+            lines.append((held, (0, 140, 255)))
         if self.fitted():
             m = self.pm.to_sim(real)
             lines.append((f"real pose in sim mm: x {m[0]:+.2f}  y {m[1]:+.2f}  z {m[2]:+.2f}",
@@ -436,6 +451,11 @@ def pose_calibrate(sim, real, out_path, kind="axis", preset=(-1900, -6400), resu
     def record():
         if not worker.idle() or np.linalg.norm(np.array(sim._raw()) - s.sim_target) > 1e-3:
             s.say("wait until both rigs have stopped, then Enter")
+            return
+        home = [ax for ax, v in zip("xyz", worker.pos) if v >= -5]
+        if home:
+            s.say(f"not recorded: the real {'/'.join(home)} is at its home switch, so it couldn't "
+                  "go further to match. Choose a pose further from that side.")
             return
         pm.add(sim._raw(), worker.pos)
         try:

@@ -473,3 +473,55 @@ def test_rest_tunes_the_detector_when_it_finds_too_few(tmp_path, monkeypatch):
     assert len(MarkerDetector()(img)) < 20                  # the defaults miss big pins
     rest = rig.set_rest(n_frames=2, verbose=False)
     assert len(rest) == len(xy) and rig.detector_tuned
+
+
+def test_worker_says_which_limit_held_an_axis():
+    from tactip_mujoco_gym.sim2real.teleop import StepperWorker
+    board = MockBoard()
+    rig = RealRig(board, MockTacTip(board), steps_per_mm=(25, 25, 25), settle_s=0, flush=0)
+    rig.home(verbose=False)
+    w = StepperWorker(rig, chunk=50, bounds=(np.array([-3000, -8000, -2500]), np.array([-500, 0, 0])))
+    w.set_target([-4000, -100, -10])
+    assert w.limited == {"x": "the safety limits"} and "real x held" in w.describe_limits()
+    w.set_target([200, -100, -10])
+    assert w.limited["x"] == "the safety limits"            # the box's top is below home here
+    w.bounds = None
+    w.set_target([200, -100, -10])
+    assert w.limited == {"x": "home (its limit switch)"}
+    w.set_target([-100, -100, -10])
+    assert w.limited == {} and w.describe_limits() == ""
+    w.stop()
+
+
+def test_offset_model_with_measured_steps_per_mm():
+    """With the steps/mm measured, one pose makes a map; signs come from the poses."""
+    from tactip_mujoco_gym.sim2real import PoseMap
+    A = np.diag([-100.0, 65.0, 38.0])
+    b = np.array([-1325.0, -3275.0, -1800.0])
+    pm = PoseMap(known_spm=[100.0, 65.0, 38.0], known_sign=[-1, 1, 1])
+    pm.add([0, 0, 0], b)
+    pm.fit("offset")
+    assert np.allclose(pm.A, A) and np.allclose(pm.b, b)
+    pm2 = PoseMap(known_spm=[100.0, 65.0, 38.0])             # directions from the poses
+    for p in ([0, 0, 0], [5, -4, -8], [-6, 7, -3]):
+        pm2.add(p, A @ p + b)
+    pm2.fit("offset")
+    assert np.allclose(pm2.A, A) and pm2.residual_mm.max() < 0.05
+
+
+def test_the_odd_pose_out_is_found_and_can_be_dropped():
+    """The user's calibration: pose 3 sat on the x home switch, pose 4 was mismatched."""
+    from tactip_mujoco_gym.sim2real import PoseMap
+    pm = PoseMap()
+    for s, t in (([0, 0, 0], [-1325, -3275, -1800]), ([0, 0, -12], [-1325, -3275, -2250]),
+                 ([13, -10, -13], [0, -4000, -2275]), ([-7, 9, -12], [-1400, -2775, -2300])):
+        pm.add(s, t)
+    pm.fit("axis")
+    loo = pm.leave_one_out()
+    assert loo[2] is not None and loo[2] == max(o for o in loo if o is not None)
+    text = pm.summary()
+    assert "pose 3" in text and "home switch" in text.split("pose 3")[1].split("\n")[0]
+    assert pm.drop([3, 4]) == 2 and len(pm.points) == 2
+    pm.known_spm = np.array([100.0, 65.0, 38.0])
+    pm.fit("offset")
+    assert pm.residual_mm.max() < 0.1
