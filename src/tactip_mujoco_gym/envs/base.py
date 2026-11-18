@@ -103,7 +103,7 @@ class TactileGymEnv(gym.Env):
     TASK_INPUTS = ("privileged",)
     # observation key -> default readout (sensors/); env kwarg sensors={...} changes these
     DEFAULT_SENSORS = {"tactile": "tactip_markers", "tactile_image": "tactip_camera",
-                       "vision": "camera"}
+                       "vision": "camera", "real_tactip": "real_tactip"}
 
     def __init__(self, xml_subpath, obs_dim, action_dim, model=None):
         super().__init__()

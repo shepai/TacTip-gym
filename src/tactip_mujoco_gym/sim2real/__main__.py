@@ -47,6 +47,17 @@ Steps 1 and 2 must use the same protocol options (--depths, --shears, --points, 
 and +-y (the slides tell which way the camera is turned), twice. Both rigs press a flat
 block for calibrating (the simulated one is an STL box the size of a dataset block; print
 one, 29.3 x 30 x 7 mm, for the real holder).
+
+The learned image mapping (sim2real/mapping.py), from sessions recorded with rig_dataset
+(Rig-controller repo): an autoencoder for the simulated TacTip, one for the real TacTip, and
+maps between their latent spaces. Then "real_tactip" in the gym is the simulated TacTip
+mapped to what the real one would see:
+
+    python -m tactip_mujoco_gym.sim2real train-mapping data/ --out models/sim2real
+    python -m tactip_mujoco_gym.sim2real train-mapping data/ --backend linear --out models/lin
+    python -m tactip_mujoco_gym.sim2real mapping-preview models/sim2real data/session_new
+    gym.make("TacRig-v0", sensors={"real_tactip": {"model": "models/sim2real"}},
+             obs_modes=["real_tactip"])
 """
 import argparse
 import glob
@@ -520,6 +531,67 @@ def cmd_compare(a):
 
 
 # ============================================================================ main
+def _real_crop(a):
+    if a.real_full_frame:
+        return "full"
+    return tuple(a.real_crop) if a.real_crop else None
+
+
+def cmd_train_mapping(a):
+    from .mapping import check_image_size, train_mapping
+    from .paired import PairedData, crop_check
+    if a.backend == "torch":
+        check_image_size(a.real_size[0], a.real_size[1], "--real-size")
+        if a.input == "image":
+            check_image_size(a.sim_size, a.sim_size, "--sim-size")
+    data = PairedData.load(a.sessions, sim_input=a.input, sim_size=a.sim_size,
+                           real_size=tuple(a.real_size), real_crop=_real_crop(a), gray=a.gray,
+                           real_bgr=not a.real_rgb, phases=a.phases, textures=a.textures,
+                           every=a.every, max_samples=a.max_samples)
+    os.makedirs(a.out, exist_ok=True)
+    print(f"[mapping] the real crop: {crop_check(data, os.path.join(a.out, 'crop_check.png'))} "
+          "(the magenta box should hold the pins; change it with --real-crop X Y W H)")
+    settings = dict(latent_sim=a.latent_sim, latent_real=a.latent_real, epochs_ae=a.epochs[0],
+                    epochs_map=a.epochs[1], epochs_joint=a.epochs[2], batch=a.batch, lr=a.lr,
+                    patience=a.patience, reverse=not a.no_reverse, seed=a.seed)
+    m = train_mapping(data, out=a.out, backend=a.backend, val=a.val, split=a.split,
+                      device=a.device, **settings)
+    print(f"[mapping] {m}")
+    print("use it:\n"
+          "    from tactip_mujoco_gym.sim2real import load_mapping\n"
+          f"    m = load_mapping({a.out!r}); real = m.sim_to_real(sim_image)\n"
+          "  or in the gym:\n"
+          f"    gym.make('TacRig-v0', sensors={{'real_tactip': {{'model': {a.out!r}}}}}, "
+          "obs_modes=['real_tactip'])")
+    return m
+
+
+def cmd_mapping_preview(a):
+    from .mapping import describe_metrics, load_mapping
+    from .paired import PairedData
+    m = load_mapping(a.model, device=a.device)
+    print(f"[mapping] {m}; trained on {len(m.info.get('sessions', []))} session(s), "
+          f"{m.info.get('train_samples', '?')} samples")
+    if m.info.get("metrics"):
+        print("[mapping] at training: " + describe_metrics(
+            m.info["metrics"], "on " + m.info.get("metrics_on", "validation")))
+    data = PairedData.load(a.sessions, prep=m.prep, phases=a.phases, textures=a.textures,
+                           every=a.every, max_samples=a.max_samples)
+    print("[mapping] " + describe_metrics(m.evaluate(data), "on these sessions"))
+    m.preview(data, n=a.n, path=a.out)
+    print(f"[mapping] {a.out}: rows are samples; columns sim | real | sim->real | real AE"
+          + (" | real->sim" if m.info.get("reverse", True) else ""))
+
+
+def _data_args(p):
+    p.add_argument("--phases", nargs="+", default=None, choices=("approach", "contact", "retract"),
+                   help="only these samples (default: all, so the untouched sensor is learnt too)")
+    p.add_argument("--textures", type=int, nargs="+", default=None, help="only these textures")
+    p.add_argument("--every", type=int, default=1, help="every k-th sample along a trajectory")
+    p.add_argument("--max-samples", type=int, default=None)
+    p.add_argument("--device", default=None, help="torch device (default: the GPU if there is one)")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m tactip_mujoco_gym.sim2real",
                                  description="Calibrate the real rig + TacTip to the simulated TacRig.")
@@ -647,6 +719,47 @@ def main(argv=None):
     p.add_argument("sim")
     p.add_argument("real")
     p.set_defaults(fn=cmd_compare)
+
+    p = sub.add_parser("train-mapping", help="learn the sim <-> real TacTip image mapping "
+                                             "(two autoencoders + latent maps) from rig_dataset sessions")
+    p.add_argument("sessions", nargs="+", help="session folders, or folders holding them (data/)")
+    p.add_argument("--out", default="models/sim2real", help="folder the mapping is saved in")
+    p.add_argument("--backend", choices=("torch", "linear"), default="torch",
+                   help="torch: conv autoencoders + MLP maps; linear: PCA + ridge (a quick baseline)")
+    p.add_argument("--input", choices=("image", "markers"), default="image",
+                   help="what the simulated side is: the sim TacTip image, or the marker displacements")
+    p.add_argument("--sim-size", type=int, default=64, help="sim image side the model sees (px)")
+    p.add_argument("--real-size", type=int, nargs=2, default=[64, 64], metavar=("W", "H"),
+                   help="real image size the model sees and makes")
+    p.add_argument("--real-crop", type=int, nargs=4, default=None, metavar=("X", "Y", "W", "H"),
+                   help="part of the camera frame to keep (default: the centre square)")
+    p.add_argument("--real-full-frame", action="store_true", help="keep the whole camera frame")
+    p.add_argument("--real-rgb", action="store_true",
+                   help="the recorded real frames are RGB (rig_dataset's are BGR)")
+    p.add_argument("--gray", action="store_true", help="one grey channel for both sides")
+    p.add_argument("--latent-sim", type=int, default=32)
+    p.add_argument("--latent-real", type=int, default=64)
+    p.add_argument("--epochs", type=int, nargs=3, default=[30, 60, 20], metavar=("AE", "MAP", "JOINT"),
+                   help="epochs for each autoencoder, the latent maps, then all together")
+    p.add_argument("--batch", type=int, default=64)
+    p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--patience", type=int, default=10,
+                   help="end a stage after this many epochs without a better validation loss")
+    p.add_argument("--no-reverse", action="store_true", help="don't learn real -> sim")
+    p.add_argument("--val", type=float, default=0.15, help="fraction held out for validation")
+    p.add_argument("--split", choices=("motion", "trajectory", "texture", "session"),
+                   default="motion", help="what is held out together (default: whole motions)")
+    p.add_argument("--seed", type=int, default=0)
+    _data_args(p)
+    p.set_defaults(fn=cmd_train_mapping)
+
+    p = sub.add_parser("mapping-preview", help="score a trained mapping on sessions and draw examples")
+    p.add_argument("model", help="the mapping's folder (train-mapping --out)")
+    p.add_argument("sessions", nargs="+")
+    p.add_argument("--out", default="mapping_preview.png")
+    p.add_argument("--n", type=int, default=8, help="samples drawn")
+    _data_args(p)
+    p.set_defaults(fn=cmd_mapping_preview)
 
     a = ap.parse_args(argv)
     if a.cmd == "experiment" and a.rig == "real" and not a.port:
