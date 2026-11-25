@@ -10,8 +10,12 @@ Built-in readouts (python -m tactip_mujoco_gym list shows the current list):
 
     tactip_markers   "tactile"         TacTip marker displacements (+ change), every mount
     tactip_camera    "tactile_image"   image from the camera inside each TacTip
+    tactip_depth_camera "tactile_depth" depth (mm) of the skin and pins from the camera inside
+                                       each TacTip, as a depth camera there would see it
     real_tactip      "real_tactip"     the real TacTip's image: the simulated one through a
                                        trained sim2real mapping (sim2real/mapping.py)
+    real_pins        "real_pins"       the real TacTip's pin movement: the simulated markers
+                                       through a trained marker map (sim2real/marker_map.py)
     camera           "vision"          image from a scene / robot camera
     taxel_events     "events"          event counts from tx_* touch grids on the objects
     contact_depth    "tactile_image"   contact depth image (Tactile Gym 2.0) or GelSight RGB
@@ -30,15 +34,15 @@ from .depth import ContactDepth, ContactMap
 from .models import (list_sensor_models, register_sensor_model, resolve_sensor_model,
                      sensor_model_readouts)
 from .presstip import PressTip
-from .real_tactip import RealTacTip
-from .tactip import TacTipCamera, TacTipMarkers
+from .real_tactip import RealPins, RealTacTip
+from .tactip import TacTipCamera, TacTipDepthCamera, TacTipMarkers
 from .taxels import TaxelEvents
 from .whiskers import Whiskers
 
 __all__ = [
     "Sensor", "SensorUnavailable", "Mount", "register_sensor", "make_sensor", "sensor_class",
     "sensor_type_name", "list_sensors", "frame_pose", "subtree_bodies", "subtree_geoms",
-    "TacTipMarkers", "TacTipCamera", "Camera", "TaxelEvents", "ContactDepth", "ContactMap",
-    "PressTip", "Whiskers", "RealTacTip",
+    "TacTipMarkers", "TacTipCamera", "TacTipDepthCamera", "Camera", "TaxelEvents", "ContactDepth", "ContactMap",
+    "PressTip", "Whiskers", "RealTacTip", "RealPins",
     "register_sensor_model", "resolve_sensor_model", "list_sensor_models", "sensor_model_readouts",
 ]

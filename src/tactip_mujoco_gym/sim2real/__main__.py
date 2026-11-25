@@ -53,6 +53,17 @@ The learned image mapping (sim2real/mapping.py), from sessions recorded with rig
 maps between their latent spaces. Then "real_tactip" in the gym is the simulated TacTip
 mapped to what the real one would see:
 
+    python -m tactip_mujoco_gym.sim2real check-pairs data/
+
+The real pins as coordinates, simulated markers <-> real pins, and re-simulating recorded
+trials (other simulated readouts, the calibration's z corrected after the fact):
+
+    python -m tactip_mujoco_gym.sim2real depth-check data/session_20261117_104611
+    python -m tactip_mujoco_gym.sim2real extract-pins data/session_20261117_104611
+    python -m tactip_mujoco_gym.sim2real train-marker-map data/session_20261117_104611 --out models/pins
+    python -m tactip_mujoco_gym.sim2real resim data/session_20261117_104611 --z-offset fit
+    python -m tactip_mujoco_gym.sim2real train-marker-map data/session_20261117_104611_resim
+    python -m tactip_mujoco_gym.sim2real train-mapping data/session_20261117_104611_resim --input depth
     python -m tactip_mujoco_gym.sim2real train-mapping data/ --out models/sim2real
     python -m tactip_mujoco_gym.sim2real train-mapping data/ --backend linear --out models/lin
     python -m tactip_mujoco_gym.sim2real mapping-preview models/sim2real data/session_new
@@ -539,18 +550,18 @@ def _real_crop(a):
 
 def cmd_train_mapping(a):
     from .mapping import check_image_size, train_mapping
-    from .paired import PairedData, crop_check
+    from .paired import crop_check, pairing_plot
     if a.backend == "torch":
         check_image_size(a.real_size[0], a.real_size[1], "--real-size")
         if a.input == "image":
             check_image_size(a.sim_size, a.sim_size, "--sim-size")
-    data = PairedData.load(a.sessions, sim_input=a.input, sim_size=a.sim_size,
-                           real_size=tuple(a.real_size), real_crop=_real_crop(a), gray=a.gray,
-                           real_bgr=not a.real_rgb, phases=a.phases, textures=a.textures,
-                           every=a.every, max_samples=a.max_samples)
+    data = _load_pairs(a)
     os.makedirs(a.out, exist_ok=True)
     print(f"[mapping] the real crop: {crop_check(data, os.path.join(a.out, 'crop_check.png'))} "
           "(the magenta box should hold the pins; change it with --real-crop X Y W H)")
+    plot = pairing_plot(data, os.path.join(a.out, "pairing_check.png"))
+    if plot:
+        print(f"[mapping] the pairing check, drawn: {plot}")
     settings = dict(latent_sim=a.latent_sim, latent_real=a.latent_real, epochs_ae=a.epochs[0],
                     epochs_map=a.epochs[1], epochs_joint=a.epochs[2], batch=a.batch, lr=a.lr,
                     patience=a.patience, reverse=not a.no_reverse, seed=a.seed)
@@ -566,6 +577,62 @@ def cmd_train_mapping(a):
     return m
 
 
+def _load_pairs(a):
+    from .paired import PairedData
+    return PairedData.load(a.sessions, sim_input=a.input, sim_size=a.sim_size,
+                           real_size=tuple(a.real_size), real_crop=_real_crop(a), gray=a.gray,
+                           real_bgr=not a.real_rgb, reference=a.reference, phases=a.phases,
+                           textures=a.textures, every=a.every, max_samples=a.max_samples,
+                           min_corr=a.min_corr, filter=a.filter)
+
+
+def cmd_check_pairs(a):
+    from .paired import crop_check, pairing_plot
+    data = _load_pairs(a)
+    print(f"[mapping] {data.summary()}")
+    base = os.path.splitext(a.out)[0]
+    print(f"[mapping] the real crop: {crop_check(data, base + '_crop.png')}")
+    plot = pairing_plot(data, a.out)
+    print(f"[mapping] drawn: {plot}" if plot else "[mapping] (pip install matplotlib to draw the signals)")
+
+
+def cmd_resim(a):
+    from .resim import FIT_VALUES, resimulate
+    z = a.z_offset
+    if z != "fit":
+        try:
+            z = float(z)
+        except ValueError:
+            raise SystemExit("--z-offset is a number of mm, or fit") from None
+    for sdir in a.sessions:
+        resimulate(sdir, out=a.out if len(a.sessions) == 1 else None, record=tuple(a.record),
+                   z_offset=z, depth_size=a.depth_size, image_size=a.image_size,
+                   fit_values=tuple(a.fit_values) if a.fit_values else FIT_VALUES,
+                   fit_trajectories=a.fit_trajectories)
+
+
+def cmd_depth_check(a):
+    from .real_pins import depth_check
+    for sdir in a.sessions:
+        depth_check(sdir, n_traj=a.trajectories, picture=a.out)
+
+
+def cmd_extract_pins(a):
+    from .real_pins import extract_pins
+    for sdir in a.sessions:
+        extract_pins(sdir)
+
+
+def cmd_train_marker_map(a):
+    from .marker_map import MarkerPairs, train_marker_map
+    use_z = {"auto": "auto", "yes": True, "no": False}[a.use_z]
+    pairs = MarkerPairs.load(a.sessions, use_z=use_z, phases=a.phases, every=a.every)
+    m = train_marker_map(pairs, out=a.out, backend=a.backend, val=a.val, seed=a.seed,
+                         hidden=a.hidden, epochs=a.epochs, device=a.device)
+    print(f"[pins] {m}\nin the gym: gym.make('TacRig-v0', sensors={{'real_pins': {{'model': "
+          f"{a.out!r}}}}}, obs_modes=['real_pins'])")
+
+
 def cmd_mapping_preview(a):
     from .mapping import describe_metrics, load_mapping
     from .paired import PairedData
@@ -575,12 +642,34 @@ def cmd_mapping_preview(a):
     if m.info.get("metrics"):
         print("[mapping] at training: " + describe_metrics(
             m.info["metrics"], "on " + m.info.get("metrics_on", "validation")))
-    data = PairedData.load(a.sessions, prep=m.prep, phases=a.phases, textures=a.textures,
-                           every=a.every, max_samples=a.max_samples)
+    data = PairedData.load(a.sessions, prep=m.prep, real_rest=m.real_rest, phases=a.phases,
+                           textures=a.textures, every=a.every, max_samples=a.max_samples,
+                           min_corr=a.min_corr)
     print("[mapping] " + describe_metrics(m.evaluate(data), "on these sessions"))
     m.preview(data, n=a.n, path=a.out)
     print(f"[mapping] {a.out}: rows are samples; columns sim | real | sim->real | real AE"
           + (" | real->sim" if m.info.get("reverse", True) else ""))
+
+
+def _prep_args(p):
+    p.add_argument("--input", choices=("image", "markers", "depth"), default="image",
+                   help="what the simulated side is: the sim TacTip image, the marker "
+                        "displacements, or the depth camera inside it (a re-simulated session)")
+    p.add_argument("--sim-size", type=int, default=64, help="sim image side the model sees (px)")
+    p.add_argument("--real-size", type=int, nargs=2, default=[64, 64], metavar=("W", "H"),
+                   help="real image size the model sees and makes")
+    p.add_argument("--real-crop", type=int, nargs=4, default=None, metavar=("X", "Y", "W", "H"),
+                   help="part of the camera frame to keep (default: the centre square)")
+    p.add_argument("--real-full-frame", action="store_true", help="keep the whole camera frame")
+    p.add_argument("--real-rgb", action="store_true",
+                   help="the recorded real frames are RGB (rig_dataset's are BGR)")
+    p.add_argument("--gray", action="store_true", help="one grey channel for both sides")
+    p.add_argument("--filter", choices=("none", "sobel"), default="none",
+                   help="sobel: train on the edges (pin outlines) of both images, grey, so the "
+                        "light level and exposure drop out")
+    p.add_argument("--reference", choices=("trajectory", "session", "none"), default="trajectory",
+                   help="take out the camera's drift: compare each real image with its trajectory's "
+                        "(or session's) untouched frames (default: trajectory)")
 
 
 def _data_args(p):
@@ -589,6 +678,9 @@ def _data_args(p):
     p.add_argument("--textures", type=int, nargs="+", default=None, help="only these textures")
     p.add_argument("--every", type=int, default=1, help="every k-th sample along a trajectory")
     p.add_argument("--max-samples", type=int, default=None)
+    p.add_argument("--min-corr", type=float, default=None,
+                   help="leave out sessions whose real images follow the simulated ones less than "
+                        "this (the pairing check's corr, e.g. 0.4)")
     p.add_argument("--device", default=None, help="torch device (default: the GPU if there is one)")
 
 
@@ -726,17 +818,7 @@ def main(argv=None):
     p.add_argument("--out", default="models/sim2real", help="folder the mapping is saved in")
     p.add_argument("--backend", choices=("torch", "linear"), default="torch",
                    help="torch: conv autoencoders + MLP maps; linear: PCA + ridge (a quick baseline)")
-    p.add_argument("--input", choices=("image", "markers"), default="image",
-                   help="what the simulated side is: the sim TacTip image, or the marker displacements")
-    p.add_argument("--sim-size", type=int, default=64, help="sim image side the model sees (px)")
-    p.add_argument("--real-size", type=int, nargs=2, default=[64, 64], metavar=("W", "H"),
-                   help="real image size the model sees and makes")
-    p.add_argument("--real-crop", type=int, nargs=4, default=None, metavar=("X", "Y", "W", "H"),
-                   help="part of the camera frame to keep (default: the centre square)")
-    p.add_argument("--real-full-frame", action="store_true", help="keep the whole camera frame")
-    p.add_argument("--real-rgb", action="store_true",
-                   help="the recorded real frames are RGB (rig_dataset's are BGR)")
-    p.add_argument("--gray", action="store_true", help="one grey channel for both sides")
+    _prep_args(p)
     p.add_argument("--latent-sim", type=int, default=32)
     p.add_argument("--latent-real", type=int, default=64)
     p.add_argument("--epochs", type=int, nargs=3, default=[30, 60, 20], metavar=("AE", "MAP", "JOINT"),
@@ -752,6 +834,59 @@ def main(argv=None):
     p.add_argument("--seed", type=int, default=0)
     _data_args(p)
     p.set_defaults(fn=cmd_train_mapping)
+
+    p = sub.add_parser("resim", help="re-run recorded rig_dataset trials in simulation (other "
+                                     "simulated readouts, the calibration's z corrected)")
+    p.add_argument("sessions", nargs="+", help="recorded session folder(s)")
+    p.add_argument("--out", default=None, help="default: <session>_resim")
+    p.add_argument("--record", nargs="+", default=["markers", "depth"],
+                   choices=("markers", "depth", "image", "force"),
+                   help="simulated readouts to record (default: markers depth)")
+    p.add_argument("--z-offset", default="fit",
+                   help="mm the simulated TacTip presses deeper than recorded (+ = deeper), or "
+                        "'fit' to find the one that pairs best with the real images (default)")
+    p.add_argument("--fit-values", type=float, nargs="+", default=None,
+                   help="offsets to try with fit (default -0.5 to 1.5 in 0.25 mm steps)")
+    p.add_argument("--fit-trajectories", type=int, default=16)
+    p.add_argument("--depth-size", type=int, default=64, help="simulated depth image size (px)")
+    p.add_argument("--image-size", type=int, default=None, help="simulated camera image size "
+                   "with --record image (default: the session's)")
+    p.set_defaults(fn=cmd_resim)
+
+    p = sub.add_parser("depth-check", help="is the recorded depth image usable at the real pins?")
+    p.add_argument("sessions", nargs="+")
+    p.add_argument("--trajectories", type=int, default=12, help="trajectories to look at")
+    p.add_argument("--out", default="depth_check.png", help="picture of the pins and the depth")
+    p.set_defaults(fn=cmd_depth_check)
+
+    p = sub.add_parser("extract-pins", help="the real pins as coordinates in every frame "
+                                            "(x, y from the image, z from depth): <session>/pins/")
+    p.add_argument("sessions", nargs="+")
+    p.set_defaults(fn=cmd_extract_pins)
+
+    p = sub.add_parser("train-marker-map", help="learn simulated markers <-> real pins")
+    p.add_argument("sessions", nargs="+", help="sessions with extracted pins (or re-simulated ones)")
+    p.add_argument("--out", default="models/pins")
+    p.add_argument("--backend", choices=("linear", "mlp"), default="linear",
+                   help="linear: ridge regression (numpy); mlp: small networks (PyTorch)")
+    p.add_argument("--use-z", choices=("auto", "yes", "no"), default="auto",
+                   help="use the pins' depth (auto: if it has a reading at least half the time)")
+    p.add_argument("--phases", nargs="+", default=None, choices=("approach", "contact", "retract"))
+    p.add_argument("--every", type=int, default=1)
+    p.add_argument("--val", type=float, default=0.15)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--hidden", type=int, default=256, help="mlp width")
+    p.add_argument("--epochs", type=int, default=300, help="mlp epochs (stops early)")
+    p.add_argument("--device", default=None)
+    p.set_defaults(fn=cmd_train_marker_map)
+
+    p = sub.add_parser("check-pairs", help="how well the real images in recorded sessions follow "
+                                           "the simulated ones (before training a mapping)")
+    p.add_argument("sessions", nargs="+", help="session folders, or folders holding them (data/)")
+    p.add_argument("--out", default="pairing_check.png", help="plot of the signals (needs matplotlib)")
+    _prep_args(p)
+    _data_args(p)
+    p.set_defaults(fn=cmd_check_pairs)
 
     p = sub.add_parser("mapping-preview", help="score a trained mapping on sessions and draw examples")
     p.add_argument("model", help="the mapping's folder (train-mapping --out)")

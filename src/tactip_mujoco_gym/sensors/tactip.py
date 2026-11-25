@@ -190,3 +190,46 @@ class TacTipCamera(Sensor):
         if getattr(self, "_renderer", None) is not None:
             self._renderer.close()
             self._renderer = None
+
+
+@register_sensor("tactip_depth_camera")
+class TacTipDepthCamera(TacTipCamera):
+    """Depth image from the camera inside each TacTip: how far away the inside of the skin
+    and its pins are, in mm, float32 (H, W x mounts); 0 where nothing is in view. What a depth
+    camera mounted inside the TacTip (such as a RealSense behind the skin) would measure.
+
+    camera, width, height   as tactip_camera
+    groups   geom groups drawn besides the skin (default (2,): the pins)
+    skin     draw the skin itself (its flex), not only the pins
+    max_mm   anything further than this counts as nothing (0)
+    """
+    key = "tactile_depth"
+    encoder = "cnn"
+
+    def __init__(self, camera=None, width=None, height=None, groups=(2,), skin=True, max_mm=200.0):
+        super().__init__(camera=camera, width=width, height=height, mode="rgb", groups=groups)
+        self.skin = bool(skin)
+        self.max_mm = float(max_mm)
+
+    def bind(self, env):
+        super().bind(env)
+        flexgroup = getattr(self._opt, "flexgroup", None)
+        if flexgroup is not None:
+            flexgroup[:] = 1 if self.skin else 0
+
+    def observe(self, env):
+        if self._renderer is None:
+            r = mujoco.Renderer(env.model, height=self._h, width=self._w)
+            r.enable_depth_rendering()
+            self._renderer = r
+        r = self._renderer
+        imgs = []
+        for name in self._cams:
+            r.update_scene(env.data, camera=name, scene_option=self._opt)
+            mm = np.asarray(r.render(), dtype=np.float32) * 1000.0      # metres -> mm
+            mm[~np.isfinite(mm) | (mm > self.max_mm)] = 0.0
+            imgs.append(mm[..., None])
+        return imgs[0] if len(imgs) == 1 else np.concatenate(imgs, axis=-1)
+
+    def flatten(self, value):
+        return (np.asarray(value, dtype=np.float32) / self.max_mm).ravel()

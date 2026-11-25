@@ -19,7 +19,7 @@ import os
 import numpy as np
 
 from .base import Sensor, SensorUnavailable, register_sensor
-from .tactip import TacTipCamera, TacTipMarkers
+from .tactip import TacTipCamera, TacTipDepthCamera, TacTipMarkers
 
 ENV_VAR = "TACTIP_SIM2REAL_MODEL"
 _LOADED = {}          # (folder, file times, device) -> mapping: envs in one process share it
@@ -77,6 +77,9 @@ class RealTacTip(Sensor):
         if prep.sim_input == "image":
             size = prep.sim_render or prep.sim_size
             inner = TacTipCamera(width=size, height=size, mode="rgb")
+        elif prep.sim_input == "depth":
+            size = prep.sim_render or prep.sim_size
+            inner = TacTipDepthCamera(width=size, height=size)
         else:
             inner = TacTipMarkers(velocity=False)
         inner.bind(env)                              # SensorUnavailable if there is no TacTip
@@ -111,8 +114,9 @@ class RealTacTip(Sensor):
         self._inner.env_step(env)
 
     def sim_input(self, env):
-        """What the mapping is given: (mounts, H, W, 3) images or (mounts, n, 3) mm."""
-        if self._prep.sim_input == "image":
+        """What the mapping is given: (mounts, H, W, 3) images, (mounts, H, W, 1) depth
+        (mm) or (mounts, n, 3) marker displacements (mm)."""
+        if self._prep.sim_is_image:
             img = self._inner.observe(env)
             return np.stack(np.split(img, self._mounts, axis=-1))
         mm = np.asarray(self._inner.observe(env), np.float32) * self._inner._scale * 1000.0
@@ -129,6 +133,78 @@ class RealTacTip(Sensor):
         inner = getattr(self, "_inner", None)
         if inner is not None:
             inner.close()
+
+    def unbound_copy(self):
+        return type(self)(model=self.model, device=self.device)
+
+
+MARKER_ENV_VAR = "TACTIP_MARKER_MAP"
+
+
+@register_sensor("real_pins")
+class RealPins(Sensor):
+    """The real TacTip's pin movement, made from the simulated markers by a trained marker map (x, y px [, z mm] per pin), float32 (P x dims x mounts,).
+
+    model    folder of a trained marker map (python -m tactip_mujoco_gym.sim2real
+             train-marker-map); default: the TACTIP_MARKER_MAP environment variable
+    device   where an MLP map runs (default "cpu")
+    """
+    key = "real_pins"
+    encoder = "mlp"
+
+    def __init__(self, model=None, device="cpu"):
+        self.model = model
+        self.device = device
+
+    def bind(self, env):
+        path = self.model or os.environ.get(MARKER_ENV_VAR)
+        if not path:
+            raise SensorUnavailable(
+                "no marker map: give one with sensors={'real_pins': {'model': 'path/to/map'}} or "
+                f"the {MARKER_ENV_VAR} environment variable (train one with python -m "
+                "tactip_mujoco_gym.sim2real train-marker-map)")
+        from ..sim2real.marker_map import read_marker_map_config
+        try:
+            cfg = read_marker_map_config(path)
+        except FileNotFoundError as err:
+            raise SensorUnavailable(str(err)) from None
+        inner = TacTipMarkers(velocity=False)
+        inner.bind(env)
+        if any(c != cfg["n_markers"] for c in inner.counts):
+            raise SensorUnavailable(f"the marker map was trained on {cfg['n_markers']} markers; "
+                                    f"this sensor has {inner.counts}")
+        self._dir, self._inner, self._map = cfg["dir"], inner, None
+        self._mounts = max(1, len(getattr(env, "sensor_mounts", [])))
+
+    @property
+    def mapping(self):
+        if getattr(self, "_map", None) is None:
+            from ..sim2real.marker_map import load_marker_map
+            self._map = load_marker_map(self._dir, self.device)
+        return self._map
+
+    def calibrate(self, env, data):
+        self._inner.calibrate(env, data)
+
+    def on_select(self, env, active):
+        self._inner.on_select(env, active)
+        if active:
+            _ = self.mapping
+
+    def reset(self, env):
+        self._inner.reset(env)
+
+    def env_step(self, env):
+        self._inner.env_step(env)
+
+    def observe(self, env):
+        mm = np.asarray(self._inner.observe(env), np.float32) * self._inner._scale * 1000.0
+        out = self.mapping.sim_to_real(mm.reshape(self._mounts, -1, 3))
+        return np.asarray(out, np.float32).ravel()
+
+    def close(self):
+        if getattr(self, "_inner", None) is not None:
+            self._inner.close()
 
     def unbound_copy(self):
         return type(self)(model=self.model, device=self.device)

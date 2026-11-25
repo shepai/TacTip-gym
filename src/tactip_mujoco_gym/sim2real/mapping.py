@@ -44,13 +44,16 @@ preview.png (validation examples) and history.csv (losses per epoch).
 import csv
 import datetime
 import json
+import math
 import os
+import warnings
 
 import numpy as np
 
 from .paired import Preprocess, draw_markers, grid, save_png, to_uint8
 
 CONFIG = "mapping.json"
+REST = "real_rest.npy"
 VERSION = 1
 
 DEFAULTS = dict(
@@ -80,15 +83,20 @@ class Sim2RealMapping:
     """A trained mapping: preprocessing + autoencoders + latent maps. Make one with
     train_mapping(), or load_mapping(path)."""
 
-    def __init__(self, prep, backend, norm=None, info=None):
+    def __init__(self, prep, backend, norm=None, info=None, real_rest=None):
         self.prep = prep
         self.backend = backend
         self.norm = norm            # markers: {"mean": [...], "std": [...]} (mm)
         self.info = dict(info or {})
+        # the untouched real sensor that training moved every real image onto (0-255)
+        self.real_rest = None if real_rest is None else np.asarray(real_rest, np.float32)
+        self._ref = None            # this session's untouched sensor (set_reference)
+        self._warned = False
 
     def __repr__(self):
         p = self.prep
-        src = (f"sim {p.sim_size}x{p.sim_size} image" if p.sim_input == "image"
+        src = (f"sim {p.sim_size}x{p.sim_size} {'depth ' if p.sim_input == 'depth' else ''}image"
+               if p.sim_is_image
                else f"sim {p.n_markers} markers")
         return (f"Sim2RealMapping({self.backend.name}: {src} <-> real {p.real_size[0]}x"
                 f"{p.real_size[1]}{' grey' if p.gray else ''})")
@@ -105,12 +113,12 @@ class Sim2RealMapping:
     # ---------------------------------------------------------------- array plumbing
     def _sim_in(self, x):
         """Model-ready sim rows (uint8 images / mm) -> network floats."""
-        if self.prep.sim_input == "image":
+        if self.prep.sim_is_image:
             return np.asarray(x, np.float32) / 255.0
         return ((np.asarray(x, np.float32) - self._mean) / self._std).astype(np.float32)
 
     def _sim_out(self, x):
-        if self.prep.sim_input == "image":
+        if self.prep.sim_is_image:
             return to_uint8(np.asarray(x) * 255.0)
         mm = np.asarray(x, np.float32) * self._std + self._mean
         return mm.reshape(len(mm), -1, 3)
@@ -136,13 +144,52 @@ class Sim2RealMapping:
             return fn(x)
         return np.concatenate([fn(x[i:i + n]) for i in range(0, len(x), n)])
 
+    # ---------------------------------------------------------------- reference
+    @property
+    def uses_reference(self):
+        """True if training moved the real images onto one untouched sensor (real_rest)."""
+        return self.prep.reference != "none" and self.real_rest is not None
+
+    def set_reference(self, frames, raw=True):
+        """Show the mapping this session's untouched TacTip: one or a few real frames, as the
+        camera gives them, with nothing touching the sensor. Frames given to real_to_sim are
+        then moved from it onto the untouched sensor training used, as training did, and
+        sim_to_real's images are moved onto it. None forgets it. Returns the mapping."""
+        if frames is None:
+            self._ref = None
+            return self
+        y, _ = self.prep.real(frames, raw=raw)
+        self._ref = y.astype(np.float32).mean(axis=0)
+        return self
+
+    def _camera(self, frames, raw):
+        """Real frames -> model-ready uint8 images, moved onto real_rest if there is a
+        reference for this session."""
+        y, single = self.prep.real(frames, raw=raw)
+        if raw and self.uses_reference:
+            if self._ref is not None:
+                y = to_uint8(y.astype(np.float32) - self._ref + self.real_rest)
+            elif not self._warned:
+                self._warned = True
+                warnings.warn("this mapping compares real frames with an untouched one: call "
+                              "set_reference(frames) with a few frames of the untouched TacTip "
+                              "first (using the frames as they are)", stacklevel=3)
+        return y, single
+
+    def _onto_session(self, y):
+        if self.uses_reference and self._ref is not None:
+            return to_uint8(y.astype(np.float32) - self.real_rest + self._ref)
+        return y
+
     # ---------------------------------------------------------------- use
     def sim_to_real(self, sim):
         """Simulated TacTip image(s) (H, W, 3) RGB uint8 as rendered, any size; or marker
         displacements (n, 3) mm -> the real TacTip image(s) (h, w, C) uint8, RGB.
-        One input in, one out; a batch (N, ...) in, (N, h, w, C) out."""
+        One input in, one out; a batch (N, ...) in, (N, h, w, C) out. The images look like
+        the average untouched real sensor plus the contact, or like this session's sensor
+        after set_reference()."""
         x, single = self.prep.sim(sim)
-        y = self._real_out(self._batched(self.backend.sim_to_real, self._sim_in(x)))
+        y = self._onto_session(self._real_out(self._batched(self.backend.sim_to_real, self._sim_in(x))))
         return y[0] if single else y
 
     __call__ = sim_to_real
@@ -153,14 +200,15 @@ class Sim2RealMapping:
         (n, 3) mm, that match. Needs a mapping trained with reverse=True."""
         if not self.info.get("reverse", True):
             raise RuntimeError("this mapping was trained without the real -> sim direction")
-        y, single = self.prep.real(frames, raw=raw)
+        y, single = self._camera(frames, raw)
         x = self._sim_out(self._batched(self.backend.real_to_sim, self._real_in(y)))
         return x[0] if single else x
 
     def reconstruct_real(self, frames, raw=True):
         """The real autoencoder's version of real frame(s) (how much detail it keeps)."""
-        y, single = self.prep.real(frames, raw=raw)
+        y, single = self._camera(frames, raw)
         out = self._real_out(self._batched(self.backend.reconstruct_real, self._real_in(y)))
+        out = self._onto_session(out) if raw else out
         return out[0] if single else out
 
     def reconstruct_sim(self, sim):
@@ -175,7 +223,7 @@ class Sim2RealMapping:
         return z[0] if single else z
 
     def encode_real(self, frames, raw=True):
-        y, single = self.prep.real(frames, raw=raw)
+        y, single = self._camera(frames, raw)
         z = self._batched(self.backend.encode_real, self._real_in(y))
         return z[0] if single else z
 
@@ -228,7 +276,7 @@ class Sim2RealMapping:
         rev = self._sim_out(b.real_to_sim(Y)) if self.info.get("reverse", True) else None
 
         def sim_pic(v):
-            if self.prep.sim_input == "image":
+            if self.prep.sim_is_image:
                 return v
             rest = self.info.get("marker_rest_mm")
             if rest is None:
@@ -236,7 +284,7 @@ class Sim2RealMapping:
             return draw_markers(v, rest, size=tile)
         rows = []
         for k in range(len(pick)):
-            r = [sim_pic(data.sim[pick[k]] if self.prep.sim_input == "image"
+            r = [sim_pic(data.sim[pick[k]] if self.prep.sim_is_image
                          else self._sim_out(X[k:k + 1])[0]),
                  data.real[pick[k]], fwd[k], rec[k]]
             if rev is not None:
@@ -259,6 +307,9 @@ class Sim2RealMapping:
         with open(os.path.join(path, CONFIG), "w") as f:
             json.dump(_jsonable(self.config()), f, indent=1)
         self.backend.save(path)
+        if self.real_rest is not None:
+            np.save(os.path.join(path, REST), self.real_rest)
+            save_png(os.path.join(path, "real_rest.png"), self.real_rest)
         return path
 
     @classmethod
@@ -269,8 +320,9 @@ class Sim2RealMapping:
             raise ValueError(f"{path}: unknown backend {kind!r}")
         backend = BACKENDS[kind](arch=cfg["arch"], device=device)
         backend.load(cfg["dir"])
+        rest = os.path.join(cfg["dir"], REST)
         m = cls(Preprocess.from_dict(cfg["preprocess"]), backend, norm=cfg.get("norm"),
-                info=cfg.get("info"))
+                info=cfg.get("info"), real_rest=np.load(rest) if os.path.exists(rest) else None)
         m.path = cfg["dir"]
         return m
 
@@ -301,9 +353,11 @@ def load_mapping(path, device=None):
 
 def _jsonable(v):
     if isinstance(v, np.ndarray):
-        return v.tolist()
+        return _jsonable(v.tolist())
     if isinstance(v, (np.floating, np.integer, np.bool_)):
-        return v.item()
+        v = v.item()
+    if isinstance(v, float) and not math.isfinite(v):
+        return None
     if isinstance(v, (list, tuple)):
         return [_jsonable(x) for x in v]
     if isinstance(v, dict):
@@ -336,7 +390,8 @@ def train_mapping(data, out=None, backend="torch", val=0.15, split="motion", dev
     if prep.sim_input == "markers":
         x = np.asarray(data.sim[tr], np.float32)
         norm = {"mean": x.mean(axis=0), "std": np.maximum(x.std(axis=0), 1e-3)}
-    arch = dict(sim_kind=prep.sim_input, sim_shape=list(prep.sim_shape),
+    arch = dict(sim_kind="markers" if prep.sim_input == "markers" else "image",
+                sim_shape=list(prep.sim_shape),
                 real_shape=list(prep.real_shape), latent_sim=int(s["latent_sim"]),
                 latent_real=int(s["latent_real"]), base=int(s["base"]), max_ch=int(s["max_ch"]),
                 map_hidden=int(s["map_hidden"]), dropout=float(s["dropout"]))
@@ -346,7 +401,10 @@ def train_mapping(data, out=None, backend="torch", val=0.15, split="motion", dev
                 reverse=bool(s["reverse"]), settings=s,
                 textures=sorted({int(t) for t in data.texture if t >= 0}),
                 marker_rest_mm=None if data.marker_rest is None else data.marker_rest)
-    m = Sim2RealMapping(prep, BACKENDS[backend](arch=arch, device=device), norm=norm, info=info)
+    if data.pairing:
+        info["pairing"] = [{k: v for k, v in p.items() if k != "path"} for p in data.pairing]
+    m = Sim2RealMapping(prep, BACKENDS[backend](arch=arch, device=device), norm=norm, info=info,
+                        real_rest=data.real_rest)
     m.backend.build()
     log(f"[mapping] {data.summary()}")
     log(f"[mapping] {backend} backend{m.backend.where()}: train {len(tr)}, validate {len(va)} "
@@ -355,6 +413,10 @@ def train_mapping(data, out=None, backend="torch", val=0.15, split="motion", dev
     sub = tr if len(tr) <= 2000 else rng.choice(tr, 2000, replace=False)
     var = dict(sim=float(m._sim_in(data.sim[sub]).var(axis=0).mean()) + 1e-8,
                real=float(m._real_in(data.real[sub]).var(axis=0).mean()) + 1e-8)
+    if len(va):                    # validation losses: 1 = the validation set's average image
+        vsub = va if len(va) <= 2000 else rng.choice(va, 2000, replace=False)
+        var["sim_val"] = float(m._sim_in(data.sim[vsub]).var(axis=0).mean()) + 1e-8
+        var["real_val"] = float(m._real_in(data.real[vsub]).var(axis=0).mean()) + 1e-8
     history = m.backend.fit(data.sim, data.real, tr, va, m._sim_in, m._real_in, s, var, log)
     m.info["metrics"] = m.evaluate(data, va if len(va) else tr)
     m.info["metrics_on"] = "validation" if len(va) else "training (no validation samples)"
@@ -497,16 +559,17 @@ class LinearBackend:
 
         def nmse(p, t, v):
             return float(np.mean((p - t) ** 2) / v)
-        history.append(dict(stage="sim_ae", epoch=1, val_sim_rec=nmse(self.reconstruct_sim(Xv), Xv, var["sim"])))
-        history.append(dict(stage="real_ae", epoch=1, val_real_rec=nmse(self.reconstruct_real(Yv), Yv, var["real"])))
+        vs, vr = var.get("sim_val", var["sim"]), var.get("real_val", var["real"])
+        history.append(dict(stage="sim_ae", epoch=1, val_sim_rec=nmse(self.reconstruct_sim(Xv), Xv, vs)))
+        history.append(dict(stage="real_ae", epoch=1, val_real_rec=nmse(self.reconstruct_real(Yv), Yv, vr)))
         log(f"[linear] PCA: sim {a['latent_sim']} components (val {history[0]['val_sim_rec']:.4f}), "
             f"real {a['latent_real']} (val {history[1]['val_real_rec']:.4f})")
         n = len(Zs)
         S = (Zs - self.p["sim_zm"]) / self.p["sim_zs"]
         R = (Zr - self.p["real_zm"]) / self.p["real_zs"]
-        pairs = [("sim", "real", S, R, lambda: self.sim_to_real(Xv), Yv, var["real"], "sim2real")]
+        pairs = [("sim", "real", S, R, lambda: self.sim_to_real(Xv), Yv, vr, "sim2real")]
         if s["reverse"]:
-            pairs.append(("real", "sim", R, S, lambda: self.real_to_sim(Yv), Xv, var["sim"], "real2sim"))
+            pairs.append(("real", "sim", R, S, lambda: self.real_to_sim(Yv), Xv, vs, "real2sim"))
         for src, dst, A, B, predict, target, v, label in pairs:
             best = None
             for ridge in (1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0):
@@ -713,7 +776,8 @@ class TorchBackend:
         mse = torch.nn.functional.mse_loss
         rng = np.random.default_rng(s["seed"])
         torch.manual_seed(int(s["seed"]))
-        vs, vr = var["sim"], var["real"]
+        cur = {"sim": var["sim"], "real": var["real"]}          # train: the training set's
+        val_var = {"sim": var.get("sim_val", var["sim"]), "real": var.get("real_val", var["real"])}
         history = []
 
         def batch(idx):
@@ -725,36 +789,36 @@ class TorchBackend:
                     p.requires_grad_(on)
 
         def loss_sim_ae(x, y):
-            r = mse(net.dec_sim(net.enc_sim(x)), x) / vs
+            r = mse(net.dec_sim(net.enc_sim(x)), x) / cur["sim"]
             return r, {"sim_rec": r}
 
         def loss_real_ae(x, y):
-            r = mse(net.dec_real(net.enc_real(y)), y) / vr
+            r = mse(net.dec_real(net.enc_real(y)), y) / cur["real"]
             return r, {"real_rec": r}
 
         def loss_map(x, y):
             with torch.no_grad():
                 zs, zr = net.enc_sim(x), net.enc_real(y)
             to_r = net.map_sr(zs)
-            fwd = mse(net.dec_real(to_r), y) / vr
+            fwd = mse(net.dec_real(to_r), y) / cur["real"]
             lat = mse(to_r, zr) / (zr.var() + 1e-6)
             total, parts = fwd + s["latent_weight"] * lat, {"sim2real": fwd, "latent": lat}
             if s["reverse"]:
                 to_s = net.map_rs(zr)
-                back = mse(net.dec_sim(to_s), x) / vs
+                back = mse(net.dec_sim(to_s), x) / cur["sim"]
                 total = total + back + s["latent_weight"] * mse(to_s, zs) / (zs.var() + 1e-6)
                 parts["real2sim"] = back
             return total, parts
 
         def loss_joint(x, y):
             zs, zr = net.enc_sim(x), net.enc_real(y)
-            rs = mse(net.dec_sim(zs), x) / vs
-            rr = mse(net.dec_real(zr), y) / vr
-            fwd = mse(net.dec_real(net.map_sr(zs)), y) / vr
+            rs = mse(net.dec_sim(zs), x) / cur["sim"]
+            rr = mse(net.dec_real(zr), y) / cur["real"]
+            fwd = mse(net.dec_real(net.map_sr(zs)), y) / cur["real"]
             total = rs + rr + fwd
             parts = {"sim_rec": rs, "real_rec": rr, "sim2real": fwd}
             if s["reverse"]:
-                back = mse(net.dec_sim(net.map_rs(zr)), x) / vs
+                back = mse(net.dec_sim(net.map_rs(zr)), x) / cur["sim"]
                 total = total + back
                 parts["real2sim"] = back
             return total, parts
@@ -762,13 +826,18 @@ class TorchBackend:
         def evaluate(loss_fn, idx):
             net.eval()
             tot, n = {}, 0
-            with torch.no_grad():
-                for i in range(0, len(idx), s["batch"]):
-                    b = idx[i:i + s["batch"]]
-                    _, parts = loss_fn(*batch(b))
-                    for k, v in parts.items():
-                        tot[k] = tot.get(k, 0.0) + float(v) * len(b)
-                    n += len(b)
+            train_var = dict(cur)
+            cur.update(val_var)
+            try:
+                with torch.no_grad():
+                    for i in range(0, len(idx), int(s["batch"])):
+                        b = idx[i:i + int(s["batch"])]
+                        _, parts = loss_fn(*batch(b))
+                        for k, v in parts.items():
+                            tot[k] = tot.get(k, 0.0) + float(v.detach()) * len(b)
+                        n += len(b)
+            finally:
+                cur.update(train_var)
             return {k: v / n for k, v in tot.items()}
 
         def stage(name, modules, loss_fn, epochs, lr, select):
@@ -789,7 +858,7 @@ class TorchBackend:
                     loss.backward()
                     opt.step()
                     for k, v in parts.items():
-                        tot[k] = tot.get(k, 0.0) + float(v) * len(idx)
+                        tot[k] = tot.get(k, 0.0) + float(v.detach()) * len(idx)
                     n += len(idx)
                 train = {k: v / n for k, v in tot.items()}
                 val = evaluate(loss_fn, va) if len(va) else train

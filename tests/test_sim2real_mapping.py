@@ -42,48 +42,90 @@ def blobs(xy_mm, size, span=8.5, sigma=1.1):
 
 
 def fake_sessions(root, n_markers=37, sim_size=48, frame=(160, 120), motions=5, repeats=2,
-                  steps=10, textures=(1, 2), seed=0, names=("session_a",)):
+                  steps=10, textures=(1, 2), seed=0, names=("session_a",), issues=None, noise=2.0,
+                  pin_sigma=1.1, depth_frames=False, approach=3):
     """rig_dataset-style sessions: the sim image shows the markers; the real frame shows the
     same markers mirrored, recoloured, in the centre square of a wider BGR frame with noise
-    either side. Returns the session folders."""
-    rng = np.random.default_rng(seed)
+    either side. Each trajectory: 3 approach samples (2, 1 and 0.2 mm above the block), a
+    press 0.3 -> 2 mm deep, 2 retract samples.
+
+    issues: {session name: {...}} to make a session imperfect:
+        offset        grey levels added to its real frames (exposure / light)
+        drift         std of a further offset per trajectory
+        lag           real frame k shows the press of sim sample k - lag
+        depth_offset  the real TacTip is this many mm deeper than the sim at every sample
+        shuffle       the real frames are shuffled across the session (no pairing at all)
+    depth_frames: also a RealSense-like depth image registered with the colour (0.1 mm
+    units, the skin 40 mm away, pushed closer where pressed, nothing outside the sensor).
+    Returns the session folders."""
+    rng = np.random.default_rng(seed)                     # the motions
+    pix = np.random.default_rng(seed + 1)                 # camera noise and the frame's edges
     rings = 1
     while 1 + 3 * rings * (rings + 1) < n_markers:
         rings += 1
     rest_xy = hex_layout(rings)[:n_markers]
     rest = np.c_[rest_xy, np.zeros(n_markers)]
     W, H = frame
+    down = [-2.0, -1.0, -0.2] if approach == 3 else list(np.linspace(-2.0, -0.1, approach))
+    depth = np.r_[down, np.linspace(0.3, 2.0, steps - approach - 2), -1.0, -2.0].astype(np.float32)
+    phase = np.r_[np.zeros(approach), np.ones(steps - approach - 2), np.full(2, 2)].astype(np.int8)
     out = []
     for name in names:
+        iss = dict(offset=0.0, drift=0.0, lag=0, depth_offset=0.0, shuffle=False)
+        iss.update((issues or {}).get(name, {}))
         sdir = os.path.join(root, name)
-        rows = []
+        rows, trajs = [], []
         for tex in textures:
             os.makedirs(os.path.join(sdir, f"texture_{tex:02d}"), exist_ok=True)
             for m in range(motions):
                 c = rng.uniform(-4, 4, 2)
-                depth = np.r_[np.zeros(2), np.linspace(0.3, 2.0, steps - 4), np.zeros(2)]
-                phase = np.r_[np.zeros(2), np.ones(steps - 4), np.full(2, 2)].astype(np.int8)
                 for r in range(repeats):
-                    disp = np.stack([press(rest_xy, c, dd) for dd in depth]).astype(np.float32)
-                    sim, real = [], []
-                    for d in disp:
+                    disp = np.stack([press(rest_xy, c, max(dd, 0.0)) for dd in depth]).astype(np.float32)
+                    shift = iss["offset"] + (pix.normal(0.0, iss["drift"]) if iss["drift"] else 0.0)
+                    sim, real, dep = [], [], []
+                    for i, d in enumerate(disp):
                         pos = rest_xy + d[:, :2]
                         g = blobs(pos, sim_size)
                         sim.append((np.stack([g, g, 0.6 * g], -1) * 230 + 15).astype(np.uint8))
-                        gr = blobs(pos * [-1, 1], H)                       # mirrored, H x H
-                        rgb = np.stack([0.8 * gr, 0.5 * gr, 0.2 * gr + 0.1], -1) * 255 + 20
-                        f = rng.integers(0, 255, (H, W, 3)).astype(np.float32)
+                        j = max(i - int(iss["lag"]), 0)
+                        dr = press(rest_xy, c, max(depth[j] + iss["depth_offset"], 0.0))
+                        gr = blobs((rest_xy + dr[:, :2]) * [-1, 1], H, sigma=pin_sigma)  # mirrored
+                        rgb = np.stack([0.8 * gr, 0.5 * gr, 0.2 * gr + 0.1], -1) * 255 + 20 + shift
+                        rgb = rgb + pix.normal(0.0, noise, rgb.shape) if noise else rgb
+                        f = pix.integers(0, 255, (H, W, 3)).astype(np.float32)
                         x0 = (W - H) // 2
                         f[:, x0:x0 + H] = rgb
                         real.append(np.clip(f, 0, 255).astype(np.uint8)[..., ::-1])   # BGR
+                        if depth_frames:
+                            px = ((rest_xy + dr[:, :2]) * [-1, 1] / 8.5 * 0.5 + 0.5) * (H - 1)
+                            yy, xx = np.mgrid[0:H, 0:H]
+                            k = np.exp(-((xx[..., None] - px[:, 0]) ** 2 + (yy[..., None] - px[:, 1]) ** 2) / 50.0)
+                            mm = 40.0 + (k * dr[:, 2]).sum(-1) / (k.sum(-1) + 1e-6)
+                            mm = mm + pix.normal(0.0, 0.02, mm.shape)
+                            dimg = np.zeros((H, W), np.uint16)
+                            dimg[:, x0:x0 + H] = np.rint(mm * 10).astype(np.uint16)
+                            dep.append(dimg)
                     k = len(rows)
                     fname = f"texture_{tex:02d}/traj_{k:04d}_m{m:03d}_r{r}_press.npz"
-                    np.savez_compressed(os.path.join(sdir, fname), sim_tactip=np.array(sim),
-                                        sim_markers=disp, real_tactip=np.array(real), phase=phase,
-                                        waypoint=np.zeros((steps, 3), np.float32))
+                    wp = np.zeros((steps, 3), np.float32)
+                    wp[:, :2], wp[:, 2] = c, depth
+                    trajs.append(dict(sim_tactip=np.array(sim), sim_markers=disp,
+                                      real_tactip=np.array(real), phase=phase, waypoint=wp))
+                    if depth_frames:
+                        trajs[-1]["depth"] = np.array(dep)
                     rows.append(dict(file=fname, texture=tex, number=k, kind="press",
                                      samples=steps, motion=m, repeat=r, params="{}"))
-        meta = dict(sim=dict(image_size=sim_size, marker_rest_mm=rest.tolist()), trajectories=rows)
+        if iss["shuffle"]:
+            allreal = np.concatenate([t["real_tactip"] for t in trajs])[pix.permutation(len(trajs) * steps)]
+            for k, t in enumerate(trajs):
+                t["real_tactip"] = allreal[k * steps:(k + 1) * steps]
+        for row, t in zip(rows, trajs):
+            np.savez_compressed(os.path.join(sdir, row["file"]), **t)
+        meta = dict(sim=dict(image_size=sim_size, marker_rest_mm=rest.tolist()), trajectories=rows,
+                    d401=dict(name="Intel RealSense D405", depth_scale_m=1e-4),
+                    config=dict(sim_settle_steps=2),
+                    calibration=dict(pose_map=dict(kind="offset", known_spm=[50, 50, 50],
+                                                   created="2026-11-17T10:00:00"), trim_steps=[0, 0, 0]))
         with open(os.path.join(sdir, "meta.json"), "w") as f:
             json.dump(meta, f)
         out.append(sdir)
@@ -91,17 +133,19 @@ def fake_sessions(root, n_markers=37, sim_size=48, frame=(160, 120), motions=5, 
 
 
 SMALL = dict(sim_size=32, real_size=(32, 32))
+MOTIONS = 8
 
 
 @pytest.fixture(scope="module")
 def sessions(tmp_path_factory):
-    return fake_sessions(str(tmp_path_factory.mktemp("data")), names=("session_a", "session_b"))
+    return fake_sessions(str(tmp_path_factory.mktemp("data")), names=("session_a", "session_b"),
+                         motions=MOTIONS)
 
 
 # ============================================================================ data
 def test_paired_load_crop_and_split(sessions):
     data = PairedData.load(os.path.dirname(sessions[0]), **SMALL, log=lambda *a: None)
-    assert len(data.sessions) == 2 and len(data) == 2 * 2 * 5 * 2 * 10
+    assert len(data.sessions) == 2 and len(data) == 2 * 2 * MOTIONS * 2 * 10
     assert data.sim.shape == (len(data), 32, 32, 3) and data.sim.dtype == np.uint8
     assert data.real.shape == (len(data), 32, 32, 3) and data.real.dtype == np.uint8
     assert data.prep.real_crop == (20, 0, 120, 120) and data.prep.real_frame == (160, 120)
@@ -116,7 +160,7 @@ def test_paired_load_crop_and_split(sessions):
     t_tr, t_va = data.split(0.5, by="texture")
     assert not set(data.texture[t_tr]) & set(data.texture[t_va])
     contact = PairedData.load(sessions[0], phases=["contact"], **SMALL, log=lambda *a: None)
-    assert (contact.phase == 1).all() and len(contact) == 2 * 5 * 2 * 6
+    assert (contact.phase == 1).all() and len(contact) == 2 * MOTIONS * 2 * 5
 
 
 def test_preprocess_round_trip_and_sizes():
@@ -139,6 +183,57 @@ def test_preprocess_round_trip_and_sizes():
     assert np.allclose(resize_area(a, (4, 4)), a.reshape(4, 2, 4, 2).mean(axis=(1, 3)))
 
 
+def test_pairing_check_and_min_corr(tmp_path):
+    sd = fake_sessions(str(tmp_path), names=("good", "lag", "deep", "shuffled"), motions=6,
+                       textures=(1,), issues={"lag": {"lag": 1}, "deep": {"depth_offset": 0.8},
+                                              "shuffled": {"shuffle": True}})
+    lines = []
+    data = PairedData.load(sd, **SMALL, log=lines.append)
+    rep = {r["session"]: r for r in data.pairing}
+    assert rep["good"]["verdict"] == "good" and rep["good"]["lag"] == 0, rep["good"]
+    assert abs(rep["good"]["onset_mm"]) < 0.3, rep["good"]
+    assert rep["lag"]["lag"] == 1 and rep["lag"]["lag_corr"] > rep["lag"]["corr"] + 0.2, rep["lag"]
+    assert rep["deep"]["onset_mm"] < -0.3, rep["deep"]          # the real TacTip touches first
+    assert rep["shuffled"]["verdict"] == "poor", rep["shuffled"]
+    text = "\n".join(lines)
+    assert "shuffled: the real images hardly follow" in text and "--settle" in text
+    assert "deep (" in text and "real lower" in text
+    kept = PairedData.load(sd, **SMALL, min_corr=0.4, log=lambda *a: None)
+    assert set(np.unique(kept.session)) == {0, 1, 2}
+
+
+def test_reference_takes_out_camera_drift(tmp_path):
+    """Session b's camera is brighter and drifts from trajectory to trajectory: the simulator
+    can't predict that, so without a reference the mapping can't either."""
+    sd = fake_sessions(str(tmp_path / "data"), names=("a", "b"), motions=MOTIONS,
+                       issues={"b": {"offset": 30, "drift": 10}})
+    quiet = lambda *a: None  # noqa: E731
+    scores = {}
+    for ref in ("none", "trajectory"):
+        d = PairedData.load(sd, **SMALL, reference=ref, log=quiet)
+        m = train_mapping(d, out=str(tmp_path / ref), backend="linear", latent_sim=16,
+                          latent_real=16, log=quiet)
+        scores[ref] = m.info["metrics"]["sim2real_nmse"]
+    assert scores["trajectory"] < 0.6 * scores["none"], scores
+    m = load_mapping(str(tmp_path / "trajectory"))
+    assert m.uses_reference and m.real_rest.shape == (32, 32, 3)
+    assert os.path.exists(tmp_path / "trajectory" / "real_rest.png")
+    with open(os.path.join(sd[1], "meta.json")) as f:
+        row = json.load(f)["trajectories"][0]
+    raw = np.load(os.path.join(sd[1], row["file"]))
+    # a new session whose camera is brighter still; nothing touching the TacTip
+    untouched = np.clip(raw["real_tactip"][:2].astype(int) + 40, 0, 255).astype(np.uint8)
+    with pytest.warns(UserWarning, match="set_reference"):
+        m.real_to_sim(raw["real_tactip"][5])
+    m.set_reference(untouched)
+    target = m.prep.real(untouched)[0].astype(float).mean(axis=0)
+    out = m.sim_to_real(raw["sim_tactip"][0])               # sim untouched -> this session's look
+    assert np.abs(out.astype(float) - target).mean() < 4
+    assert m.real_to_sim(raw["real_tactip"][5]).shape == (32, 32, 3)
+    m.set_reference(None)
+    assert np.abs(m.sim_to_real(raw["sim_tactip"][0]).astype(float) - target).mean() > 15
+
+
 # ============================================================================ linear backend
 def test_linear_mapping_images(sessions, tmp_path):
     data = PairedData.load(sessions, **SMALL, log=lambda *a: None)
@@ -158,6 +253,7 @@ def test_linear_mapping_images(sessions, tmp_path):
     assert np.array_equal(one, m.sim_to_real(raw["sim_tactip"][5]))
     batch = again(raw["sim_tactip"])
     assert batch.shape == (10, 32, 32, 3) and np.array_equal(batch[5], one)
+    again.set_reference(raw["real_tactip"][:2])              # this session's untouched TacTip
     back = again.real_to_sim(raw["real_tactip"][5])         # a camera frame (BGR, full size)
     assert back.shape == (32, 32, 3) and back.dtype == np.uint8
     assert again.encode_sim(raw["sim_tactip"]).shape == (10, 24)
@@ -293,3 +389,137 @@ def test_real_tactip_readout_markers(tmp_path):
     obs, _ = env.reset(seed=0)
     assert obs["real_tactip"].shape == (32, 32, 3)
     env.close()
+
+
+def test_sobel_filter(sessions, tmp_path):
+    data = PairedData.load(sessions[0], **SMALL, filter="sobel", log=lambda *a: None)
+    assert data.prep.gray and data.sim.shape[1:] == (32, 32, 1) and data.real.shape[1:] == (32, 32, 1)
+    assert data.pairing[0]["corr"] > 0.7
+    out = str(tmp_path / "sobel")
+    train_mapping(data, out=out, backend="linear", latent_sim=16, latent_real=16, log=lambda *a: None)
+    m = load_mapping(out)
+    assert m.prep.filter == "sobel"
+    raw = np.load(os.path.join(sessions[0], data.rows[0]["file"]))
+    assert m.sim_to_real(raw["sim_tactip"][5]).shape == (32, 32, 1)
+
+
+# ============================================================================ real pins, marker map
+@pytest.fixture(scope="module")
+def pin_sessions(tmp_path_factory):
+    pytest.importorskip("cv2")
+    return fake_sessions(str(tmp_path_factory.mktemp("pins")), names=("pa", "pb"), motions=6,
+                         pin_sigma=2.0, depth_frames=True, noise=1.0)
+
+
+def test_depth_check_and_extract_pins(pin_sessions, tmp_path):
+    from tactip_mujoco_gym.sim2real import depth_check, extract_pins
+    out = depth_check(pin_sessions[0], picture=str(tmp_path / "dc.png"), log=lambda *a: None)
+    assert out["pins"] >= 30 and out["registered"]
+    assert out["depth_valid_pins"] > 0.9 and abs(out["distance_mm"] - 40) < 1.0
+    assert out["usable"], out
+    assert os.path.exists(tmp_path / "dc.png")
+    for sdir in pin_sessions:
+        assert extract_pins(sdir, log=lambda *a: None) > 0
+    with open(os.path.join(pin_sessions[0], "meta.json")) as f:
+        row = json.load(f)["trajectories"][0]
+    z = np.load(os.path.join(pin_sessions[0], "pins", row["file"]))
+    P = json.load(open(os.path.join(pin_sessions[0], "pins", "pins.json")))["pins"]
+    assert z["real_pins"].shape == (10, P, 3) and z["real_pins_ok"].mean() > 0.8
+    still = np.nanmax(np.abs(z["real_pins"][:2, :, :2]))
+    pressed = np.nanmax(np.abs(z["real_pins"][7, :, :2]))
+    assert pressed > 3 * max(still, 0.1)                     # the press moves the pins
+    assert np.nanmin(z["real_pins"][7, :, 2]) < -0.5           # and brings them closer
+
+
+def test_marker_map(pin_sessions, tmp_path):
+    from tactip_mujoco_gym.sim2real import MarkerPairs, extract_pins, load_marker_map, train_marker_map
+    for sdir in pin_sessions:
+        if not os.path.exists(os.path.join(sdir, "pins", "pins.json")):
+            extract_pins(sdir, log=lambda *a: None)
+    pairs = MarkerPairs.load(pin_sessions, log=lambda *a: None)
+    assert pairs.use_z and pairs.real.shape[2] == 3 and pairs.sim.shape[1:] == (37, 3)
+    m = train_marker_map(pairs, out=str(tmp_path / "mm"), log=lambda *a: None)
+    mt = m.cfg["metrics"]
+    assert mt["sim2real_nmse"] < 0.5 and mt["real2sim_nmse"] < 0.5, mt
+    again = load_marker_map(str(tmp_path / "mm"))
+    x = pairs.sim[5]
+    assert np.allclose(again.sim_to_real(x), m.sim_to_real(x), atol=1e-4)
+    assert again.sim_to_real(pairs.sim[:4]).shape == (4, pairs.real.shape[1], 3)
+    real = pairs.real[5].copy()
+    real[:3] = np.nan                                         # pins not found
+    assert again.real_to_sim(real).shape == (37, 3)
+    xy = MarkerPairs.load(pin_sessions[0], use_z=False, log=lambda *a: None)
+    assert xy.real.shape[2] == 2
+
+
+def test_marker_map_mlp(pin_sessions, tmp_path):
+    pytest.importorskip("torch")
+    from tactip_mujoco_gym.sim2real import MarkerPairs, extract_pins, load_marker_map, train_marker_map
+    for sdir in pin_sessions:
+        if not os.path.exists(os.path.join(sdir, "pins", "pins.json")):
+            extract_pins(sdir, log=lambda *a: None)
+    pairs = MarkerPairs.load(pin_sessions, log=lambda *a: None)
+    m = train_marker_map(pairs, out=str(tmp_path / "mlp"), backend="mlp", epochs=5, hidden=32,
+                         device="cpu", log=lambda *a: None)
+    again = load_marker_map(str(tmp_path / "mlp"))
+    assert np.allclose(again.sim_to_real(pairs.sim[3]), m.sim_to_real(pairs.sim[3]), atol=1e-4)
+
+
+# ============================================================================ re-simulation
+class FakeRig:
+    """Stands in for SimRig on TacRig-v0: goes straight to each target; the markers move
+    as the fake sensor's press at the commanded depth."""
+    start_height_mm = 10.0
+
+    def __init__(self, rest_xy, depth_size=16):
+        self.rest_xy, self.pos, self.centre = rest_xy, np.zeros(3), np.zeros(2)
+        rig = self
+
+        class Depth:
+            available = True
+
+            def observe(self, e):
+                return np.full((depth_size, depth_size, 1), 40.0 + rig.displacement()[:, 2].min(), np.float32)
+
+        class Env:
+            plate_force = 0.0
+            sensors = {"tactile_depth": Depth()}
+        self.e = Env()
+
+    def reset(self, texture=None, verbose=True):
+        self.pos = np.array([0.0, 0.0, 0.0])
+
+    def step_toward(self, target):
+        self.pos = np.asarray(target, float)
+        return True
+
+    def _raw(self):
+        return self.pos.copy()
+
+    def displacement(self):
+        d = -self.pos[2] - self.start_height_mm
+        return press(self.rest_xy, self.pos[:2], max(d, 0.0)).astype(np.float32)
+
+
+def test_resimulate_fits_z_and_merges(tmp_path):
+    from tactip_mujoco_gym.sim2real import resimulate
+    sd = fake_sessions(str(tmp_path / "data"), names=("deep",), motions=4, textures=(1,),
+                       steps=24, approach=12, issues={"deep": {"depth_offset": 0.75}})[0]
+    rest = np.asarray(json.load(open(os.path.join(sd, "meta.json")))["sim"]["marker_rest_mm"])[:, :2]
+    lines = []
+    out = resimulate(sd, z_offset="fit", rig=FakeRig(rest), fit_values=(0.0, 0.25, 0.5, 0.75, 1.0),
+                     log=lines.append)
+    meta = json.load(open(os.path.join(out, "meta.json")))
+    assert meta["resim"]["z_offset_mm"] in (0.5, 0.75, 1.0), lines
+    assert len(meta["trajectories"]) == 8 and meta["sim"]["depth_size"] == 64
+    # the re-simulated session pairs better than the recording
+    q = lambda *a: None  # noqa: E731
+    before = PairedData.load(sd, sim_input="markers", **SMALL, log=q).pairing[0]
+    after = PairedData.load(out, sim_input="markers", **SMALL, log=q).pairing[0]
+    assert abs(after["onset_mm"]) < abs(before["onset_mm"]), (before, after)
+    d = PairedData.load(out, sim_input="depth", **SMALL, log=q)    # real images from the recording
+    assert d.sim.shape[1:] == (32, 32, 1) and d.real.shape[1:] == (32, 32, 3)
+    lines = []
+    with pytest.raises(ValueError, match="no paired samples"):
+        PairedData.load(out, sim_input="image", **SMALL, log=lines.append)
+    assert any("--record image" in s for s in lines)

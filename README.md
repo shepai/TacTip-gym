@@ -242,6 +242,7 @@ Every observation starts with a short **proprioception** block, because a real r
 | `object` | task | What a camera-based object tracker would give | | | 29 |
 | `tactile` | readout `tactip_markers` | Marker displacement from rest and change since the last step, in mm, every mount | 426 | 1,704 | 852 |
 | `tactile_image` | readout `tactip_camera` | Image from the camera inside each TacTip, stacked along channels | 64 × 64 × 3 | 64 × 64 × 12 | 64 × 64 × 6 |
+| `real_pins` | readout `real_pins` | The real TacTip's pin movement (x, y px, and z mm if trained with depth): the simulated markers through a trained marker map ([Real pins](#real-pins-marker-map-and-re-simulation)). Unavailable until it has a map | P × 2 or 3 | | |
 | `real_tactip` | readout `real_tactip` | What the real TacTip's camera would show: the simulated TacTip through a trained sim-to-real mapping ([Learned image mapping](#learned-image-mapping-real_tactip)). Unavailable until it has a mapping | 64 × 64 × 3 | 64 × 64 × 12 | 64 × 64 × 6 |
 | `vision` | readout `camera` | The robot's camera (`handcam` / `headcam`) | 64 × 64 × 3 | 64 × 64 × 3 | 64 × 64 × 3 |
 | `events` | readout `taxel_events` | Event counts from the touch grids on the objects | one per taxel | | |
@@ -285,6 +286,8 @@ A **readout** turns the simulation into one input. The built-in ones work on eve
 |---------|-------------|--------------------------|
 | `tactip_markers` | `tactile` | `marker_prefix` (`"s_c"`), `frame_site` (`"ee_site"`), `scale` (1e-3 = mm), `clip` (20), `velocity` (True) |
 | `tactip_camera` | `tactile_image` | `camera` (`"sensor_cam"`), `width`, `height` (64), `mode` (`"rgb"` / `"gray"`), `groups` ((2,): the pins only) |
+| `tactip_depth_camera` | `tactile_depth` | `camera`, `width`, `height`, `groups` ((2,)), `skin` (True: the skin as well as the pins), `max_mm` (200). Depth in mm from the camera inside the TacTip, as a depth camera there would see it |
+| `real_pins` | `real_pins` | `model` (a trained marker map's folder; default: the `TACTIP_MARKER_MAP` environment variable), `device` |
 | `real_tactip` | `real_tactip` | `model` (a trained mapping's folder; default: the `TACTIP_SIM2REAL_MODEL` environment variable), `device` (`"cpu"`) |
 | `camera` | `vision` | `camera` (`VISION_CAMERA`), `width`, `height` (64), `mode` (`"rgb"` / `"gray"` / `"depth"`), `max_depth`, `shadows`, `antialias` |
 | `taxel_events` | `events` | `prefix` (`"tx_"`), `threshold` (0.02 N), `clip` (5) |
@@ -1053,9 +1056,29 @@ real camera frame -> real encoder -> real latent -> map back -> sim latent -> si
 
 ```bash
 pip install torch                     # or: pip install -e ".[train]"
+python -m tactip_mujoco_gym.sim2real check-pairs data/
 python -m tactip_mujoco_gym.sim2real train-mapping data/ --out models/sim2real
 python -m tactip_mujoco_gym.sim2real mapping-preview models/sim2real data/session_20261120_100000
 ```
+
+#### Check the pairs first
+
+A mapping can only be learnt if the real TacTip changes when the simulated one does. `check-pairs` (and `train-mapping`, before it trains) checks this for every session. For each sample it measures how much the real image differs from its trajectory's untouched frames, and the same for the simulated image. It then reports per session:
+
+| Reported | Meaning |
+|----------|---------|
+| `corr` and good / fair / poor | How closely the two changes go together, sample by sample (1 = perfectly). Good is 0.7 or more, poor is under 0.4. A poor session usually had an old or wrong calibration, so the real sensor wasn't doing what the simulated one did |
+| best with the real images N samples later | The real images lag the simulated ones: the rig hadn't settled when the frame was taken. Record with a longer `rig_dataset collect --settle` |
+| real starts changing X mm before / after the sim | Along each press, the depth where the real image starts to change compared with the simulated one. Before means the real TacTip sits lower than the simulated one: the calibration's z is off by about that much |
+| real contact change N x its noise | How far contact moves the real image above the camera's noise. If this is under about 1.5, give the networks more pixels (`--real-size 128 128`) or a tighter `--real-crop` |
+
+It also draws `pairing_check.png`: for a few trajectories per session, how much each image changes along the path, with the planned depth dashed. The two lines should rise and fall together. Leave out poor sessions by listing only the good ones, or with `--min-corr 0.4`.
+
+#### The camera's drift
+
+The real camera's exposure, the light inside the TacTip and the skin's position drift between sessions and within them. The simulator can't know about any of this, so a mapping trained on raw frames tries to predict it and can't. Its sim → real score then stays near 1, while the real autoencoder alone does very well. So by default (`--reference trajectory`), each real image is compared with its own trajectory's untouched frames (the approach, at least 0.5 mm above the block) and moved onto the average untouched sensor (`real_rest.png` in the mapping's folder). The mapping learns what contact does, not what the camera did that day. `--reference session` uses each session's untouched frames instead, and `none` turns it off.
+
+#### Training
 
 `train-mapping` reads every session in `data/` and trains in four stages:
 
@@ -1064,13 +1087,15 @@ python -m tactip_mujoco_gym.sim2real mapping-preview models/sim2real data/sessio
 3. The two maps learn to turn one latent into the other, with both autoencoders frozen. Each map is scored on the image its decoder makes as well as on the latent.
 4. Everything trains together for a few epochs, so the latent spaces settle where the maps work best.
 
-Each stage keeps its best epoch on the validation set, and stops after 10 epochs without improving. Validation holds out whole motions, with all their repeats, so the scores are for motions the mapping has never seen. Scores are a normalised mean squared error: 1 is no better than always answering the average image, and 0 is perfect.
+Each stage keeps its best epoch on the validation set, and stops after 10 epochs without improving. Validation holds out whole motions, with all their repeats, so the scores are for motions the mapping has never seen. Scores are a normalised mean squared error: 1 is no better than always answering the average image (of the training set for training losses, of the validation set for validation losses), and 0 is perfect.
 
 It writes `models/sim2real/` with these files:
 
 | File | What |
 |------|------|
 | `crop_check.png` | One real frame with the crop drawn on it, next to what the networks see. Look at this first: the magenta box should frame the pins |
+| `pairing_check.png` | The pairing check, drawn (needs matplotlib) |
+| `real_rest.png`, `real_rest.npy` | The untouched real sensor that the real images were moved onto |
 | `preview.png` | Validation samples, one per row: sim, real, sim → real, the real autoencoder's copy, real → sim |
 | `mapping.json`, `weights.pt` | The mapping: preprocessing, network sizes, settings and scores, and the weights |
 | `history.csv` | The losses of every epoch |
@@ -1084,6 +1109,9 @@ The real autoencoder's column in `preview.png` is the best the mapping can do. I
 | `--sim-size`, `--real-size W H` | 64, 64 64 | Image sizes the networks see. The real size is also the size of the image the mapping makes. Use multiples of 8 |
 | `--real-crop X Y W H` | the centre square | The part of the camera frame that holds the pins (`--real-full-frame` keeps it all) |
 | `--gray` | off | One grey channel instead of RGB |
+| `--filter sobel` | off | Use the edges (the pins' outlines) of both images instead of the images themselves: grey, with the light level and exposure taken out. Each image's edges are worked out at twice the networks' size, then shrunk |
+| `--reference` | `trajectory` | Take the camera's drift out by comparing each real image with its trajectory's (or `session`'s) untouched frames; `none` for raw frames |
+| `--min-corr` | | Leave out sessions whose pairing check `corr` is below this, e.g. 0.4 |
 | `--latent-sim`, `--latent-real` | 32, 64 | Latent sizes |
 | `--epochs AE MAP JOINT` | 30 60 20 | Epochs for each autoencoder, the maps, then all together |
 | `--split` | `motion` | What validation holds out: `motion`, `trajectory`, `texture` (textures it never saw) or `session` |
@@ -1098,8 +1126,12 @@ from tactip_mujoco_gym.sim2real import load_mapping
 m = load_mapping("models/sim2real")
 real = m.sim_to_real(sim_image)     # simulated TacTip image, RGB (H, W, 3), any size -> (64, 64, 3)
 real = m(sim_images)                # a batch: (N, H, W, 3) -> (N, 64, 64, 3)
+
+m.set_reference(untouched_frames)   # a few frames of this session's untouched TacTip (BGR)
 sim = m.real_to_sim(frame)          # a real camera frame as captured (BGR) -> the simulated image
 ```
+
+`sim_to_real` makes images of the average untouched sensor plus the contact. After `set_reference`, they look like this session's sensor instead, and `real_to_sim` compares each frame with this session's untouched one, as training did. Grab a few frames before anything touches the TacTip.
 
 With `--input markers`, `sim_to_real` takes the markers' displacements, (n, 3) in mm, as `rig_dataset` records them, and `real_to_sim` returns them. `train_mapping()` and `PairedData` do the same from Python.
 
@@ -1115,6 +1147,47 @@ env = gym.make("TacRig-texture", obs_modes=["tactile_image"], obs_format="dict",
 ```
 
 Or set `TACTIP_SIM2REAL_MODEL=models/sim2real` and select `real_tactip`. This also works with vectorised environments, and in configs (`obs_modes: [real_tactip]`). The readout renders the simulated TacTip at the size the dataset used (`rig_dataset collect --sim-image`, 240 px by default), shrinks it the same way training did, and runs the mapping on the CPU (`"device": "cuda"` for a GPU). It works on every robot with the TacTip, but the mapping only knows what it saw on the rig.
+
+### Real pins, marker map and re-simulation
+
+Instead of whole images, the real TacTip's white pins can be turned into coordinates and mapped onto the simulated markers. Recorded trials can also be re-run in simulation, to record other simulated readouts and to correct the calibration's z after the fact.
+
+```bash
+python -m tactip_mujoco_gym.sim2real depth-check data/session_20261117_104611
+python -m tactip_mujoco_gym.sim2real extract-pins data/session_20261117_104611
+python -m tactip_mujoco_gym.sim2real train-marker-map data/session_20261117_104611 --out models/pins
+python -m tactip_mujoco_gym.sim2real resim data/session_20261117_104611 --z-offset fit
+```
+
+| Command | What it does |
+|---------|--------------|
+| `depth-check` | Is the depth image usable at the pins? It finds the pins in some colour frames and reports how many have a depth reading, how far away they are, the depth noise, and how much pressing changes their depth. It also draws `depth_check.png`: the pins found, next to the depth. RealSense D4xx cameras only measure from about 7 cm, so close inside a TacTip the depth may be mostly holes |
+| `extract-pins` | Finds the pins in every frame and follows each through its trajectory, numbered the same way across the session. x and y come from the colour image in px; z comes from the depth image in mm, where it has a reading. It writes `<session>/pins/`, with each pin's movement from its trajectory's untouched frames |
+| `train-marker-map` | Learns simulated markers (n × 3, mm) ↔ real pins, both ways. `--backend linear` (ridge regression, numpy) or `mlp` (PyTorch). `--use-z auto` uses depth only if the pins have a reading at least half the time. Validation holds out whole motions |
+| `resim` | Re-runs every trajectory of a recorded session in `TacRig-v0`, with the same texture, path and samples. It records `--record markers depth` (and `image`, `force` if asked) into `<session>_resim/`. That folder holds only the new simulated arrays; the real ones are read from the recording. `--z-offset fit` tries offsets from −0.5 to 1.5 mm and keeps the one where, along each press, the simulated markers start moving at the depth where the real images start changing (to about ±0.25 mm). `--z-offset 0.6` sets it by hand (+ = the simulated TacTip presses deeper) |
+
+Pin depth is read at the same place in the depth image. That is exact when colour and depth are registered: a D405, whose colour comes from the depth imager, or a session recorded with `rig_dataset collect --d401-align`. Otherwise it is approximate, and `depth-check` says so.
+
+A re-simulated session works wherever a recorded one does:
+
+```bash
+python -m tactip_mujoco_gym.sim2real check-pairs data/session_20261117_104611_resim --input markers
+python -m tactip_mujoco_gym.sim2real train-marker-map data/session_20261117_104611_resim
+python -m tactip_mujoco_gym.sim2real train-mapping data/session_20261117_104611_resim --input depth
+```
+
+`--input depth` trains the image mapping from the simulated depth camera inside the TacTip (the `tactip_depth_camera` readout) to the real TacTip image.
+
+```python
+from tactip_mujoco_gym.sim2real import load_marker_map
+
+mm = load_marker_map("models/pins")
+real = mm.sim_to_real(sim_disp)     # (n, 3) mm -> (P, 2 or 3): real pin movement
+sim = mm.real_to_sim(real_pins)     # (P, 2 or 3), nan for pins not found -> (n, 3) mm
+
+env = gym.make("TacRig-v0", sensors={"real_pins": {"model": "models/pins"}},
+               obs_modes=["real_pins"], obs_format="dict")
+```
 
 <!-- docs:tests -->
 ## Tests
@@ -1132,7 +1205,7 @@ pytest                    # everything that can run on this machine
 - `tests/test_new_robots.py`: surface following (with the scripted follower), the rig (pressing, answering, tilt, STL blocks, `press_grid`, another sensor) and the gripper (with the scripted picker)
 - `tests/test_new_sensors.py`: the PressTip, GelSight, depth TacTip and whiskers. Each one alone, pressed on the rig, on the gripper and the arm, and the sensor viewer
 - `tests/test_sim2real.py`: the pose map (per-axis and affine), the background stepper worker, the rig calibration on a synthetic TacTip with known lens, mount and skin (layout, stiffness, maps, a new session), pin detection and tracking, contact finding, the real rig against a mock board and camera, and the simulated rig
-- `tests/test_sim2real_mapping.py`: the learned image mapping on synthetic paired sessions (loading, cropping, splitting, both backends, saving and loading, the commands) and the `real_tactip` readout in `TacRig-v0` (the torch and gym tests are skipped without PyTorch or MuJoCo)
+- `tests/test_sim2real_mapping.py`: the pairing check, pin extraction with depth, the marker map, re-simulation with a z fit (against a stand-in rig), and the learned image mapping on synthetic paired sessions (loading, cropping, splitting, both backends, saving and loading, the commands) and the `real_tactip` readout in `TacRig-v0` (the torch and gym tests are skipped without PyTorch or MuJoCo)
 
 <!-- docs:training-tips -->
 ## Training tips
