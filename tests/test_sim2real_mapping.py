@@ -523,3 +523,47 @@ def test_resimulate_fits_z_and_merges(tmp_path):
     with pytest.raises(ValueError, match="no paired samples"):
         PairedData.load(out, sim_input="image", **SMALL, log=lines.append)
     assert any("--record image" in s for s in lines)
+
+
+class FakeContactRig(FakeRig):
+    """The depth TacTip version: no markers, a contact depth image (uint8, deeper = brighter)."""
+    n = 0
+
+    def __init__(self, rest_xy, size=16):
+        super().__init__(rest_xy)
+        rig = self
+
+        class Contact:
+            available = True
+
+            def observe(self, e):
+                d = max(-rig.pos[2] - rig.start_height_mm, 0.0)
+                img = np.zeros((size, size, 1), np.uint8)
+                r = int(min(d / 2.0, 1.0) * size / 2)
+                c = size // 2
+                img[c - r:c + r, c - r:c + r] = int(min(d / 4.0, 1.0) * 255)
+                return img
+        self.e.sensors = {"tactile_image": Contact()}
+
+
+def test_resimulate_contact_depth(tmp_path):
+    from tactip_mujoco_gym.sim2real import resimulate
+    from tactip_mujoco_gym.sim2real.resim import dome_radius_mm
+    sd = fake_sessions(str(tmp_path / "data"), names=("s",), motions=4, textures=(1,),
+                       steps=24, approach=12, issues={"s": {"depth_offset": 0.5}})[0]
+    rest = np.asarray(json.load(open(os.path.join(sd, "meta.json")))["sim"]["marker_rest_mm"])[:, :2]
+    with pytest.raises(ValueError, match="on its own"):
+        resimulate(sd, record=("contact", "markers"), rig=FakeContactRig(rest), log=lambda *a: None)
+    out = resimulate(sd, record=("contact",), z_offset="fit", rig=FakeContactRig(rest),
+                     fit_values=(0.0, 0.25, 0.5, 0.75, 1.0), log=lambda *a: None)
+    assert out.endswith("_resim_contact")
+    m = json.load(open(os.path.join(out, "meta.json")))
+    assert m["resim"]["z_offset_mm"] in (0.5, 0.75, 1.0) and m["sim"]["contact_size"] == 64
+    d = PairedData.load(out, sim_input="contact", **SMALL, log=lambda *a: None)
+    assert d.sim.shape[1:] == (32, 32, 1) and d.sim.max() > 0
+    mp = train_mapping(d, backend="linear", latent_sim=8, latent_real=8, log=lambda *a: None)
+    assert mp.real_to_sim(d.real[3], raw=False).shape == (32, 32, 1)
+    # a sphere's radius from points on it
+    pts = np.random.default_rng(1).normal(size=(80, 3))
+    pts = 20 * pts / np.linalg.norm(pts, axis=1, keepdims=True) + [1, 2, 3]
+    assert abs(dome_radius_mm({"sim": {"marker_rest_mm": pts.tolist()}}) - 20) < 1e-6

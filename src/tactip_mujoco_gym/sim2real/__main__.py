@@ -608,7 +608,7 @@ def cmd_resim(a):
         resimulate(sdir, out=a.out if len(a.sessions) == 1 else None, record=tuple(a.record),
                    z_offset=z, depth_size=a.depth_size, image_size=a.image_size,
                    fit_values=tuple(a.fit_values) if a.fit_values else FIT_VALUES,
-                   fit_trajectories=a.fit_trajectories)
+                   fit_trajectories=a.fit_trajectories, dome_radius=a.dome_radius)
 
 
 def cmd_depth_check(a):
@@ -652,7 +652,7 @@ def cmd_mapping_preview(a):
 
 
 def _prep_args(p):
-    p.add_argument("--input", choices=("image", "markers", "depth"), default="image",
+    p.add_argument("--input", choices=("image", "markers", "depth", "contact"), default="image",
                    help="what the simulated side is: the sim TacTip image, the marker "
                         "displacements, or the depth camera inside it (a re-simulated session)")
     p.add_argument("--sim-size", type=int, default=64, help="sim image side the model sees (px)")
@@ -840,8 +840,12 @@ def main(argv=None):
     p.add_argument("sessions", nargs="+", help="recorded session folder(s)")
     p.add_argument("--out", default=None, help="default: <session>_resim")
     p.add_argument("--record", nargs="+", default=["markers", "depth"],
-                   choices=("markers", "depth", "image", "force"),
-                   help="simulated readouts to record (default: markers depth)")
+                   choices=("markers", "depth", "image", "force", "contact"),
+                   help="simulated readouts to record (default: markers depth). contact: the "
+                        "depth TacTip's contact depth image (Tactile Gym 2.0), on its own")
+    p.add_argument("--dome-radius", type=float, default=None,
+                   help="mm, the depth TacTip's dome with --record contact (default: fitted to "
+                        "the soft TacTip's markers)")
     p.add_argument("--z-offset", default="fit",
                    help="mm the simulated TacTip presses deeper than recorded (+ = deeper), or "
                         "'fit' to find the one that pairs best with the real images (default)")

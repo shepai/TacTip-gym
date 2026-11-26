@@ -34,8 +34,9 @@ from .resim import traj_arrays
 GRAY = np.array([0.299, 0.587, 0.114], np.float32)          # as sensors.TacTipCamera(mode="gray")
 PHASE_CODES = {"approach": 0, "contact": 1, "retract": 2}
 REFERENCES = ("trajectory", "session", "none")
-SIM_INPUTS = ("image", "markers", "depth")
-SIM_KEYS = {"image": "sim_tactip", "markers": "sim_markers", "depth": "sim_depth"}
+SIM_INPUTS = ("image", "markers", "depth", "contact")
+SIM_KEYS = {"image": "sim_tactip", "markers": "sim_markers", "depth": "sim_depth",
+            "contact": "sim_contact_depth"}
 FILTERS = ("none", "sobel")
 
 
@@ -233,11 +234,11 @@ class Preprocess:
     @property
     def sim_is_image(self):
         """The simulated side is a picture (camera image, or depth shown as one)."""
-        return self.sim_input in ("image", "depth")
+        return self.sim_input in ("image", "depth", "contact")
 
     @property
     def sim_channels(self):
-        return 1 if self.gray or self.sim_input == "depth" else 3
+        return 1 if self.gray or self.sim_input in ("depth", "contact") else 3
 
     @property
     def sim_shape(self):
@@ -269,6 +270,12 @@ class Preprocess:
         """Simulated input(s) -> model-ready rows: uint8 (N, s, s, C) images, or float32
         (N, 3n) marker displacements in mm. Returns (array, was_single)."""
         x = np.asarray(x)
+        if self.sim_input == "contact":             # Tactile Gym 2.0 contact depth: uint8 already
+            single = x.ndim == 2 or (x.ndim == 3 and x.shape[-1] == 1)
+            x = x[None] if single else x
+            if x.ndim == 3:
+                x = x[..., None]
+            return _chunked(self._sim_images, x), single
         if self.sim_input == "depth":               # mm -> a picture: near bright, nothing 0
             single = x.ndim == 2 or (x.ndim == 3 and x.shape[-1] == 1)
             x = x[None] if single else x
@@ -465,7 +472,7 @@ class PairedData:
                 meta = json.load(f)
             calibrations.append(_calibration_note(meta))
             simmeta = meta.get("sim") or {}
-            size = simmeta.get("depth_size" if sim_input == "depth" else "image_size")
+            size = simmeta.get({"depth": "depth_size", "contact": "contact_size"}.get(sim_input, "image_size"))
             if size and sim_input != "markers":
                 renders.append(int(size))
             if marker_rest is None and simmeta.get("marker_rest_mm") is not None:
@@ -479,7 +486,7 @@ class PairedData:
                 if sim_key not in z or "real_tactip" not in z:
                     why = f"no {sim_key if sim_key not in z else 'real_tactip'}"
                     if sim_key not in z and sim_input != "markers" and (meta.get("resim") or {}):
-                        why += " (re-simulate with --record " + {"image": "image", "depth": "depth"}[sim_input] + ")"
+                        why += " (re-simulate with --record " + sim_input + ")"
                     skipped[why] = skipped.get(why, 0) + 1
                     continue
                 s, r = z[sim_key], z["real_tactip"]

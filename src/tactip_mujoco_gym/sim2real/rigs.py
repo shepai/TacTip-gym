@@ -289,11 +289,11 @@ class SimRig(Rig):
         self.readout = e.sensors[readout]
         if not getattr(self.readout, "available", True):
             raise RuntimeError(f"readout {readout!r} unavailable: {self.readout.reason}")
-        self.n = int(self.readout.n_markers)
+        self.n = int(getattr(self.readout, "n_markers", 0) or 0)   # 0: not a marker readout
         self.start_height_mm = float(getattr(e, "HOVER", 0.010)) * 1000.0
         self.set_texture(e.textures[0])
-        self._frame_R = self._frame_rotation()
-        self.layout = self._layout()
+        self._frame_R = self._frame_rotation() if self.n else np.eye(3)
+        self.layout = self._layout() if self.n else None
 
     # ---- environment
     def set_texture(self, texture):

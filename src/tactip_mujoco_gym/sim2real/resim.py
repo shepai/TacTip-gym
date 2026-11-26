@@ -19,6 +19,9 @@ simulated TacTip 0.6 mm deeper at every sample; "fit" tries a range of offsets o
 trajectories and keeps the one where, along each press, the simulated markers start moving
 at the depth where the recorded real images start changing (sobel edges, compared with each
 trajectory's untouched frames).
+
+It draws the simulated depth / image offscreen. If MuJoCo's default window system aborts (for
+example a GLib-GIO "Settings schema" error on some desktops), run with MUJOCO_GL=egl.
 """
 import datetime
 import json
@@ -26,7 +29,9 @@ import os
 
 import numpy as np
 
-RECORDABLE = ("markers", "depth", "image", "force")
+RECORDABLE = ("markers", "depth", "image", "force", "contact")
+SIM_NAMES = {"markers": "sim_markers", "depth": "sim_depth", "image": "sim_tactip",
+             "force": "sim_force", "contact": "sim_contact_depth"}
 FIT_VALUES = tuple(np.round(np.arange(-0.5, 1.51, 0.25), 2))
 
 
@@ -85,7 +90,8 @@ class Replayer:
         e = rig.e
         self.depth = e.sensors.get("tactile_depth") if "depth" in self.record else None
         self.image = e.sensors.get("tactile_image") if "image" in self.record else None
-        for name, s in (("depth", self.depth), ("image", self.image)):
+        self.contact = e.sensors.get("tactile_image") if "contact" in self.record else None
+        for name, s in (("depth", self.depth), ("image", self.image), ("contact", self.contact)):
             if name in self.record and (s is None or not getattr(s, "available", True)):
                 raise RuntimeError(f"no simulated {name} readout: {getattr(s, 'reason', 'missing')}")
 
@@ -111,6 +117,8 @@ class Replayer:
             s["sim_depth"] = np.asarray(self.depth.observe(r.e), np.float32)[..., 0]
         if self.image is not None:
             s["sim_tactip"] = np.asarray(self.image.observe(r.e), np.uint8)
+        if self.contact is not None:
+            s["sim_contact_depth"] = np.asarray(self.contact.observe(r.e), np.uint8)[..., 0]
         return s
 
     def run(self, waypoints, texture=None):
@@ -127,9 +135,24 @@ class Replayer:
         return {k: np.stack(v) for k, v in out.items()}
 
 
-def make_rig(meta, record=("markers", "depth"), depth_size=64, image_size=None):
+def dome_radius_mm(meta):
+    """Radius (mm) of a sphere fitted to the soft TacTip's rest markers (meta sim
+    marker_rest_mm): the dome the depth TacTip should have to match it. None if unknown."""
+    rest = (meta.get("sim") or {}).get("marker_rest_mm")
+    if rest is None or len(rest) < 4:
+        return None
+    p = np.asarray(rest, float)
+    A = np.c_[2 * p, np.ones(len(p))]
+    sol, *_ = np.linalg.lstsq(A, (p ** 2).sum(axis=1), rcond=None)
+    c = sol[:3]
+    return float(np.sqrt(max(sol[3] + c @ c, 0.0)))
+
+
+def make_rig(meta, record=("markers", "depth"), depth_size=64, image_size=None, dome_radius=None):
     """A SimRig on TacRig-v0 set up like the session's (textures, skin stiffness), with the
-    readouts `record` needs."""
+    readouts `record` needs. record "contact" swaps the soft TacTip for the depth TacTip
+    (Tactile Gym 2.0's contact depth image), with a dome of `dome_radius` mm (default: fitted
+    to the soft TacTip's markers)."""
     import gymnasium as gym
 
     import tactip_mujoco_gym  # noqa: F401  (registers TacRig-v0)
@@ -137,6 +160,22 @@ def make_rig(meta, record=("markers", "depth"), depth_size=64, image_size=None):
     sim = meta.get("sim") or {}
     textures = sorted({int(r["texture"]) for r in meta.get("trajectories", [])
                        if str(r.get("texture", "")).lstrip("-").isdigit()}) or None
+    if "contact" in record:
+        if set(record) - {"contact", "force"}:
+            raise ValueError("record contact on its own (it uses a different simulated sensor: "
+                             "the depth TacTip); re-simulate markers / depth / image separately")
+        from ..sensors.hardware import tactip_depth
+        r = float(dome_radius or dome_radius_mm(meta) or 35.0)
+        s = int(depth_size)
+        kw = dict(sensor_stiffness=float(sim.get("sensor_stiffness", 1.0)),
+                  sensor_xml=tactip_depth(radius=r / 1000.0, mount_radius=max(0.04, r / 1000.0 + 0.002)),
+                  sensors={"tactile_image": {"type": "contact_depth", "width": s, "height": s,
+                                             "mode": "depth"}})
+        if textures:
+            kw["textures"] = textures
+        rig = SimRig(env=gym.make(sim.get("env", "TacRig-v0"), **kw), readout="tactile_image")
+        rig.dome_radius_mm = r
+        return rig
     sensors = {}
     if "depth" in record:
         sensors["tactile_depth"] = {"type": "tactip_depth_camera", "width": int(depth_size),
@@ -214,7 +253,8 @@ def fit_z_offset(sdir, rig=None, values=FIT_VALUES, n_traj=16, log=print, meta=N
     if not real:
         raise ValueError(f"{sdir}: no trajectories with real images and waypoints to fit z on")
     rig = rig or make_rig(meta, record=("markers",))
-    rep = Replayer(rig, _settle_steps(meta), record=("markers",))
+    use = "contact" if getattr(rig, "n", 1) == 0 else "markers"
+    rep = Replayer(rig, _settle_steps(meta), record=(use,))
     scores = {}
     log(f"[resim] fitting z on {len(real)} trajectories, offsets {[float(v) for v in values]} mm "
         "(+ = the simulated TacTip deeper)")
@@ -222,16 +262,23 @@ def fit_z_offset(sdir, rig=None, values=FIT_VALUES, n_traj=16, log=print, meta=N
         rep.z_offset, rep.texture = float(dz), None
         sim = []
         for row, wp in wps:
-            m = rep.run(wp, texture=_texture(row))["sim_markers"]
-            sim.append(np.linalg.norm(m, axis=2).mean(axis=1))
+            out = rep.run(wp, texture=_texture(row))
+            if use == "markers":
+                sim.append(np.linalg.norm(out["sim_markers"], axis=2).mean(axis=1))
+            else:
+                sim.append(out["sim_contact_depth"].reshape(len(wp), -1).astype(np.float32).mean(axis=1))
         gap = _onset_gap(sim, real, trajs)
         scores[float(dz)] = (gap, _corr(np.concatenate(sim), np.concatenate(real)))
         log(f"[resim]   z {dz:+.2f} mm: real starts changing {gap:+.2f} mm from the sim, "
             f"corr {scores[float(dz)][1]:+.3f}")
     finite = {k: v for k, v in scores.items() if np.isfinite(v[0])}
-    if finite:
+    gaps = [v[0] for v in finite.values()]
+    if finite and min(gaps) <= 0 <= max(gaps):        # the onsets line up somewhere in the range
         best = min(finite, key=lambda k: (abs(finite[k][0]), -np.nan_to_num(finite[k][1])))
     else:
+        if finite:
+            log("[resim] the onsets never line up in this range (the real images may change "
+                "before contact for other reasons): choosing by correlation")
         finite = {k: v for k, v in scores.items() if np.isfinite(v[1])}
         if not finite:
             raise ValueError("no offset could be judged (no presses with a clear onset)")
@@ -249,21 +296,28 @@ def _texture(row):
 
 
 def resimulate(sdir, out=None, record=("markers", "depth"), z_offset=0.0, depth_size=64,
-               image_size=None, fit_values=FIT_VALUES, fit_trajectories=16, rig=None, log=print):
+               image_size=None, fit_values=FIT_VALUES, fit_trajectories=16, rig=None, log=print,
+               dome_radius=None):
     """Replay every trajectory of a recorded session in simulation; write the re-simulated
     session to `out` (default <session>_resim). z_offset: mm (+ = sim deeper) or "fit".
     Returns the output folder."""
     bad = set(record) - set(RECORDABLE)
     if bad:
         raise ValueError(f"can record {RECORDABLE}, not {sorted(bad)}")
+    if "contact" in record and set(record) - {"contact", "force"}:
+        raise ValueError("record contact on its own (it uses a different simulated sensor: the "
+                         "depth TacTip); re-simulate markers / depth / image separately")
     if source_of(sdir):
         raise ValueError(f"{sdir} is itself re-simulated: give the recorded session")
     meta = read_meta(sdir)
     rows = meta.get("trajectories", [])
     if not rows:
         raise ValueError(f"{sdir}: no trajectories recorded")
-    out = out or os.path.normpath(sdir) + "_resim"
-    rig = rig or make_rig(meta, record, depth_size, image_size)
+    out = out or os.path.normpath(sdir) + ("_resim_contact" if "contact" in record else "_resim")
+    rig = rig or make_rig(meta, record, depth_size, image_size, dome_radius)
+    if "contact" in record:
+        log(f"[resim] depth TacTip (contact depth images), dome radius "
+            f"{getattr(rig, 'dome_radius_mm', float('nan')):.1f} mm")
     fit = None
     if z_offset == "fit":
         z_offset, fit = fit_z_offset(sdir, rig, fit_values, fit_trajectories, log, meta)
@@ -294,8 +348,11 @@ def resimulate(sdir, out=None, record=("markers", "depth"), z_offset=0.0, depth_
     else:
         new["sim"]["image_size"] = None
     new["sim"]["depth_size"] = int(depth_size) if "depth" in record else None
-    new["sources"] = [{"markers": "sim_markers", "depth": "sim_depth", "image": "sim_tactip",
-                       "force": "sim_force"}[r] for r in record] + ["sim_pose"]
+    new["sim"]["contact_size"] = int(depth_size) if "contact" in record else None
+    if "contact" in record:
+        new["sim"]["sensor"] = "tactip_depth"
+        new["sim"]["dome_radius_mm"] = getattr(rig, "dome_radius_mm", None)
+    new["sources"] = [SIM_NAMES[r] for r in record] + ["sim_pose"]
     new["resim"] = dict(source_session=os.path.abspath(sdir),
                         source_relative=os.path.relpath(os.path.abspath(sdir), os.path.abspath(out)),
                         z_offset_mm=float(z_offset), record=list(record),

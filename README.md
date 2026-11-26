@@ -1178,6 +1178,8 @@ python -m tactip_mujoco_gym.sim2real train-mapping data/session_20261117_104611_
 
 `--input depth` trains the image mapping from the simulated depth camera inside the TacTip (the `tactip_depth_camera` readout) to the real TacTip image.
 
+`resim --record contact` re-simulates with the depth TacTip instead of the soft one: a dome that records the contact depth image, as Tactile Gym 2.0 simulates the TacTip (the `contact_depth` readout). The dome's radius is fitted to the soft TacTip's markers, or set with `--dome-radius MM`. `--z-offset fit` works here too, using the contact depth in place of the markers. It writes `<session>_resim_contact/`, and `train-mapping <session>_resim_contact --input contact` learns real TacTip image ↔ contact depth. As in Tactile Gym 2.0, the real → sim direction then turns real images into the clean depth images a simulation-trained policy sees.
+
 ```python
 from tactip_mujoco_gym.sim2real import load_marker_map
 

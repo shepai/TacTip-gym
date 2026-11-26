@@ -28,6 +28,7 @@ as the D405). Otherwise it is approximate, and depth-check says so.
 """
 import json
 import os
+import warnings
 
 import numpy as np
 
@@ -211,7 +212,8 @@ def extract_pins(sdir, log=print, detector=None):
             if "depth" in a:
                 z[i] = depth_at(a["depth"][i], np.where(found[:, None], pos, np.nan), hw, scale)
         xy[~ok] = np.nan
-        with np.errstate(all="ignore"):
+        with np.errstate(all="ignore"), warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)     # pins never seen untouched
             ref_xy = np.nanmean(xy[still], axis=0)
             ref_z = np.nanmean(z[still], axis=0)
         disp = np.concatenate([xy - ref_xy, (z - ref_z)[..., None]], axis=-1).astype(np.float32)

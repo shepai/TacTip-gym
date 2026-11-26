@@ -80,6 +80,10 @@ class RealTacTip(Sensor):
         elif prep.sim_input == "depth":
             size = prep.sim_render or prep.sim_size
             inner = TacTipDepthCamera(width=size, height=size)
+        elif prep.sim_input == "contact":            # needs the depth TacTip (sensor_xml="tactip_depth")
+            from .depth import ContactDepth
+            size = prep.sim_render or prep.sim_size
+            inner = ContactDepth(width=size, height=size, mode="depth")
         else:
             inner = TacTipMarkers(velocity=False)
         inner.bind(env)                              # SensorUnavailable if there is no TacTip
